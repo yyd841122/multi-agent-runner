@@ -1,0 +1,63 @@
+project:
+  name: multi-agent-runner
+  mode: mvp
+
+runner:
+  max_rounds: 3
+
+executor:
+  type: claude_code
+  command: claude
+  permission_mode: acceptEdits
+
+models:
+  default_provider: mock
+
+  planner:
+    provider: mock
+    model: mock-planner
+
+  main:
+    provider: mock
+    model: mock-main
+
+  reviewer:
+    provider: mock
+    model: mock-reviewer
+    note: "Reviewer 不应默认使用与 Developer 执行器相同的模型，避免自己审自己。"
+
+  tester:
+    provider: mock
+    model: mock-tester
+
+  reporter:
+    provider: mock
+    model: mock-reporter
+
+providers:
+  mock:
+    enabled: true
+
+  zhipu:
+    enabled: false
+    api_key_env: ZHIPU_API_KEY
+    base_url: "https://open.bigmodel.cn/api/paas/v4"
+    default_model: "glm-4-flash"
+
+  deepseek:
+    enabled: false
+    api_key_env: DEEPSEEK_API_KEY
+    base_url: "https://api.deepseek.com"
+    default_model: "deepseek-chat"
+
+  kimi:
+    enabled: false
+    api_key_env: KIMI_API_KEY
+    base_url: "https://api.moonshot.cn/v1"
+    default_model: "moonshot-v1-8k"
+
+  qwen:
+    enabled: false
+    api_key_env: QWEN_API_KEY
+    base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    default_model: "qwen-plus"

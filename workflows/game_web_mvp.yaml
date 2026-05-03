@@ -1,0 +1,175 @@
+workflow:
+  id: game_web_mvp
+  name: Web 小游戏 MVP 工作流
+  version: 0.1.0
+  description: 用于开发简单 HTML/CSS/JavaScript 网页小游戏的最小自动化工作流。
+
+project_type:
+  category: game
+  platform: web
+  stack:
+    - html
+    - css
+    - javascript
+
+agents:
+  - id: main
+    name: Main Agent
+    role: 调度与决策
+    responsibility:
+      - 理解用户需求
+      - 选择工作流
+      - 分配任务
+      - 判断下一步动作
+    must_not:
+      - 直接编写业务代码
+      - 直接修改项目文件
+
+  - id: planner
+    name: Planner Agent
+    role: 任务规划
+    responsibility:
+      - 将需求拆成可执行任务
+      - 定义任务顺序
+      - 定义验收标准
+
+  - id: developer
+    name: Developer Agent
+    role: 开发实现
+    responsibility:
+      - 根据当前任务修改代码
+      - 创建或更新必要文件
+      - 生成开发报告
+
+  - id: tester
+    name: Tester Agent
+    role: 测试验证
+    responsibility:
+      - 根据验收标准测试功能
+      - 输出测试报告
+      - 标记 PASS 或 FAIL
+
+  - id: reviewer
+    name: Reviewer Agent
+    role: 审查评估
+    responsibility:
+      - 审查实现是否偏离需求
+      - 检查报告和完成证据
+      - 给出通过或返工建议
+
+  - id: reporter
+    name: Reporter Agent
+    role: 总结报告
+    responsibility:
+      - 汇总阶段结果
+      - 记录经验和问题
+      - 生成最终报告
+
+stages:
+  - id: requirement
+    name: 需求确认
+    agent: main
+    input:
+      - user_request
+    output:
+      - docs/requirement.md
+    acceptance:
+      - 需求目标清楚
+      - 验证项目边界清楚
+
+  - id: planning
+    name: 任务规划
+    agent: planner
+    input:
+      - docs/requirement.md
+      - workflows/game_web_mvp.yaml
+    output:
+      - docs/tasks.md
+    acceptance:
+      - 任务可执行
+      - 每个任务都有角色和验收标准
+      - 任务顺序合理
+
+  - id: development
+    name: 开发实现
+    agent: developer
+    input:
+      - docs/tasks.md
+      - prompts/current_prompt.md
+    output:
+      - project_files
+      - reports/dev/<task-id>-dev-report.md
+    acceptance:
+      - 目标文件被正确修改
+      - 开发报告存在
+      - 不扩大任务范围
+
+  - id: testing
+    name: 测试验证
+    agent: tester
+    input:
+      - project_files
+      - reports/dev/<task-id>-dev-report.md
+    output:
+      - reports/test/<task-id>-test-report.md
+    acceptance:
+      - 测试报告存在
+      - 明确 PASS 或 FAIL
+      - 如果失败，给出最小修复建议
+
+  - id: review
+    name: 审查评估
+    agent: reviewer
+    input:
+      - docs/requirement.md
+      - docs/tasks.md
+      - reports/dev/<task-id>-dev-report.md
+      - reports/test/<task-id>-test-report.md
+    output:
+      - reports/review/<task-id>-review-report.md
+    acceptance:
+      - 判断是否符合原始需求
+      - 判断是否可以进入下一任务
+      - 如果不通过，生成返工建议
+
+  - id: reporting
+    name: 阶段总结
+    agent: reporter
+    input:
+      - docs/tasks.md
+      - reports/dev/
+      - reports/test/
+      - reports/review/
+    output:
+      - reports/final/<stage>-summary.md
+    acceptance:
+      - 总结已完成任务
+      - 总结问题和经验
+      - 给出下一阶段建议
+
+execution_policy:
+  task_completion_rule:
+    required:
+      - process_returncode_zero
+      - completion_evidence_exists
+    completion_evidence:
+      developer:
+        - reports/dev/<task-id>-dev-report.md
+      tester:
+        - reports/test/<task-id>-test-report.md
+      reviewer:
+        - reports/review/<task-id>-review-report.md
+      reporter:
+        - reports/final/<stage>-summary.md
+
+  retry_policy:
+    on_missing_evidence: retry-current
+    on_failed_execution: stop_and_report
+    max_retry_per_task: 2
+
+  safety_rules:
+    - runner.py 是最外层调度器
+    - Claude Code 是代码执行器
+    - 不允许 Claude Code 在自身执行过程中再次调用 run-current、run-next、retry-current、run-loop
+    - 任务完成不能只依赖 returncode=0
+    - 自动完成任务前必须检查完成证据

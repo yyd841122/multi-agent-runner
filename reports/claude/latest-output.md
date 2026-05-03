@@ -1,0 +1,37 @@
+# Claude Code Execution Output
+
+## Return Code
+
+0
+
+## Stdout
+
+## T010 完成
+
+### 修改文件
+
+**runner.py** — 新增两个函数 + CLI 命令入口：
+
+| 新增内容 | 位置 | 作用 |
+|---------|------|------|
+| `_execute_one_task(content)` | 第 384-464 行 | 执行单个 pending 任务闭环，返回 `(status, message)` |
+| `run_loop(max_rounds=10)` | 第 467-508 行 | 循环调用 `_execute_one_task()`，直到无 pending / 失败 / 达到最大轮数 |
+| `run-loop` CLI 命令 | 第 539-541 行 | `python runner.py run-loop [最大轮数]` |
+
+### 核心逻辑
+
+1. 每轮：读取 tasks.md → 找 pending → 标记 in_progress → 生成 prompt → 调用 Claude Code → 保存结果 → 判断结果
+2. 成功且有完成证据 → 标记 done → 继续下一轮
+3. 成功但缺完成证据 → 停止循环，保持 in_progress
+4. 失败 → 停止循环，保持 in_progress
+5. 无 pending 任务 → 结束
+6. 达到最大轮数 → 结束
+
+### 开发报告
+
+`reports/dev/T010-dev-report.md`
+
+
+## Stderr
+
+(无输出)
