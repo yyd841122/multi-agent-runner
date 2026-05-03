@@ -23,6 +23,7 @@ from tools.report_manager import (
 )
 from tools.planner_runner import run_planner
 from tools.main_agent import decide_next_action, save_main_decision
+from tools.reviewer_runner import run_reviewer_for_game_task
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -806,6 +807,9 @@ def main():
         main_decide()
     elif args[0] == "run-game-next":
         run_game_next()
+    elif args[0] == "review-game-task":
+        task_id = args[1] if len(args) >= 2 else "G002"
+        run_reviewer_for_game_task(task_id)
     else:
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")
@@ -821,6 +825,7 @@ def main():
         print("  python runner.py plan-project               运行 Planner Agent 生成任务拆解草案")
         print("  python runner.py main-decide                Main Agent 根据当前状态决策下一步动作")
         print("  python runner.py run-game-next              自动执行小游戏项目下一个 pending 任务")
+        print("  python runner.py review-game-task [任务编号]  审查小游戏项目指定任务（默认 G002）")
 
 
 if __name__ == "__main__":

@@ -421,7 +421,7 @@
 
 ## T020.2 提交并推送第一次验证项目成果
 
-状态：in_progress
+状态：done
 角色：Developer
 目标：在进入 Reviewer Agent 自动审查前，提交并推送当前框架和第一次真实子项目自动执行成果。
 
@@ -438,24 +438,27 @@
 
 ## T021 Reviewer Agent 自动审查 MVP
 
-状态：pending
+状态：done
 角色：Developer
-目标：根据开发输出和任务验收标准，自动生成审查结论。
+目标：根据 Claude Code 输出、开发报告和任务验收标准，生成审查结论。
 
 ### 验收标准
 
-- 能读取任务验收标准
-- 能读取开发报告和修改文件列表
-- 能调用模型或规则引擎生成审查结论
-- 审查结论包含：通过/不通过、具体问题、建议修改
-- 审查结果写入 reports/review/
-- 不需要复杂的代码质量分析
+- 创建 tools/reviewer_runner.py
+- 可以读取 G002 任务要求
+- 可以读取 G002 开发报告
+- 可以读取小游戏项目文件摘要
+- 可以通过 model_adapter 调用 reviewer 模型
+- 当前默认使用 mock provider
+- 可以生成 projects/down-100-floors-game/reports/review/G002-review-report.md
+- 审查报告包含 PASS / FAIL / RETRY / BLOCKED 状态
+- 不修改小游戏业务代码
 
 ---
 
 ## T022 第二阶段阶段总结
 
-状态：pending
+状态：done
 角色：Reporter
 目标：总结第二阶段成果、问题和下一阶段路线。
 
@@ -467,3 +470,20 @@
 - 更新 memory/pitfalls.md
 - 明确第二阶段已完成能力
 - 规划第三阶段方向
+
+---
+
+## T022.1 提交并推送第二阶段完整成果
+
+状态：in_progress
+角色：Developer
+目标：在进入第三阶段前，提交并推送第二阶段完整成果，完成远程备份。
+
+### 验收标准
+
+- git status 已检查
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean
+- 生成提交记录报告
