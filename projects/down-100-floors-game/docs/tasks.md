@@ -1,0 +1,41 @@
+# down-100-floors-game Tasks
+
+## 状态说明
+
+- pending：等待处理
+- in_progress：处理中
+- done：完成
+- blocked：阻塞
+
+---
+
+## G001 初始化验证项目结构
+
+状态：done
+角色：Developer
+目标：创建 down-100-floors-game 的基础目录和占位文件。
+
+### 验收标准
+
+- README.md 存在
+- index.html / style.css / script.js 存在
+- docs/tasks.md 存在
+- docs/workflow.md 存在
+- reports/ 和 memory/ 目录存在
+
+---
+
+## G002 实现基础游戏页面
+
+状态：done
+角色：Developer
+目标：创建小游戏的基础页面布局，包括游戏区域、开始按钮、层数显示和状态提示。
+
+### 验收标准
+
+- 页面能在浏览器打开
+- 页面包含游戏标题
+- 页面包含游戏区域
+- 页面包含开始按钮
+- 页面包含层数或分数显示
+- 暂时不实现完整游戏逻辑

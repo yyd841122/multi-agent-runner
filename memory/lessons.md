@@ -17,3 +17,30 @@
 7. **Claude Code 非交互执行必须允许自动编辑文件。** 调用时需要 `--permission-mode acceptEdits`，否则 Claude Code 只会输出建议代码而不是实际修改文件。
 
 8. **runner.py 应作为最外层调度器。** Claude Code 是被调用的执行器，不应在 Claude Code 执行过程中嵌套调用 runner.py 的自动执行命令。
+
+## T020.1 第一次子项目自动执行成功经验
+
+### 成果
+
+`multi-agent-runner` 已经第一次成功驱动 `projects/down-100-floors-game` 自动完成真实开发任务 G002。
+
+### 成功链路
+
+1. `runner.py run-game-next` 读取子项目任务文件。
+2. 自动找到 G002 pending。
+3. 自动将 G002 标记为 in_progress。
+4. 自动生成 G002 执行提示词。
+5. 自动调用 Claude Code。
+6. Claude Code 自动修改子项目文件。
+7. Claude Code 自动生成 `projects/down-100-floors-game/reports/dev/G002-dev-report.md`。
+8. runner 检查完成证据。
+9. G002 自动标记为 done。
+10. index.html 可以在浏览器打开。
+
+### 关键经验
+
+- 子项目任务清单可以独立于主项目任务清单。
+- 主框架可以通过专用命令驱动子项目任务。
+- 完成证据检查对自动化判断非常关键。
+- 验证项目应先从最小页面开始，不要一开始实现复杂玩法。
+- 真实项目验证中发现的问题，应回写主框架。

@@ -345,7 +345,7 @@
 
 ## T018.1 提交并推送当前框架成果
 
-状态：in_progress
+状态：done
 角色：Developer
 目标：在进入验证项目之前，提交并推送当前 multi-agent-runner 框架成果，完成远程备份。
 
@@ -362,23 +362,31 @@
 
 ## T019 down-100-floors-game 验证项目初始化
 
-状态：pending
+状态：done
 角色：Developer
-目标：在 projects/down-100-floors-game/ 中创建验证项目的需求文档和基础目录结构。
+目标：在 projects/down-100-floors-game 中生成验证项目需求和基础目录，并补充未来微信小游戏 / 抖音小游戏 / 角色系统方向，但第一版仍只做 Web MVP。
 
 ### 验收标准
 
-- 创建 projects/down-100-floors-game/ 目录结构
-- 编写符合 T015 定义标准格式的需求文档
-- 需求文档描述一个可逐步实现的网页小游戏
-- 不实现完整游戏代码
-- 需求足够简单，适合作为框架验证项目
+- projects/down-100-floors-game 基础目录存在
+- requirement.md 已补充长期方向和当前 MVP 边界
+- README.md 存在
+- index.html / style.css / script.js 存在
+- docs/tasks.md 存在
+- docs/workflow.md 存在
+- docs/future-platform-plan.md 存在
+- docs/character-system-plan.md 存在
+- reports/dev、reports/test、reports/review、reports/final 存在
+- memory/lessons.md 和 memory/pitfalls.md 存在
+- 不实现完整游戏功能
+- 不实现微信小游戏 / 抖音小游戏发布功能
+- 不实现角色技能系统
 
 ---
 
 ## T020 使用 runner 自动执行小游戏第一个开发任务
 
-状态：pending
+状态：done
 角色：Developer
 目标：用已有 runner 自动执行小游戏项目的第一个开发任务，验证框架能服务真实业务项目。
 
@@ -390,6 +398,41 @@
 - 验证完成证据检查正常工作
 - 验证任务状态正确流转
 - 不在 Claude Code 会话内执行 run-next
+
+---
+
+## T020.1 记录验证项目第一次自动执行成功经验
+
+状态：done
+角色：Reporter
+目标：记录 multi-agent-runner 第一次成功驱动 down-100-floors-game 子项目自动完成开发任务的经验和注意事项。
+
+### 验收标准
+
+- 更新主项目 memory/lessons.md
+- 更新主项目 memory/pitfalls.md
+- 更新验证项目 memory/lessons.md
+- 更新验证项目 memory/pitfalls.md
+- 创建第一次子项目自动执行总结报告
+- 创建 T020.1 开发报告
+- 不修改功能代码
+
+---
+
+## T020.2 提交并推送第一次验证项目成果
+
+状态：in_progress
+角色：Developer
+目标：在进入 Reviewer Agent 自动审查前，提交并推送当前框架和第一次真实子项目自动执行成果。
+
+### 验收标准
+
+- git status 已检查
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean
+- 生成提交记录报告
 
 ---
 

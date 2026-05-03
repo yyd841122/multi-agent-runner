@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Down 100 Floors Game Demo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="game-title">Down 100 Floors</h1>
+
+        <div class="game-info">
+            <div class="info-item">
+                <span class="info-label">楼层</span>
+                <span id="floor-display" class="info-value">0 / 100</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">状态</span>
+                <span id="status-display" class="info-value status-ready">准备开始</span>
+            </div>
+        </div>
+
+        <div id="game-area" class="game-area">
+            <div class="placeholder-text">游戏区域</div>
+        </div>
+
+        <div class="game-controls">
+            <button id="start-btn" class="btn btn-start">开始游戏</button>
+        </div>
+
+        <div class="game-instructions">
+            <p>操作说明：← → 方向键左右移动 | 目标：下落 100 层</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
