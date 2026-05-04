@@ -933,7 +933,7 @@
 
 ## T038 project.yaml 协议落地
 
-状态：pending
+状态：done
 角色：Developer
 目标：为 down-100-floors-game 创建真实 project.yaml。
 
@@ -947,7 +947,7 @@
 
 ## T039 project runner 读取 project.yaml MVP
 
-状态：pending
+状态：done
 角色：Developer
 目标：让 run-project-next 可以读取 project.yaml。
 
@@ -961,7 +961,7 @@
 
 ## T040 自动返工协议设计
 
-状态：pending
+状态：done
 角色：Architect
 目标：定义当 Tester FAIL 或 Reviewer REQUEST_CHANGES 时，如何生成返工任务。
 
@@ -976,7 +976,7 @@
 
 ## T041 自动生成返工 prompt MVP
 
-状态：pending
+状态：done
 角色：Developer
 目标：当有失败报告时，生成返工 prompt。
 
@@ -991,7 +991,7 @@
 
 ## T042 新增 G005 基础平台显示任务
 
-状态：pending
+状态：done
 角色：Planner
 目标：在子项目任务清单中添加 G005。
 
@@ -1002,6 +1002,24 @@
 - 不实现重力
 - 不实现碰撞
 - 不实现平台滚动
+
+---
+
+## T042.1 提交并推送 T038-T042 第四阶段中段成果
+
+状态：in_progress
+角色：Developer
+目标：在继续执行 G005 前，提交并推送 project.yaml、自动返工协议、返工 prompt 和 G005 任务规划成果。
+
+### 验收标准
+
+- git status 已检查
+- current_prompt.md 临时改动已排除或恢复
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean
+- 生成提交记录报告
 
 ---
 

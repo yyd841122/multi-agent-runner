@@ -135,3 +135,18 @@ Main Agent 检查完成证据时，使用与 runner.py 相同的逻辑：
 3. **读取 Tester 结果** — 根据 PASS / FAIL 决定是否需要返工
 4. **接入模型 API** — 通过 `model_adapter` 调用 main 模型做更智能的决策
 5. **工作流驱动** — 根据 workflow YAML 文件中的 stages 定义决策路径
+
+## 11. 返工决策扩展
+
+当 Main Agent 输出 `REQUEST_CHANGES` 时，后续可以进入 Rework Protocol。
+
+Main Agent 不直接修改代码，而是输出：
+
+- 失败原因（reason）
+- 返工建议（next_action）
+- 需要读取的报告
+- 建议生成的返工任务编号
+
+第一版不自动执行返工，只生成返工任务和返工 prompt，等待用户确认。
+
+返工协议详见：`docs/rework-protocol.md`

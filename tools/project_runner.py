@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from tools.task_manager import (
@@ -15,6 +16,180 @@ from tools.report_manager import (
     append_run_log,
     analyze_claude_output,
 )
+
+
+# ---------------------------------------------------------------------------
+# ProjectRunnerConfig — 从 project.yaml 或路径约定构建
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ProjectRunnerConfig:
+    """子项目运行配置。"""
+    project_root: Path
+    tasks_file: Path
+    dev_reports_dir: Path
+    developer_evidence_pattern: str
+    allowed_files: list[str]
+    blocked_files: list[str]
+    loaded_from_yaml: bool = False
+
+
+def _parse_simple_yaml_list(lines: list[str], indent_prefix: str) -> list[str]:
+    """解析 YAML 列表块，例如：
+
+      - index.html
+      - style.css
+    """
+    items = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("- ") and stripped[2:].strip():
+            items.append(stripped[2:].strip())
+    return items
+
+
+def _parse_simple_yaml_value(content: str, key_path: list[str]) -> str | None:
+    """从 YAML 内容中按 key 路径查找值。
+
+    例如 key_path=["tasks", "file"] 查找：
+      tasks:
+        file: docs/tasks.md
+    """
+    lines = content.split("\n")
+
+    # 逐级匹配缩进
+    current_indent = 0
+    match_start = 0
+
+    for depth, key in enumerate(key_path):
+        expected_indent = depth * 2
+        found = False
+        for i in range(match_start, len(lines)):
+            line = lines[i]
+            stripped = line.lstrip()
+            indent = len(line) - len(stripped)
+
+            if indent == expected_indent and stripped.startswith(key + ":"):
+                # 找到这一级 key
+                value_part = stripped[len(key) + 1:].strip()
+                if value_part:
+                    # 值在同一行
+                    return value_part
+                # 值在下一行
+                match_start = i + 1
+                found = True
+                break
+            elif indent < expected_indent and stripped:
+                # 缩进回到更上层，说明这一级不存在
+                return None
+
+        if not found:
+            return None
+
+    return None
+
+
+def _parse_simple_yaml_list_block(content: str, key_path: list[str]) -> list[str]:
+    """从 YAML 内容中按 key 路径查找列表块。"""
+    lines = content.split("\n")
+
+    current_indent = 0
+    match_start = 0
+
+    for depth, key in enumerate(key_path):
+        expected_indent = depth * 2
+        found = False
+        for i in range(match_start, len(lines)):
+            line = lines[i]
+            stripped = line.lstrip()
+            indent = len(line) - len(stripped)
+
+            if indent == expected_indent and stripped.startswith(key + ":"):
+                match_start = i + 1
+                found = True
+                break
+            elif indent < expected_indent and stripped:
+                return []
+
+        if not found:
+            return []
+
+    # 收集列表项
+    list_indent = (len(key_path)) * 2
+    block_lines = []
+    for i in range(match_start, len(lines)):
+        line = lines[i]
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
+
+        if not stripped:
+            continue
+        if indent == list_indent and stripped.startswith("- "):
+            block_lines.append(line)
+        elif indent <= list_indent:
+            break
+
+    return _parse_simple_yaml_list(block_lines, "")
+
+
+def load_project_runner_config(project_root: Path) -> ProjectRunnerConfig:
+    """读取 project.yaml；如果不存在，则返回路径约定配置。
+
+    Args:
+        project_root: 子项目根目录（已 resolve 的绝对路径）
+
+    Returns:
+        ProjectRunnerConfig
+    """
+    yaml_path = project_root / "project.yaml"
+
+    if yaml_path.exists():
+        try:
+            yaml_content = yaml_path.read_text(encoding="utf-8")
+
+            # 读取 tasks.file
+            tasks_file_rel = _parse_simple_yaml_value(yaml_content, ["tasks", "file"]) or "docs/tasks.md"
+
+            # 读取 reports.dev
+            reports_dev_rel = _parse_simple_yaml_value(yaml_content, ["reports", "dev"]) or "reports/dev"
+
+            # 读取 completion_evidence.developer
+            dev_evidence_pattern = _parse_simple_yaml_value(
+                yaml_content, ["completion_evidence", "developer"]
+            ) or "reports/dev/<task-id>-dev-report.md"
+
+            # 读取 allowed_files
+            allowed = _parse_simple_yaml_list_block(yaml_content, ["allowed_files"])
+            if not allowed:
+                allowed = ["index.html", "style.css", "script.js", "docs/tasks.md", "reports/", "memory/"]
+
+            # 读取 blocked_files
+            blocked = _parse_simple_yaml_list_block(yaml_content, ["blocked_files"])
+            if not blocked:
+                blocked = ["requirement.md", "project.yaml"]
+
+            return ProjectRunnerConfig(
+                project_root=project_root,
+                tasks_file=project_root / tasks_file_rel,
+                dev_reports_dir=project_root / reports_dev_rel,
+                developer_evidence_pattern=dev_evidence_pattern,
+                allowed_files=allowed,
+                blocked_files=blocked,
+                loaded_from_yaml=True,
+            )
+        except Exception as e:
+            print(f"警告：project.yaml 解析失败（{e}），使用路径约定。")
+
+    # 回退：路径约定
+    return ProjectRunnerConfig(
+        project_root=project_root,
+        tasks_file=project_root / "docs" / "tasks.md",
+        dev_reports_dir=project_root / "reports" / "dev",
+        developer_evidence_pattern="reports/dev/<task-id>-dev-report.md",
+        allowed_files=["index.html", "style.css", "script.js", "docs/tasks.md", "reports/", "memory/"],
+        blocked_files=["requirement.md", "project.yaml"],
+        loaded_from_yaml=False,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -119,7 +294,9 @@ def update_project_task_status(content: str, task_id: str, new_status: str) -> s
 # Prompt 生成
 # ---------------------------------------------------------------------------
 
-def build_project_task_prompt(project_root: Path, task: dict) -> str:
+def build_project_task_prompt(
+    project_root: Path, task: dict, config: ProjectRunnerConfig | None = None,
+) -> str:
     """根据子项目任务生成 Claude Code 执行 prompt。"""
     task_id = task.get("id", "")
     title = task.get("title", "")
@@ -130,6 +307,17 @@ def build_project_task_prompt(project_root: Path, task: dict) -> str:
     # 项目目录下的关键文件（自动检测）
     project_name = project_root.name
     evidence_path = get_project_dev_report_path(project_root, task_id)
+
+    # 从 config 或默认值获取 allowed/blocked
+    if config:
+        allowed = config.allowed_files
+        blocked = config.blocked_files
+    else:
+        allowed = ["index.html", "style.css", "script.js", "docs/tasks.md", "reports/", "memory/"]
+        blocked = ["requirement.md", "project.yaml"]
+
+    allowed_lines = "\n".join(f"- `{project_root}/{f}`" for f in allowed)
+    blocked_lines = "\n".join(f"- `{project_root}/{f}`" for f in blocked)
 
     return f"""# {task_id}：{title}
 
@@ -154,16 +342,11 @@ def build_project_task_prompt(project_root: Path, task: dict) -> str:
 
 ## 允许修改的文件
 
-- `{project_root}/index.html`
-- `{project_root}/style.css`
-- `{project_root}/script.js`
-- `{project_root}/docs/`
-- `{project_root}/reports/`
-- `{project_root}/memory/`
+{allowed_lines}
 
 ## 禁止修改的文件
 
-- `{project_root}/requirement.md`
+{blocked_lines}
 - multi-agent-runner 主框架代码
 - runner.py
 - tools/*.py
@@ -174,6 +357,7 @@ def build_project_task_prompt(project_root: Path, task: dict) -> str:
 - 必须直接修改文件，不要只输出建议代码
 - 不允许扩大任务范围
 - 不允许修改主框架代码
+- 不允许修改 project.yaml
 - 所有文档使用简体中文
 - 文件名、路径、命令保持英文
 
@@ -226,8 +410,11 @@ def run_project_next(project_path: str | Path) -> dict:
             "message": str(e),
         }
 
-    # 2. 读取子项目任务文件
-    tasks_file = get_project_tasks_file(project_root)
+    # 2. 读取项目配置（project.yaml 或路径约定）
+    config = load_project_runner_config(project_root)
+
+    # 3. 读取子项目任务文件
+    tasks_file = config.tasks_file
     if not tasks_file.exists():
         return {
             "success": False,
@@ -242,7 +429,7 @@ def run_project_next(project_path: str | Path) -> dict:
     content = load_tasks_file(tasks_file)
     tasks = parse_project_tasks(content)
 
-    # 3. 找到第一个 pending 任务
+    # 4. 找到第一个 pending 任务
     task = find_next_pending_project_task(tasks)
     if not task:
         return {
@@ -259,26 +446,26 @@ def run_project_next(project_path: str | Path) -> dict:
     task_title = task["title"]
     print(f"找到子项目 pending 任务：{task_id} {task_title}")
 
-    # 4. 标记为 in_progress
+    # 5. 标记为 in_progress
     print(f"正在将 {task_id} 标记为 in_progress...")
     content = update_project_task_status(content, task_id, "in_progress")
     save_tasks_file(tasks_file, content)
 
-    # 5. 生成 prompt
+    # 6. 生成 prompt
     print("正在生成提示词...")
-    prompt = build_project_task_prompt(project_root, task)
+    prompt = build_project_task_prompt(project_root, task, config)
 
     # 保存 prompt 到子项目目录
     prompts_dir = project_root / "prompts"
     prompts_dir.mkdir(parents=True, exist_ok=True)
     (prompts_dir / "current_prompt.md").write_text(prompt, encoding="utf-8")
 
-    # 6. 调用 Claude Code
+    # 7. 调用 Claude Code
     print("正在调用 Claude Code...")
     print()
     result = run_claude_code(prompt)
 
-    # 7. 保存执行结果到主项目
+    # 8. 保存执行结果到主项目
     # 保存最新输出（复用 runner.py 的路径约定）
     from runner import save_latest_output as _save_latest
 
@@ -294,11 +481,12 @@ def run_project_next(project_path: str | Path) -> dict:
     history_path = save_execution_report(result, _claude_history_dir, task)
     append_run_log(_run_log_file, task, result, history_path)
 
-    # 8. 检查完成证据
-    evidence_path = get_project_dev_report_path(project_root, task_id)
+    # 9. 检查完成证据
+    evidence_rel = config.developer_evidence_pattern.replace("<task-id>", task_id)
+    evidence_path = project_root / evidence_rel
     evidence_found = evidence_path.exists()
 
-    # 9. 判断结果
+    # 10. 判断结果
     # 分析执行结果（检查 429 等）
     analysis = analyze_claude_output(
         _claude_output_file.read_text(encoding="utf-8")

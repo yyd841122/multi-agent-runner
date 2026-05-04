@@ -233,3 +233,11 @@ python runner.py run-project-next --project projects/down-100-floors-game
 - 行为检查可以先从源码静态检查开始，暂时不引入浏览器自动化。
 - 原始测试报告和行为测试报告应分开保存，便于 Main Agent 综合判断。
 - Tester 能力应随着业务复杂度逐步增强。
+
+## T040 自动返工协议设计经验
+
+- 自动返工不能一开始就无人值守执行，必须先生成返工任务和返工 prompt。
+- 返工必须基于 Tester / Reviewer / Main Agent 的失败证据，不能只凭一句错误描述。
+- 返工任务应使用独立编号，例如 `G004-R1`，避免污染原任务。
+- 返工完成后必须重新测试、审查和综合决策。
+- project.yaml 中的 allowed_files / blocked_files 应用于返工 prompt。

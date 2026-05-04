@@ -1,0 +1,95 @@
+# down-100-floors-game project configuration
+# Follows T024 Project Runner Protocol
+
+project:
+  id: down-100-floors-game
+  name: Down 100 Floors Game
+  type: web_game
+  root: projects/down-100-floors-game
+  workflow: game_web_mvp
+  description: >
+    A Web MVP validation project for multi-agent-runner.
+    The long-term direction includes WeChat Mini Game, Douyin Mini Game,
+    and a future character system, but the current phase remains Web MVP.
+
+runtime:
+  platform: web
+  language: javascript
+  stack:
+    - html
+    - css
+    - javascript
+
+tasks:
+  file: docs/tasks.md
+  id_prefix: G
+  status_values:
+    - pending
+    - in_progress
+    - done
+    - blocked
+
+reports:
+  dev: reports/dev
+  test: reports/test
+  review: reports/review
+  final: reports/final
+
+memory:
+  lessons: memory/lessons.md
+  pitfalls: memory/pitfalls.md
+
+prompt:
+  output: prompts/current_prompt.md
+
+completion_evidence:
+  developer: reports/dev/<task-id>-dev-report.md
+  tester: reports/test/<task-id>-test-report.md
+  behavior_tester: reports/test/<task-id>-behavior-test-report.md
+  reviewer: reports/review/<task-id>-review-report.md
+  main_decision: reports/final/<task-id>-main-decision.md
+
+allowed_files:
+  - index.html
+  - style.css
+  - script.js
+  - docs/tasks.md
+  - reports/
+  - memory/
+
+blocked_files:
+  - requirement.md
+  - docs/future-platform-plan.md
+  - docs/character-system-plan.md
+  - project.yaml
+
+automation_policy:
+  require_developer_report: true
+  require_tester_report: true
+  require_reviewer_report: true
+  require_main_decision: true
+  allow_auto_done: true
+  allow_auto_rework: false
+
+safety:
+  do_not_modify_parent_project: true
+  do_not_modify_main_runner_code: true
+  require_completion_evidence: true
+  forbid_nested_runner_calls: true
+
+current_scope:
+  mvp_target: web_mvp
+  implemented_features:
+    - G002 basic game page
+    - G003 player display
+    - G004 keyboard horizontal movement
+  out_of_scope:
+    - gravity
+    - platform collision
+    - platform scrolling
+    - character skill system
+    - wechat mini game release
+    - douyin mini game release
+    - login
+    - payment
+    - ads

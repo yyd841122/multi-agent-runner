@@ -29,6 +29,7 @@ from tools.tester_runner import run_tester_for_game_task
 from tools.tester_runner import run_behavior_tester_for_game_task
 from tools.main_agent import run_combined_decision_for_game_task
 from tools.main_agent import run_enhanced_combined_decision_for_game_task
+from tools.rework_manager import generate_rework_prompt_for_game_task, MAX_REWORK_ROUNDS
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -933,6 +934,26 @@ def main():
         print(f"  Decision：{decision.decision}")
         print(f"  Reason：{decision.reason}")
         print(f"  Next Action：{decision.next_action}")
+    elif args[0] == "generate-rework-prompt":
+        task_id = args[1] if len(args) >= 2 else "G004"
+        rework_round = int(args[2]) if len(args) >= 3 else 1
+        report_path, result_type = generate_rework_prompt_for_game_task(task_id, rework_round)
+        print()
+        if result_type == "rework_prompt":
+            print("返工 prompt 已生成：")
+            print(f"  {report_path}")
+            print()
+            print(f"返工任务编号：{task_id}-R{rework_round}")
+            print(f"当前返工轮次：{rework_round} / {MAX_REWORK_ROUNDS}")
+            print("注意：本命令只生成 prompt，不执行返工。")
+        else:
+            print(f"已达到最大返工次数限制：{MAX_REWORK_ROUNDS}")
+            print("不再生成新的返工 prompt。")
+            print()
+            print("人工介入报告已生成：")
+            print(f"  {report_path}")
+            print()
+            print("请人工检查失败原因后再决定下一步。")
     else:
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")
@@ -954,6 +975,7 @@ def main():
         print("  python runner.py test-game-behavior [任务编号]  行为检查小游戏项目指定任务（默认 G004）")
         print("  python runner.py decide-game-task [任务编号] 综合决策小游戏项目指定任务（默认 G003）")
         print("  python runner.py decide-game-task-v2 [任务编号]  增强综合决策（含行为测试，默认 G004）")
+        print("  python runner.py generate-rework-prompt [任务编号] [轮次]  生成返工 prompt（默认 G004 轮次 1）")
 
 
 if __name__ == "__main__":

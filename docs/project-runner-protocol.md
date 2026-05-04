@@ -404,3 +404,17 @@ pending → in_progress → done
 2. 已完成的 G002 不被重新执行
 3. 完成证据路径正确解析
 4. 主框架命令不受影响
+
+## 16. 返工任务支持
+
+通用 project runner 后续应支持形如 `G004-R1` 的返工任务。
+
+返工任务与普通任务一样从 `pending` 开始，但 prompt 应包含失败报告、返工目标和允许/禁止修改范围。
+
+返工任务编号格式：`<原任务编号>-R<返工轮次>`
+
+例如：G004-R1、G004-R2
+
+返工任务完成后仍需重新经过 Tester / Reviewer / Main Agent。
+
+返工协议详见：`docs/rework-protocol.md`
