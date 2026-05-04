@@ -1191,7 +1191,7 @@
 
 ## T046.2 提交并推送第五阶段规划与 CHANGELOG
 
-状态：in_progress
+状态：done
 角色：Developer
 目标：在进入重力下落测试协议设计前，提交并推送第五阶段规划与 CHANGELOG 版本记录成果。
 
