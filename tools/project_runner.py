@@ -493,6 +493,31 @@ def run_project_next(project_path: str | Path) -> dict:
     )
 
     if not analysis["success"]:
+        # 证据冲突检查：returncode != 0 但完成证据存在且任务已 done
+        if evidence_found:
+            content_after = load_tasks_file(tasks_file)
+            tasks_after = parse_project_tasks(content_after)
+            current_status = ""
+            for t in tasks_after:
+                if t["id"] == task_id:
+                    current_status = t["status"]
+                    break
+
+            if current_status == "done":
+                return {
+                    "success": True,
+                    "project_path": str(project_root),
+                    "task_id": task_id,
+                    "task_title": task_title,
+                    "task_status": "done",
+                    "evidence_found": True,
+                    "completed_with_model_error": True,
+                    "model_returncode": analysis["returncode"],
+                    "message": "Claude Code 返回错误，但完成证据存在且任务已标记 done，请人工确认后继续测试。",
+                    "timed_out": result.get("timed_out", False),
+                    "timeout_seconds": result.get("timeout_seconds"),
+                }
+
         return {
             "success": False,
             "project_path": str(project_root),
@@ -501,6 +526,8 @@ def run_project_next(project_path: str | Path) -> dict:
             "task_status": "in_progress",
             "evidence_found": False,
             "message": f"执行失败（退出码 {analysis['returncode']}）",
+            "timed_out": result.get("timed_out", False),
+            "timeout_seconds": result.get("timeout_seconds"),
         }
 
     if not evidence_found:

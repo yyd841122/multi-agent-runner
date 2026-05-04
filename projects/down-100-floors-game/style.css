@@ -137,6 +137,16 @@ body {
     cursor: not-allowed;
 }
 
+.platform {
+    position: absolute;
+    height: 12px;
+    background-color: #2a9d8f;
+    border: 2px solid #264653;
+    border-radius: 4px;
+    display: none;
+    z-index: 5;
+}
+
 .game-instructions {
     text-align: center;
     font-size: 0.8rem;

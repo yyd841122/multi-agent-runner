@@ -1,6 +1,7 @@
 // G002: 基础页面交互 — 按钮点击、状态切换、楼层显示
 // G003: 玩家角色显示
 // G004: 玩家键盘左右移动
+// G005: 基础平台显示
 
 (function () {
     const startBtn = document.getElementById('start-btn');
@@ -8,6 +9,7 @@
     const statusDisplay = document.getElementById('status-display');
     const gameArea = document.getElementById('game-area');
     const player = document.getElementById('player');
+    const platformEls = gameArea.querySelectorAll('.platform');
 
     var MOVE_SPEED = 4;
     var isPlaying = false;
@@ -27,6 +29,18 @@
         height: 30
     };
 
+    // 平台固定布局：left(百分比), top(px), width(百分比)
+    var PLATFORM_LAYOUT = [
+        { left: 5,  top: 120, width: 55 },
+        { left: 35, top: 200, width: 50 },
+        { left: 10, top: 280, width: 45 },
+        { left: 40, top: 360, width: 50 },
+        { left: 5,  top: 440, width: 55 }
+    ];
+
+    // 平台状态
+    var platforms = [];
+
     function setStatus(text, cssClass) {
         statusDisplay.textContent = text;
         statusDisplay.className = 'info-value ' + cssClass;
@@ -43,6 +57,32 @@
     function updatePlayerPosition() {
         player.style.left = playerState.x + 'px';
         player.style.top = playerState.y + 'px';
+    }
+
+    function initPlatforms() {
+        platforms = [];
+        for (var i = 0; i < PLATFORM_LAYOUT.length; i++) {
+            var layout = PLATFORM_LAYOUT[i];
+            platforms.push({
+                leftPct: layout.left,
+                top: layout.top,
+                widthPct: layout.width,
+                el: platformEls[i]
+            });
+        }
+        for (var j = 0; j < platforms.length; j++) {
+            var p = platforms[j];
+            p.el.style.left = p.leftPct + '%';
+            p.el.style.top = p.top + 'px';
+            p.el.style.width = p.widthPct + '%';
+            p.el.style.display = 'block';
+        }
+    }
+
+    function hidePlatforms() {
+        for (var i = 0; i < platformEls.length; i++) {
+            platformEls[i].style.display = 'none';
+        }
     }
 
     function handlePlayerMovement() {
@@ -93,6 +133,8 @@
         if (placeholder) placeholder.style.display = '';
         // 隐藏玩家角色
         player.style.display = 'none';
+        // 隐藏平台
+        hidePlatforms();
         // 重置按键状态
         keys.ArrowLeft = false;
         keys.ArrowRight = false;
@@ -120,11 +162,13 @@
         // 隐藏占位文字
         var placeholder = gameArea.querySelector('.placeholder-text');
         if (placeholder) placeholder.style.display = 'none';
+        // 初始化并显示平台
+        initPlatforms();
         // 初始化并显示玩家角色
         initPlayer();
         // 启动游戏循环
         startGameLoop();
-        console.log('Game started — player displayed at center top, keyboard movement enabled.');
+        console.log('Game started — platforms and player displayed, keyboard movement enabled.');
     });
 
     resetUI();

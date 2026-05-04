@@ -117,6 +117,19 @@ def save_latest_output(result: dict):
         result["stderr"] if result["stderr"] else "(无输出)",
         "",
     ]
+
+    if result.get("timed_out"):
+        lines.extend([
+            "## Timed Out",
+            "",
+            "True",
+            "",
+            "## Timeout Seconds",
+            "",
+            str(result.get("timeout_seconds", 600)),
+            "",
+        ])
+
     CLAUDE_OUTPUT_FILE.write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -585,13 +598,25 @@ def _handle_run_project_next(project_path: str):
     task_title = result["task_title"]
 
     if not result["success"]:
-        print(f"run-project-next 执行失败：")
-        print(f"项目路径：{result['project_path']}")
-        print(f"任务编号：{task_id}")
-        print(f"任务名称：{task_title}")
-        print(f"执行结果：失败")
-        print(f"任务状态：{result['task_status']}")
-        print(f"请查看 reports/claude/latest-output.md")
+        if result.get("timed_out"):
+            timeout_secs = result.get("timeout_seconds", 600)
+            print(f"run-project-next 执行失败：")
+            print(f"项目路径：{result['project_path']}")
+            print(f"任务编号：{task_id}")
+            print(f"任务名称：{task_title}")
+            print(f"执行结果：超时")
+            print(f"任务状态：in_progress")
+            print(f"错误原因：Claude Code execution timed out after {timeout_secs} seconds.")
+            print(f"请查看 reports/claude/latest-output.md")
+            print(f"建议：不要重复盲目执行，先检查文件状态和完成证据。")
+        else:
+            print(f"run-project-next 执行失败：")
+            print(f"项目路径：{result['project_path']}")
+            print(f"任务编号：{task_id}")
+            print(f"任务名称：{task_title}")
+            print(f"执行结果：失败")
+            print(f"任务状态：{result['task_status']}")
+            print(f"请查看 reports/claude/latest-output.md")
     elif not result["evidence_found"]:
         print(f"run-project-next 执行完成（Claude Code 成功，但缺少完成证据）：")
         print(f"项目路径：{result['project_path']}")
@@ -600,6 +625,16 @@ def _handle_run_project_next(project_path: str):
         print(f"执行结果：成功")
         print(f"任务状态：{result['task_status']}")
         print(f"缺少文件：{result['message'].split('：')[-1] if '：' in result['message'] else '完成证据文件'}")
+    elif result.get("completed_with_model_error"):
+        print(f"run-project-next 执行完成（完成证据存在，但模型返回错误）：")
+        print(f"项目路径：{result['project_path']}")
+        print(f"任务编号：{task_id}")
+        print(f"任务名称：{task_title}")
+        print(f"模型返回码：{result.get('model_returncode', 'N/A')}")
+        print(f"任务状态：done")
+        print(f"完成证据：存在")
+        print(f"说明：Claude Code 返回错误，但开发报告存在且任务已标记 done。")
+        print(f"建议：请人工确认文件内容后继续执行 Tester。")
     else:
         print(f"run-project-next 执行完成：")
         print(f"项目路径：{result['project_path']}")

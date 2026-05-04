@@ -1023,9 +1023,67 @@
 
 ---
 
+## T043.0 修复 run-project-next 的 Claude Code 超时异常处理
+
+状态：done
+角色：Developer
+目标：修复 run-project-next 调用 Claude Code 超时时 runner.py 直接崩溃的问题。
+
+### 验收标准
+
+- Claude Code 超时后 runner.py 不直接崩溃
+- 超时结果可以转换为结构化执行结果
+- 可以保存 latest-output.md
+- 可以追加 run-log.md
+- 可以输出清晰错误提示
+- 任务状态保持 in_progress
+- 不自动重试
+- 不执行 G005
+
+---
+
+## T043.1 修复 run-project-next 返回码与完成证据冲突时的状态判断
+
+状态：done
+角色：Developer
+目标：当 Claude Code 返回错误但完成证据已存在且任务已 done 时，runner 应识别为"完成证据存在但模型返回错误"，而不是简单失败。
+
+### 验收标准
+
+- 可以识别 returncode 非 0 但开发报告存在
+- 可以识别任务状态已经 done
+- 可以输出"完成证据存在但模型返回错误"
+- 不把这种情况误判为普通失败
+- 不自动重新执行任务
+- 不修改小游戏业务代码
+
+---
+
+## T043.2 记录 G005 Developer 完成但模型返回 429 的特殊情况，并完成 T043
+
+状态：done
+角色：Reporter
+目标：记录 G005 实际完成但 Claude Code 最后返回 429 的特殊情况，并完成 T043 收尾。
+
+### 验收标准
+
+- T043 已标记为 done
+- 记录 G005 Developer 实际完成情况
+- 记录 Claude Code 返回 429 的特殊情况
+- 更新主项目 memory/lessons.md
+- 更新主项目 memory/pitfalls.md
+- 更新验证项目 memory/lessons.md
+- 更新验证项目 memory/pitfalls.md
+- 创建总结报告
+- 创建 T043.2 开发报告
+- 不重新执行 G005
+- 不修改小游戏业务代码
+
+---
+
 ## T043 使用 run-project-next 自动执行 G005
 
-状态：pending
+状态：done
 角色：Developer
 目标：自动实现基础平台显示。
 
@@ -1039,9 +1097,31 @@
 
 ---
 
+## T044.4 记录 G005 完整闭环成功经验，并完成 T044
+
+状态：done
+角色：Reporter
+目标：记录 G005 基础平台显示任务的 Developer / Tester / Reviewer / Main Agent 完整闭环经验，并完成 T044 收尾。
+
+### 验收标准
+
+- T044 已标记为 done
+- 记录 G005 Developer / Tester / Reviewer / Main Agent 四类证据
+- 记录 G005 开发阶段 429 特殊情况
+- 更新主项目 memory/lessons.md
+- 更新主项目 memory/pitfalls.md
+- 更新验证项目 memory/lessons.md
+- 更新验证项目 memory/pitfalls.md
+- 创建 G005 完整闭环总结报告
+- 创建 T044.4 开发报告
+- 不执行测试、审查、综合决策命令
+- 不修改小游戏业务代码
+
+---
+
 ## T044 G005 Tester / Reviewer / Main Decision 完整闭环
 
-状态：pending
+状态：done
 角色：Developer
 目标：让 G005 完成测试、审查、综合决策。
 
@@ -1056,7 +1136,7 @@
 
 ## T045 第四阶段阶段总结与 Git 备份
 
-状态：pending
+状态：done
 角色：Reporter
 目标：总结第四阶段成果并提交推送。
 

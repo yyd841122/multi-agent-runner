@@ -2,24 +2,11 @@
 
 ## Return Code
 
-0
+1
 
 ## Stdout
 
-G004 已完成。修改摘要：
-
-**修改文件**：`script.js`（唯一改动文件）
-
-**新增内容**：
-1. **键盘监听** — `keydown`/`keyup` 追踪 `ArrowLeft`/`ArrowRight` 按键状态
-2. **游戏循环** — `requestAnimationFrame` 驱动，每帧处理移动和渲染
-3. **移动逻辑** — `MOVE_SPEED = 4`，左键减、右键加
-4. **边界检测** — 玩家不能超出游戏区域左右边界
-5. **状态管理** — `isPlaying` 控制循环启停，`resetUI` 重置按键状态
-
-**验收标准**：9 项全部 PASS。
-
-**开发报告**：`reports/dev/G004-dev-report.md` 已生成。
+API Error: 429 {"error":{"code":"1308","message":"已达到 5 小时的使用上限。您的限额将在 2026-05-04 18:26:35 重置。"},"request_id":"2026050417171506e67694b24b4e77"}
 
 
 ## Stderr

@@ -241,3 +241,67 @@ python runner.py run-project-next --project projects/down-100-floors-game
 - 返工任务应使用独立编号，例如 `G004-R1`，避免污染原任务。
 - 返工完成后必须重新测试、审查和综合决策。
 - project.yaml 中的 allowed_files / blocked_files 应用于返工 prompt。
+
+## T043.2 G005 Developer 特殊完成经验
+
+### 成果
+
+G005 在执行 `run-project-next` 时出现了特殊情况：
+
+- Claude Code 实际完成了 G005 开发
+- 完成证据 `G005-dev-report.md` 已生成
+- 子项目任务状态已更新为 `done`
+- 但 Claude Code 最后返回 API 429，导致 runner 原本输出"执行失败"
+
+### 关键经验
+
+- 不应只依赖模型进程返回码判断任务是否完成。
+- `returncode != 0` 但完成证据存在时，需要进一步检查任务状态。
+- 完成证据和任务状态可以作为人工确认的重要依据。
+- 429 / 限额错误可能发生在任务完成后的收尾阶段。
+- runner 需要区分"真正失败"和"完成证据存在但模型返回错误"。
+- T043.0 修复了超时异常处理，T043.1 修复了 returncode 与证据冲突判断，两个修复共同提升了框架稳定性。
+
+## T044.4 G005 完整闭环成功经验
+
+### 成果
+
+`G005 实现基础平台显示` 已完成完整闭环：
+
+- Developer Agent：生成 `G005-dev-report.md`
+- Tester Agent：生成 `G005-test-report.md`，结果 `PASS`，16/16 通过
+- Reviewer Agent：生成 `G005-review-report.md`，结果 `PASS / APPROVE`
+- Main Agent：生成 `G005-main-decision.md`，结果 `COMPLETE`
+
+### 成功链路
+
+1. `run-project-next` 自动执行 G005。
+2. Claude Code 修改 `index.html` / `style.css` / `script.js`。
+3. G005 生成开发报告。
+4. G005 状态更新为 `done`。
+5. `test-game-task G005` 生成基础测试报告。
+6. Tester 结果为 `PASS`。
+7. `review-game-task G005` 调用 DeepSeek Reviewer。
+8. Reviewer 结果为 `APPROVE`。
+9. `decide-game-task G005` 生成 Main Decision。
+10. Main Agent 输出 `COMPLETE`。
+
+### 关键经验
+
+- G005 继续验证了 `project runner` 可以驱动真实游戏功能小步迭代。
+- 平台显示任务应独立于重力、碰撞、滚动和随机生成。
+- 即使 Claude Code 最后返回 429，也要优先检查完成证据和任务状态。
+- Developer / Tester / Reviewer / Main Agent 四类证据可以帮助判断真实完成情况。
+- 后续 G006 重力下落应继续保持小任务边界。
+
+## T045 第四阶段经验总结
+
+### 核心经验
+
+- Tester 能力必须随着业务复杂度逐步增强，G004 键盘移动需要行为检查。
+- project.yaml 是从路径约定走向项目配置驱动的重要一步。
+- 自动返工必须先有安全限制，最大返工次数可以避免死循环。
+- 返工 prompt 生成和返工执行必须分开，先人工确认再执行。
+- 模型返回码不能作为唯一完成判断，必须结合完成证据和任务状态。
+- 429 / 超时等模型异常必须被框架优雅处理。
+- G005 基础平台显示继续证明小步功能闭环是可靠路线。
