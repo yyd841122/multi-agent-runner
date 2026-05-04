@@ -3,8 +3,11 @@ Main Agent 决策协议 MVP
 
 规则版 Main Agent，根据任务状态、执行结果和完成证据决定下一步动作。
 第一版不接入真实模型，只做规则判断。
+
+T031 新增综合决策能力：读取 Developer / Tester / Reviewer 三方报告，生成 CombinedDecision。
 """
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -181,3 +184,321 @@ def save_main_decision(
 
     output_file.write_text("\n".join(lines), encoding="utf-8")
     return output_file
+
+
+# ---------------------------------------------------------------------------
+# T031: 综合决策（Developer / Tester / Reviewer 三方）
+# ---------------------------------------------------------------------------
+
+@dataclass
+class CombinedDecision:
+    """综合决策结果。"""
+    task_id: str
+    developer_report_exists: bool
+    tester_status: str | None
+    tester_result: str | None
+    reviewer_status: str | None
+    reviewer_decision: str | None
+    decision: str  # COMPLETE / REQUEST_CHANGES / RETRY / BLOCKED
+    reason: str
+    next_action: str
+    blocked: bool = False
+
+
+def parse_tester_report(content: str) -> dict:
+    """解析 Tester 报告中的 Status 和 Result。
+
+    Args:
+        content: 测试报告 markdown 内容
+
+    Returns:
+        {"status": str | None, "result": str | None}
+    """
+    data = {"status": None, "result": None}
+
+    # 解析 ## Status 后的非空行
+    status_match = re.search(
+        r"^##\s+Status\s*\n+\s*(PASS|FAIL|RETRY|BLOCKED|INFO)",
+        content, re.MULTILINE,
+    )
+    if status_match:
+        data["status"] = status_match.group(1)
+
+    # 解析 ## Result 后的非空行
+    result_match = re.search(
+        r"^##\s+Result\s*\n+\s*(PASS|FAIL)",
+        content, re.MULTILINE,
+    )
+    if result_match:
+        data["result"] = result_match.group(1)
+
+    return data
+
+
+def parse_reviewer_report(content: str) -> dict:
+    """解析 Reviewer 报告中的 status 和 decision。
+
+    优先解析 ## Parsed Result 段落。
+    如果 Parsed Result 缺失，回退到 ## Machine Readable Result 的 JSON 块。
+
+    Args:
+        content: 审查报告 markdown 内容
+
+    Returns:
+        {"status": str | None, "decision": str | None}
+    """
+    data = {"status": None, "decision": None}
+
+    # 优先：解析 ## Parsed Result 段
+    parsed_section = re.search(
+        r"^##\s+Parsed\s+Result\s*\n(.*?)(?=\n##\s|\Z)",
+        content, re.MULTILINE | re.DOTALL,
+    )
+    if parsed_section:
+        section_text = parsed_section.group(1)
+
+        status_match = re.search(r"status:\s*(PASS|FAIL|RETRY|BLOCKED|INFO)", section_text)
+        if status_match:
+            data["status"] = status_match.group(1)
+
+        decision_match = re.search(r"decision:\s*(APPROVE|REQUEST_CHANGES|RETRY|BLOCKED)", section_text)
+        if decision_match:
+            data["decision"] = decision_match.group(1)
+
+        if data["status"] and data["decision"]:
+            return data
+
+    # 回退：解析 ## Machine Readable Result 中的 JSON
+    json_block = re.search(
+        r"```json\s*\n(.*?)```",
+        content, re.DOTALL,
+    )
+    if json_block:
+        try:
+            import json
+            parsed = json.loads(json_block.group(1))
+            data["status"] = parsed.get("status")
+            data["decision"] = parsed.get("decision")
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    return data
+
+
+def decide_from_dev_test_review(
+    task_id: str,
+    dev_report_exists: bool,
+    tester_data: dict,
+    reviewer_data: dict,
+) -> CombinedDecision:
+    """综合 Developer / Tester / Reviewer 三方结果生成 Main Decision。
+
+    Args:
+        task_id: 任务编号
+        dev_report_exists: 开发报告是否存在
+        tester_data: parse_tester_report 返回值
+        reviewer_data: parse_reviewer_report 返回值
+
+    Returns:
+        CombinedDecision 综合决策结果
+    """
+    # 规则 1：开发报告不存在
+    if not dev_report_exists:
+        return CombinedDecision(
+            task_id=task_id,
+            developer_report_exists=False,
+            tester_status=tester_data.get("status"),
+            tester_result=tester_data.get("result"),
+            reviewer_status=reviewer_data.get("status"),
+            reviewer_decision=reviewer_data.get("decision"),
+            decision="BLOCKED",
+            reason="缺少开发报告",
+            next_action="返回 Developer Agent 重新生成开发报告",
+            blocked=True,
+        )
+
+    # 规则 5：Tester 报告解析失败
+    if tester_data.get("result") is None and tester_data.get("status") is None:
+        return CombinedDecision(
+            task_id=task_id,
+            developer_report_exists=True,
+            tester_status=None,
+            tester_result=None,
+            reviewer_status=reviewer_data.get("status"),
+            reviewer_decision=reviewer_data.get("decision"),
+            decision="BLOCKED",
+            reason="Tester 报告解析失败",
+            next_action="检查测试报告格式或重新生成测试报告",
+            blocked=True,
+        )
+
+    # 规则 5：Reviewer 报告解析失败
+    if reviewer_data.get("status") is None and reviewer_data.get("decision") is None:
+        return CombinedDecision(
+            task_id=task_id,
+            developer_report_exists=True,
+            tester_status=tester_data.get("status"),
+            tester_result=tester_data.get("result"),
+            reviewer_status=None,
+            reviewer_decision=None,
+            decision="BLOCKED",
+            reason="Reviewer 报告解析失败",
+            next_action="检查审查报告格式或重新生成审查报告",
+            blocked=True,
+        )
+
+    # 规则 2：Tester 失败
+    if tester_data.get("result") != "PASS":
+        return CombinedDecision(
+            task_id=task_id,
+            developer_report_exists=True,
+            tester_status=tester_data.get("status"),
+            tester_result=tester_data.get("result"),
+            reviewer_status=reviewer_data.get("status"),
+            reviewer_decision=reviewer_data.get("decision"),
+            decision="REQUEST_CHANGES",
+            reason="Tester 测试未通过",
+            next_action="返回 Developer Agent 修复测试失败项",
+        )
+
+    # 规则 3：Reviewer 不批准
+    if reviewer_data.get("decision") != "APPROVE":
+        return CombinedDecision(
+            task_id=task_id,
+            developer_report_exists=True,
+            tester_status=tester_data.get("status"),
+            tester_result=tester_data.get("result"),
+            reviewer_status=reviewer_data.get("status"),
+            reviewer_decision=reviewer_data.get("decision"),
+            decision="REQUEST_CHANGES",
+            reason="Reviewer 审查未批准",
+            next_action="根据 Reviewer Issues 返回 Developer Agent 修复",
+        )
+
+    # 规则 4：三方都通过
+    return CombinedDecision(
+        task_id=task_id,
+        developer_report_exists=True,
+        tester_status=tester_data.get("status"),
+        tester_result=tester_data.get("result"),
+        reviewer_status=reviewer_data.get("status"),
+        reviewer_decision=reviewer_data.get("decision"),
+        decision="COMPLETE",
+        reason="Developer / Tester / Reviewer 三方证据均通过",
+        next_action="可以进入下一个任务",
+    )
+
+
+def save_combined_decision(decision: CombinedDecision, output_path: str | Path) -> Path:
+    """保存综合决策报告。"""
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Evidence Inputs 段
+    dev_text = "exists" if decision.developer_report_exists else "missing"
+    tester_text = decision.tester_result or "missing"
+    reviewer_text = decision.reviewer_decision or "missing"
+
+    # Parsed Results 段
+    dev_parsed = "true" if decision.developer_report_exists else "false"
+    tester_status_text = decision.tester_status or "N/A"
+    tester_result_text = decision.tester_result or "N/A"
+    reviewer_status_text = decision.reviewer_status or "N/A"
+    reviewer_decision_text = decision.reviewer_decision or "N/A"
+
+    report = f"""# {decision.task_id} Main Decision Report
+
+## Agent
+
+Main Agent
+
+## Task
+
+任务编号：{decision.task_id}
+
+## Evidence Inputs
+
+- Developer Report: {dev_text}
+- Tester Report: {tester_text}
+- Reviewer Report: {reviewer_text}
+
+## Parsed Results
+
+### Developer
+
+developer_report_exists: {dev_parsed}
+
+### Tester
+
+status: {tester_status_text}
+result: {tester_result_text}
+
+### Reviewer
+
+status: {reviewer_status_text}
+decision: {reviewer_decision_text}
+
+## Main Decision
+
+{decision.decision}
+
+## Reason
+
+{decision.reason}
+
+## Next Action
+
+{decision.next_action}
+
+## Notes
+
+本报告只做综合决策，不自动返工，不自动修改任务状态。
+"""
+
+    output_path.write_text(report, encoding="utf-8")
+    return output_path
+
+
+def run_combined_decision_for_game_task(task_id: str = "G003") -> Path:
+    """对 down-100-floors-game 的指定任务生成综合决策报告。
+
+    Args:
+        task_id: 游戏任务编号，默认 G003
+
+    Returns:
+        (报告路径, CombinedDecision)
+    """
+    runner_root = Path(__file__).parent.parent
+    game_project = runner_root / "projects" / "down-100-floors-game"
+
+    # 1. 检查 Developer 报告
+    dev_report_path = game_project / "reports" / "dev" / f"{task_id}-dev-report.md"
+    dev_report_exists = dev_report_path.exists()
+
+    # 2. 读取并解析 Tester 报告
+    tester_report_path = game_project / "reports" / "test" / f"{task_id}-test-report.md"
+    tester_data = {"status": None, "result": None}
+    if tester_report_path.exists():
+        tester_content = tester_report_path.read_text(encoding="utf-8")
+        tester_data = parse_tester_report(tester_content)
+
+    # 3. 读取并解析 Reviewer 报告
+    reviewer_report_path = game_project / "reports" / "review" / f"{task_id}-review-report.md"
+    reviewer_data = {"status": None, "decision": None}
+    if reviewer_report_path.exists():
+        reviewer_content = reviewer_report_path.read_text(encoding="utf-8")
+        reviewer_data = parse_reviewer_report(reviewer_content)
+
+    # 4. 综合决策
+    decision = decide_from_dev_test_review(
+        task_id=task_id,
+        dev_report_exists=dev_report_exists,
+        tester_data=tester_data,
+        reviewer_data=reviewer_data,
+    )
+
+    # 5. 保存报告
+    report_path = game_project / "reports" / "final" / f"{task_id}-main-decision.md"
+    save_combined_decision(decision, report_path)
+
+    return report_path, decision

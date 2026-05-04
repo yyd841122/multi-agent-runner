@@ -135,12 +135,39 @@ Agent 输出协议 **不是业务代码**，它是自动化协作协议。
 |------|------|------|
 | `Status` | 是 | 任务状态 |
 | `Test Scope` | 是 | 测试范围 |
-| `Test Cases` | 是 | 测试用例表格 |
-| `Result` | 是 | 最终结果 PASS / FAIL |
-| `Failed Items` | 否 | 失败项列表 |
+| `Test Cases` | 是 | 测试用例表格（编号、测试项、必需、结果、说明） |
+| `Result` | 是 | 最终结果 `PASS` / `FAIL` |
+| `Failed Items` | 是 | 失败项列表，无失败为空 |
 | `Fix Suggestions` | 否 | 修复建议 |
+| `Evidence` | 是 | 完成证据路径 |
+| `Next Action` | 是 | 建议下一步动作 |
 
-**完成证据：** `reports/test/<task-id>-test-report.md`
+**Tester Agent 的最小完成证据：** `reports/test/<task-id>-test-report.md`
+
+**Tester Agent 的 Result 字段必须使用：** `PASS` / `FAIL`
+
+**Tester Agent 的 Status 字段必须使用：** `PASS` / `FAIL` / `RETRY` / `BLOCKED` / `INFO`
+
+**Status 与 Result 对应关系：**
+
+| Status | Result | 说明 |
+|--------|--------|------|
+| `PASS` | `PASS` | 全部必需项通过 |
+| `FAIL` | `FAIL` | 至少一个必需项失败 |
+| `RETRY` | `FAIL` | 需返工 |
+| `BLOCKED` | `FAIL` | 条件不足 |
+
+**Tester 与 Main Agent 的关系：**
+
+后续 Main Agent（T031）会综合 Developer report、Tester report、Reviewer report 三方结果决策下一步动作。
+
+| Agent | 完成证据 | 关键字段 |
+|-------|----------|----------|
+| Developer Agent | `reports/dev/<task-id>-dev-report.md` | `Status` |
+| Tester Agent | `reports/test/<task-id>-test-report.md` | `Status` / `Result` |
+| Reviewer Agent | `reports/review/<task-id>-review-report.md` | `Status` / `Decision` |
+
+**Tester 测试协议详情见：** `docs/tester-protocol.md`
 
 ## 9. Reviewer Agent 输出协议
 

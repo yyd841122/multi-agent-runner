@@ -25,6 +25,8 @@ from tools.planner_runner import run_planner
 from tools.main_agent import decide_next_action, save_main_decision
 from tools.reviewer_runner import run_reviewer_for_game_task
 from tools.project_runner import run_project_next
+from tools.tester_runner import run_tester_for_game_task
+from tools.main_agent import run_combined_decision_for_game_task
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -883,6 +885,29 @@ def main():
             print(f"结构化审查结果解析失败：{parsed.error}")
         else:
             print("结构化审查结果解析失败：模型调用未成功")
+    elif args[0] == "test-game-task":
+        task_id = args[1] if len(args) >= 2 else "G003"
+        report_path, result = run_tester_for_game_task(task_id)
+        print()
+        print("Tester 测试报告已生成：")
+        print(f"  {report_path}")
+        print()
+        print("测试结果：")
+        print(f"  Status：{result.status}")
+        print(f"  Result：{result.result}")
+        print(f"  Passed：{result.passed_count}")
+        print(f"  Failed：{result.failed_count}")
+    elif args[0] == "decide-game-task":
+        task_id = args[1] if len(args) >= 2 else "G003"
+        report_path, decision = run_combined_decision_for_game_task(task_id)
+        print()
+        print("Main Agent 综合决策报告已生成：")
+        print(f"  {report_path}")
+        print()
+        print("综合决策：")
+        print(f"  Decision：{decision.decision}")
+        print(f"  Reason：{decision.reason}")
+        print(f"  Next Action：{decision.next_action}")
     else:
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")
@@ -900,6 +925,8 @@ def main():
         print("  python runner.py run-game-next              自动执行小游戏项目下一个 pending 任务")
         print("  python runner.py run-project-next --project <path>  通用：执行指定子项目下一个 pending 任务")
         print("  python runner.py review-game-task [任务编号]  审查小游戏项目指定任务（默认 G002）")
+        print("  python runner.py test-game-task [任务编号]   测试小游戏项目指定任务（默认 G003）")
+        print("  python runner.py decide-game-task [任务编号] 综合决策小游戏项目指定任务（默认 G003）")
 
 
 if __name__ == "__main__":

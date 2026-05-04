@@ -137,3 +137,46 @@ python runner.py run-project-next --project projects/down-100-floors-game
 - Reviewer 输出必须包含机器可解析块，不能只依赖自然语言。
 - `Status / Decision / Issues` 是后续 Main Agent 综合决策的关键输入。
 - 真实审查结果先人工观察，不应立即自动返工。
+
+## T029 Tester Agent 协议设计经验
+
+- Tester Agent 应从最小静态检查开始，不要一开始引入复杂浏览器自动化。
+- 测试报告是自动化完成证据的一部分。
+- Tester 的目标是验证验收标准，而不是修改代码。
+- 测试结果必须能被 Main Agent 读取和综合判断。
+- 对 Web MVP，先检查文件存在、关键 DOM、基础 CSS 和基础 JS 即可。
+- 测试报告模板应与输出协议一致，减少实现时的格式歧义。
+- PASS/FAIL 规则要简单明确：全部必需项通过 = PASS，任一失败 = FAIL。
+
+## T031.1 三方证据链与 Main Agent 综合决策成功经验
+
+### 成果
+
+`multi-agent-runner` 已经第一次完成完整的任务验收闭环：
+
+- Developer Agent：生成开发报告
+- Tester Agent：生成测试报告并 PASS
+- Reviewer Agent：生成审查报告并 APPROVE
+- Main Agent：综合三方结果并输出 COMPLETE
+
+### 成功链路
+
+1. `run-project-next` 自动执行 G003。
+2. Claude Code 修改子项目文件并生成 `G003-dev-report.md`。
+3. `test-game-task G003` 执行本地静态测试。
+4. Tester Agent 生成 `G003-test-report.md`。
+5. Tester 结果为 `PASS`，16/16 测试项通过。
+6. `review-game-task G003` 调用 DeepSeek Reviewer。
+7. Reviewer 生成 `G003-review-report.md`。
+8. Reviewer 结果为 `APPROVE`。
+9. `decide-game-task G003` 综合 Developer / Tester / Reviewer 三方结果。
+10. Main Agent 生成 `G003-main-decision.md`。
+11. Main Decision 为 `COMPLETE`。
+
+### 关键经验
+
+- 完整闭环需要 Developer / Tester / Reviewer 三类证据，不能只依赖开发报告。
+- Tester 和 Reviewer 是不同职责：Tester 验证事实，Reviewer 判断是否符合需求和边界。
+- Main Agent 不做具体开发，只做综合判断和下一步决策。
+- `COMPLETE` 应建立在多方证据一致通过的基础上。
+- 这为后续自动返工和自动推进下一任务提供了基础。

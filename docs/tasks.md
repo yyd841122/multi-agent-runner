@@ -653,7 +653,7 @@
 
 ## T028.2 提交并推送真实 DeepSeek Reviewer 审查成果
 
-状态：in_progress
+状态：done
 角色：Developer
 目标：在进入 Tester Agent 前，提交并推送真实 DeepSeek Reviewer 审查成果。
 
@@ -670,27 +670,27 @@
 
 ## T029 Tester Agent 最小测试协议
 
-状态：pending
-角色：Developer
+状态：done
+角色：Architect
 目标：定义 Tester Agent 对 Web MVP 项目的最小测试方式和测试报告格式。
 
 ### 验收标准
 
-- 定义 Tester Agent 输出协议（补充到 agents/protocols.md）
-- 定义测试报告标准格式
-- 至少支持：文件存在检查、HTML 关键元素检查、JS 基础语法检查
-- 测试报告输出到 reports/test/
-- 测试结果包含 PASS / FAIL 状态
-- 不引入复杂浏览器自动化
-- 不引入额外依赖
+- 创建 docs/tester-protocol.md
+- 创建 Tester 静态 Web 测试报告模板
+- 明确 Web MVP 最小测试项
+- 明确 PASS / FAIL 输出规则
+- 明确测试报告完成证据路径
+- 不实现测试代码
+- 不修改小游戏业务代码
 
 ---
 
 ## T030 实现 Tester Agent 本地静态检查 MVP
 
-状态：pending
+状态：done
 角色：Developer
-目标：对 down-100-floors-game 做最小本地静态检查，生成测试报告。
+目标：对 down-100-floors-game 做最小本地测试。
 
 ### 验收标准
 
@@ -707,7 +707,7 @@
 
 ## T031 自动审查 + 测试结果综合决策 MVP
 
-状态：pending
+状态：done
 角色：Developer
 目标：Main Agent 综合 Developer / Tester / Reviewer 三方结果，决定下一步动作。
 
@@ -720,6 +720,41 @@
 - 任一方失败 → 对应 RETRY 或 REQUEST_CHANGES
 - 生成综合决策报告到 reports/main/
 - 不直接做复杂返工循环
+
+---
+
+## T031.1 记录三方证据链与 Main Agent 综合决策成功经验
+
+状态：done
+角色：Reporter
+目标：记录 G003 第一次完成 Developer / Tester / Reviewer / Main Agent 四类证据闭环的经验和注意事项。
+
+### 验收标准
+
+- 更新主项目 memory/lessons.md
+- 更新主项目 memory/pitfalls.md
+- 更新验证项目 memory/lessons.md
+- 更新验证项目 memory/pitfalls.md
+- 创建 Main Agent 综合决策首次成功总结报告
+- 创建 T031.1 开发报告
+- 不修改功能代码
+
+---
+
+## T031.2 提交并推送 G003 完整闭环成果
+
+状态：in_progress
+角色：Developer
+目标：在进入 G004 玩家键盘左右移动前，提交并推送 G003 的开发、测试、审查和综合决策完整闭环成果。
+
+### 验收标准
+
+- git status 已检查
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean
+- 生成提交记录报告
 
 ---
 
