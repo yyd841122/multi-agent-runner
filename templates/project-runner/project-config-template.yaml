@@ -1,0 +1,72 @@
+# Project Runner 配置模板
+#
+# 说明：
+#   将此文件复制到 projects/<your-project>/project.yaml 并修改。
+#   project runner 会读取此配置来确定项目执行参数。
+#   如果 project.yaml 不存在，project runner 使用默认约定。
+
+# ===== 项目基本信息 =====
+project:
+  # 项目唯一标识（必填）
+  # 用于日志和报告中标识项目
+  id: my-project
+
+  # 项目显示名称（必填）
+  name: My Project
+
+  # 项目类型（必填）
+  # 可选值：web_game / web_app / api / cli / mobile / desktop
+  type: web_app
+
+  # 项目根路径（必填）
+  # 相对于 multi-agent-runner 根目录
+  root: projects/my-project
+
+  # 工作流 ID（可选）
+  # 引用 workflows/ 目录下的 YAML 文件（不含扩展名）
+  # workflow: game_web_mvp
+
+# ===== 任务配置 =====
+tasks:
+  # 任务清单文件（相对于项目根路径）
+  file: docs/tasks.md
+
+  # 任务编号前缀
+  # 用于区分不同项目的任务编号
+  # 例如：G 表示 G001, G002；P 表示 P001, P002
+  id_prefix: T
+
+# ===== 报告路径（相对于项目根路径）=====
+reports:
+  dev: reports/dev          # Developer Agent 报告目录
+  test: reports/test        # Tester Agent 报告目录
+  review: reports/review    # Reviewer Agent 报告目录
+  final: reports/final      # 总结报告目录
+
+# ===== Prompt 输出 =====
+prompt:
+  # Prompt 文件路径（相对于项目根路径）
+  output: prompts/current_prompt.md
+
+# ===== 完成证据（相对于项目根路径）=====
+# <task-id> 会被替换为实际任务编号
+completion_evidence:
+  developer: reports/dev/<task-id>-dev-report.md
+  tester: reports/test/<task-id>-test-report.md
+  reviewer: reports/review/<task-id>-review-report.md
+
+# ===== 文件权限 =====
+# Claude Code 允许修改的文件和目录（相对于项目根路径）
+# 留空或不设置表示全部允许（除 blocked_files 外）
+allowed_files:
+  # - index.html
+  # - style.css
+  # - script.js
+  # - docs/
+  # - reports/
+  # - memory/
+
+# Claude Code 禁止修改的文件（相对于项目根路径）
+# 需求文件默认受保护
+blocked_files:
+  - requirement.md

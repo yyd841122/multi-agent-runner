@@ -55,3 +55,54 @@
 - 子项目自动执行应先用专用命令验证，再逐步泛化成通用 project runner。
 - 完成证据检查仍然是自动化判断的核心。
 - 重要节点必须先 Git 提交和 push，再继续下一阶段。
+
+## T023 第三阶段规划经验
+
+- 第三阶段应先提升框架通用性，再继续增加业务功能。
+- `run-game-next` 已经证明子项目自动执行可行，但需要泛化为通用 project runner。
+- 接入真实 Reviewer 模型前，必须保留 mock provider 回退。
+- 测试链路要从最小静态检查开始，不要一开始引入复杂浏览器自动化。
+- 小游戏功能开发应继续保持小任务，例如先做玩家显示和左右移动。
+- 综合决策应先输出建议，不直接自动执行返工。
+
+## T024 Project Runner 协议设计经验
+
+- `run-game-next` 已证明子项目自动执行可行，但需要通过 project runner 泛化。
+- 通用 project runner 必须先定义项目结构、任务文件、完成证据和安全边界。
+- 子项目任务必须和主项目任务隔离（前缀隔离 + 路径隔离）。
+- prompt 生成必须针对子项目，避免 Claude Code 误改主框架。
+- 完成证据路径必须根据项目路径动态计算，不能硬编码。
+- project.yaml 为可选配置，缺失时使用合理默认值，降低接入门槛。
+
+## T025.1 通用 project runner 首次验证成功经验
+
+### 成果
+
+`multi-agent-runner` 已经通过通用命令：
+
+```powershell
+python runner.py run-project-next --project projects/down-100-floors-game
+```
+
+成功驱动 down-100-floors-game 自动完成 G003 实现玩家角色显示。
+
+### 成功链路
+
+1. `run-project-next` 接收 `--project` 项目路径参数
+2. 自动读取 `<project>/docs/tasks.md`
+3. 自动找到第一个 pending 子项目任务 G003
+4. 自动将 G003 标记为 in_progress
+5. 自动生成针对子项目的执行 prompt
+6. 自动调用 Claude Code
+7. Claude Code 自动修改子项目文件
+8. Claude Code 自动生成 `<project>/reports/dev/G003-dev-report.md`
+9. runner 检查完成证据
+10. G003 自动标记为 done
+
+### 关键经验
+
+- `run-project-next` 证明了通用 project runner 方向可行。
+- 子项目路径参数是从专用命令走向通用执行器的关键。
+- 子项目完成证据必须基于项目路径动态计算。
+- prompt 必须明确限制修改范围，避免误改主框架。
+- 通用化应从一个已验证项目开始，而不是一开始支持所有项目类型。

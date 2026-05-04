@@ -1,71 +1,65 @@
-# G002：实现基础游戏页面
+# G003：实现玩家角色显示
 
 你现在是 Developer Agent。
 
 ## 当前项目
 
-projects/down-100-floors-game
+当前项目是 `down-100-floors-game`。
+项目路径：`E:\github_project\multi-agent-runner\projects\down-100-floors-game`
 
 ## 当前任务
 
-G002 实现基础游戏页面
+G003：实现玩家角色显示
 
 ## 任务目标
 
-创建小游戏的基础页面布局，包括游戏区域、开始按钮、层数显示和状态提示。
+在游戏区域中显示一个简单玩家角色方块，为后续左右移动做准备。
 
 ## 任务原始内容
 
 状态：pending
 角色：Developer
-目标：创建小游戏的基础页面布局，包括游戏区域、开始按钮、层数显示和状态提示。
+目标：在游戏区域中显示一个简单玩家角色方块，为后续左右移动做准备。
 
 ### 验收标准
 
-- 页面能在浏览器打开
-- 页面包含游戏标题
-- 页面包含游戏区域
-- 页面包含开始按钮
-- 页面包含层数或分数显示
-- 暂时不实现完整游戏逻辑
+- 页面中有玩家角色元素
+- 玩家角色显示在游戏区域内
+- 玩家角色有明显样式
+- 暂时不实现键盘移动
+- 暂时不实现重力、平台、碰撞
 
-## 允许修改文件
+## 允许修改的文件
 
-- projects/down-100-floors-game/index.html
-- projects/down-100-floors-game/style.css
-- projects/down-100-floors-game/script.js
-- projects/down-100-floors-game/reports/dev/G002-dev-report.md
+- `E:\github_project\multi-agent-runner\projects\down-100-floors-game/index.html`
+- `E:\github_project\multi-agent-runner\projects\down-100-floors-game/style.css`
+- `E:\github_project\multi-agent-runner\projects\down-100-floors-game/script.js`
+- `E:\github_project\multi-agent-runner\projects\down-100-floors-game/docs/`
+- `E:\github_project\multi-agent-runner\projects\down-100-floors-game/reports/`
+- `E:\github_project\multi-agent-runner\projects\down-100-floors-game/memory/`
 
-## 需要实现
+## 禁止修改的文件
 
-1. 游戏标题：Down 100 Floors Game Demo
-2. 游戏区域容器
-3. 开始按钮
-4. 层数或分数显示
-5. 游戏状态提示
-6. 基础说明文字
-7. 页面样式简单清晰
+- `E:\github_project\multi-agent-runner\projects\down-100-floors-game/requirement.md`
+- multi-agent-runner 主框架代码
+- runner.py
+- tools/*.py
+- config.yaml
 
-## 不允许实现
+## 限制要求
 
-- 玩家移动
-- 平台生成
-- 重力
-- 碰撞检测
-- 游戏结束逻辑
-- 角色技能
-- 微信小游戏发布
-- 抖音小游戏发布
-- 登录、排行、支付、广告
+- 必须直接修改文件，不要只输出建议代码
+- 不允许扩大任务范围
+- 不允许修改主框架代码
+- 所有文档使用简体中文
+- 文件名、路径、命令保持英文
 
 ## 完成证据
 
-必须创建：
-
-projects/down-100-floors-game/reports/dev/G002-dev-report.md
+完成后必须生成开发报告：
+`E:\github_project\multi-agent-runner\projects\down-100-floors-game\reports\dev\G003-dev-report.md`
 
 报告内容包含：
-
 - 任务编号
 - 修改文件列表
 - 完成内容
@@ -74,5 +68,4 @@ projects/down-100-floors-game/reports/dev/G002-dev-report.md
 
 请直接修改文件，不要只输出建议代码。
 
-
-请开始执行 G002。
+请开始执行 G003。

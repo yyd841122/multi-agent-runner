@@ -475,7 +475,7 @@
 
 ## T022.1 提交并推送第二阶段完整成果
 
-状态：in_progress
+状态：done
 角色：Developer
 目标：在进入第三阶段前，提交并推送第二阶段完整成果，完成远程备份。
 
@@ -487,3 +487,240 @@
 - 已成功 push 到远程仓库
 - push 后工作区 clean
 - 生成提交记录报告
+
+---
+
+## T023 设计第三阶段路线
+
+状态：done
+角色：Planner
+目标：基于第一阶段和第二阶段成果，设计第三阶段自动化能力扩展路线。
+
+### 验收标准
+
+- 创建第三阶段规划文档
+- 明确第三阶段目标
+- 明确下一批任务顺序
+- 不偏离最终自动化目标
+- 优先选择最小可验证改进
+- 不新增功能代码
+
+---
+
+## T024 通用 project runner 协议设计
+
+状态：done
+角色：Architect
+目标：设计如何把当前 run-game-next 泛化成通用项目执行器，定义项目路径参数、子项目任务文件路径、完成证据路径和 prompt 生成规则。
+
+### 验收标准
+
+- 定义通用 project runner 协议文档
+- 明确项目路径参数规范
+- 明确子项目任务文件路径规范
+- 明确完成证据路径规范
+- 明确 prompt 生成规则
+- 不立即重写代码
+- 不修改 runner.py
+
+---
+
+## T025 实现通用 run-project-next MVP
+
+状态：done
+角色：Developer
+目标：实现通用 `python runner.py run-project-next --project projects/<project-name>` 命令，替代 run-game-next 的部分能力。
+
+### 验收标准
+
+- 支持 `--project` 参数指定项目路径
+- 自动读取该项目的 docs/tasks.md
+- 自动执行第一个 pending 任务
+- 完成证据从项目路径下读取
+- 可以成功执行 down-100-floors-game 项目
+- 保留 run-game-next 作为兼容命令
+- 不破坏已有命令
+
+---
+
+## T025.1 记录通用 project runner 首次验证成功经验
+
+状态：done
+角色：Reporter
+目标：记录 run-project-next 首次成功驱动真实子项目自动完成 G003 任务的经验和注意事项。
+
+### 验收标准
+
+- 更新主项目 memory/lessons.md
+- 更新主项目 memory/pitfalls.md
+- 更新验证项目 memory/lessons.md
+- 更新验证项目 memory/pitfalls.md
+- 创建通用 project runner 首次成功总结报告
+- 创建 T025.1 开发报告
+- 不修改功能代码
+
+---
+
+## T025.2 提交并推送通用 project runner 成果
+
+状态：in_progress
+角色：Developer
+目标：在进入真实 Reviewer 模型接入前，提交并推送通用 project runner MVP 和 G003 自动执行成果。
+
+### 验收标准
+
+- git status 已检查
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean
+- 生成提交记录报告
+
+---
+
+## T026 接入真实 Reviewer 模型配置
+
+状态：pending
+角色：Developer
+目标：选择一个真实 Reviewer 模型（DeepSeek / Qwen / Kimi），配置到 config.yaml 并验证连接可用。
+
+### 验收标准
+
+- config.yaml 新增至少一个真实 provider 的实际可用配置
+- 不使用与 Developer 同款模型作为默认 Reviewer
+- 通过环境变量读取 API Key
+- 不在代码或配置中写入真实 Key
+- tools/model_adapter.py 对应 provider 可用（非 NotImplementedError）
+- 本地验证模型连接成功
+- 保留 mock provider 回退能力
+- 不直接接入自动审查主流程
+
+---
+
+## T027 Reviewer 输出结构化解析 MVP
+
+状态：pending
+角色：Developer
+目标：让 Reviewer 输出可以被机器解析，提取 Status、Decision、Issues 等关键字段。
+
+### 验收标准
+
+- 创建 tools/review_parser.py
+- 可解析 Status（APPROVE / REQUEST_CHANGES / RETRY / BLOCKED）
+- 可解析 Decision（下一步建议）
+- 可解析 Issues（问题列表）
+- 输出为结构化数据（dict 或 dataclass）
+- 支持 mock 和真实模型输出格式
+- 不直接自动返工
+
+---
+
+## T028 Reviewer 自动审查接入真实模型
+
+状态：pending
+角色：Developer
+目标：让 review-game-task 或通用 review 命令可以调用真实 Reviewer 模型生成审查报告。
+
+### 验收标准
+
+- reviewer_runner.py 可切换使用真实模型
+- 生成真实审查报告到 reports/review/
+- 审查报告符合 Reviewer Agent 输出协议
+- 保留 mock provider 回退能力
+- 可通过 config.yaml 配置使用哪个模型
+- 不直接自动返工
+- 不修改小游戏业务代码
+
+---
+
+## T029 Tester Agent 最小测试协议
+
+状态：pending
+角色：Developer
+目标：定义 Tester Agent 对 Web MVP 项目的最小测试方式和测试报告格式。
+
+### 验收标准
+
+- 定义 Tester Agent 输出协议（补充到 agents/protocols.md）
+- 定义测试报告标准格式
+- 至少支持：文件存在检查、HTML 关键元素检查、JS 基础语法检查
+- 测试报告输出到 reports/test/
+- 测试结果包含 PASS / FAIL 状态
+- 不引入复杂浏览器自动化
+- 不引入额外依赖
+
+---
+
+## T030 实现 Tester Agent 本地静态检查 MVP
+
+状态：pending
+角色：Developer
+目标：对 down-100-floors-game 做最小本地静态检查，生成测试报告。
+
+### 验收标准
+
+- 创建 tools/tester_runner.py
+- 检查 index.html / style.css / script.js 是否存在
+- 检查 HTML 中是否包含 game area / start button / score display 等关键元素
+- 检查 JS 是否无明显语法错误（如括号不匹配）
+- 生成 reports/test/<task-id>-test-report.md
+- 输出 PASS / FAIL 总结
+- 测试报告符合 Tester Agent 输出协议
+- 不修改小游戏业务代码
+
+---
+
+## T031 自动审查 + 测试结果综合决策 MVP
+
+状态：pending
+角色：Developer
+目标：Main Agent 综合 Developer / Tester / Reviewer 三方结果，决定下一步动作。
+
+### 验收标准
+
+- main_agent.py 新增综合决策规则
+- 输入：Developer 完成证据、Tester PASS/FAIL、Reviewer APPROVE/REQUEST_CHANGES
+- 输出：Main Decision（COMPLETE / RETRY / REQUEST_CHANGES / BLOCKED）
+- 三方结果全部通过 → COMPLETE
+- 任一方失败 → 对应 RETRY 或 REQUEST_CHANGES
+- 生成综合决策报告到 reports/main/
+- 不直接做复杂返工循环
+
+---
+
+## T032 继续开发小游戏 G003 玩家显示与左右移动
+
+状态：pending
+角色：Developer
+目标：使用通用 project runner 自动执行 G003，实现玩家角色显示和键盘左右移动。
+
+### 验收标准
+
+- 在 down-100-floors-game/docs/tasks.md 新增 G003 任务
+- 使用 run-project-next 自动执行
+- script.js 实现玩家角色显示
+- script.js 实现键盘左右移动（ArrowLeft / ArrowRight）
+- 不实现平台、重力、碰撞
+- 生成开发报告
+- 通过 Tester 静态检查
+- 通过 Reviewer 审查
+
+---
+
+## T033 第三阶段总结与 Git 备份
+
+状态：pending
+角色：Reporter
+目标：总结第三阶段成果，更新经验沉淀，提交并推送到远程仓库。
+
+### 验收标准
+
+- 生成第三阶段总结报告
+- 更新 memory/lessons.md
+- 更新 memory/pitfalls.md
+- 更新 docs/phase-3-plan.md 验收标准
+- git status 已检查
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean

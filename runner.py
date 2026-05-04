@@ -24,6 +24,7 @@ from tools.report_manager import (
 from tools.planner_runner import run_planner
 from tools.main_agent import decide_next_action, save_main_decision
 from tools.reviewer_runner import run_reviewer_for_game_task
+from tools.project_runner import run_project_next
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -557,6 +558,54 @@ def main_decide():
 
 
 # ---------------------------------------------------------------------------
+# 通用 project runner 入口
+# ---------------------------------------------------------------------------
+
+def _handle_run_project_next(project_path: str):
+    """处理 run-project-next 命令，格式化输出结果。"""
+    result = run_project_next(project_path)
+
+    print()
+
+    if result["task_id"] is None:
+        if not result["success"]:
+            print(f"run-project-next 执行失败：")
+            print(f"  {result['message']}")
+        else:
+            print(f"run-project-next：")
+            print(f"  {result['message']}")
+        return
+
+    task_id = result["task_id"]
+    task_title = result["task_title"]
+
+    if not result["success"]:
+        print(f"run-project-next 执行失败：")
+        print(f"项目路径：{result['project_path']}")
+        print(f"任务编号：{task_id}")
+        print(f"任务名称：{task_title}")
+        print(f"执行结果：失败")
+        print(f"任务状态：{result['task_status']}")
+        print(f"请查看 reports/claude/latest-output.md")
+    elif not result["evidence_found"]:
+        print(f"run-project-next 执行完成（Claude Code 成功，但缺少完成证据）：")
+        print(f"项目路径：{result['project_path']}")
+        print(f"任务编号：{task_id}")
+        print(f"任务名称：{task_title}")
+        print(f"执行结果：成功")
+        print(f"任务状态：{result['task_status']}")
+        print(f"缺少文件：{result['message'].split('：')[-1] if '：' in result['message'] else '完成证据文件'}")
+    else:
+        print(f"run-project-next 执行完成：")
+        print(f"项目路径：{result['project_path']}")
+        print(f"任务编号：{task_id}")
+        print(f"任务名称：{task_title}")
+        print(f"执行结果：成功")
+        print(f"完成证据：存在")
+        print(f"任务状态：done")
+
+
+# ---------------------------------------------------------------------------
 # 游戏项目任务解析（G 前缀，复用 task_manager 的 load/save）
 # ---------------------------------------------------------------------------
 
@@ -807,6 +856,17 @@ def main():
         main_decide()
     elif args[0] == "run-game-next":
         run_game_next()
+    elif args[0] == "run-project-next":
+        # 支持 --project <path> 或直接 <path>
+        if len(args) >= 3 and args[1] == "--project":
+            project_path = args[2]
+        elif len(args) >= 2 and not args[1].startswith("-"):
+            project_path = args[1]
+        else:
+            print("请提供项目路径：")
+            print("  python runner.py run-project-next --project projects/down-100-floors-game")
+            return
+        _handle_run_project_next(project_path)
     elif args[0] == "review-game-task":
         task_id = args[1] if len(args) >= 2 else "G002"
         run_reviewer_for_game_task(task_id)
@@ -825,6 +885,7 @@ def main():
         print("  python runner.py plan-project               运行 Planner Agent 生成任务拆解草案")
         print("  python runner.py main-decide                Main Agent 根据当前状态决策下一步动作")
         print("  python runner.py run-game-next              自动执行小游戏项目下一个 pending 任务")
+        print("  python runner.py run-project-next --project <path>  通用：执行指定子项目下一个 pending 任务")
         print("  python runner.py review-game-task [任务编号]  审查小游戏项目指定任务（默认 G002）")
 
 
