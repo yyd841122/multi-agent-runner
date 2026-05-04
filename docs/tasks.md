@@ -916,7 +916,7 @@
 
 ## T037.1 提交并推送 Tester 行为检查增强成果
 
-状态：in_progress
+状态：done
 角色：Developer
 目标：在进入 project.yaml 配置驱动前，提交并推送 Tester 行为检查增强成果。
 
