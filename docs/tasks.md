@@ -830,3 +830,205 @@
 - commit message 清晰
 - 已成功 push 到远程仓库
 - push 后工作区 clean
+
+---
+
+## T034 设计第四阶段路线
+
+状态：done
+角色：Planner
+目标：基于前三阶段成果，设计第四阶段任务路线。
+
+### 验收标准
+
+- 创建 docs/phase-4-plan.md
+- 明确第四阶段目标
+- 明确下一批任务顺序
+- 继续服务最终自动化目标
+- 优先选择最小可验证改进
+- 不新增功能代码
+
+---
+
+## T034.1 提交并推送第四阶段路线规划
+
+状态：in_progress
+角色：Developer
+目标：在进入 Tester 行为检查增强前，提交并推送第四阶段路线规划成果。
+
+### 验收标准
+
+- git status 已检查
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean
+- 生成提交记录报告
+
+---
+
+## T035 Tester 行为检查协议设计
+
+状态：pending
+角色：Architect
+目标：定义 Tester 如何检查键盘事件、边界移动、玩家位置更新等行为逻辑。
+
+### 验收标准
+
+- 明确 G004 当前静态测试的不足
+- 明确行为检查范围
+- 明确不引入浏览器自动化
+- 明确 T036 实现方向
+
+---
+
+## T036 实现 Tester 键盘移动逻辑静态检查 MVP
+
+状态：pending
+角色：Developer
+目标：增强 Tester Agent，可以检查 G004 是否包含左右键监听、边界限制、位置更新函数。
+
+### 验收标准
+
+- 可以检查键盘事件监听逻辑
+- 可以检查左右方向键处理逻辑
+- 可以检查边界限制逻辑
+- 可以检查玩家位置更新逻辑
+- 不引入浏览器自动化
+- 不修改小游戏业务代码
+
+---
+
+## T037 G004 增强测试与 Main Decision 复核
+
+状态：pending
+角色：Developer
+目标：用增强 Tester 重新测试 G004，并重新生成 Main Decision。
+
+### 验收标准
+
+- 生成增强版 G004 测试报告
+- Main Agent 重新读取 Developer / Tester / Reviewer 结果
+- 重新生成 G004 Main Decision
+- 不自动返工
+
+---
+
+## T038 project.yaml 协议落地
+
+状态：pending
+角色：Developer
+目标：为 down-100-floors-game 创建真实 project.yaml。
+
+### 验收标准
+
+- 创建 projects/down-100-floors-game/project.yaml
+- 字段遵循 T024 project runner 协议
+- 不修改 runner 逻辑
+
+---
+
+## T039 project runner 读取 project.yaml MVP
+
+状态：pending
+角色：Developer
+目标：让 run-project-next 可以读取 project.yaml。
+
+### 验收标准
+
+- 如果存在 project.yaml，优先读取配置
+- 如果不存在 project.yaml，回退路径约定
+- 不破坏现有 run-project-next 命令
+
+---
+
+## T040 自动返工协议设计
+
+状态：pending
+角色：Architect
+目标：定义当 Tester FAIL 或 Reviewer REQUEST_CHANGES 时，如何生成返工任务。
+
+### 验收标准
+
+- 明确返工任务命名规则
+- 明确返工 prompt 输入
+- 明确返工完成证据
+- 不自动执行返工
+
+---
+
+## T041 自动生成返工 prompt MVP
+
+状态：pending
+角色：Developer
+目标：当有失败报告时，生成返工 prompt。
+
+### 验收标准
+
+- 可以读取失败的 Tester / Reviewer 报告
+- 可以生成 prompts/rework_prompt.md
+- 不自动调用 Claude Code
+- 人工确认后再执行
+
+---
+
+## T042 新增 G005 基础平台显示任务
+
+状态：pending
+角色：Planner
+目标：在子项目任务清单中添加 G005。
+
+### 验收标准
+
+- 子项目 tasks.md 追加 G005 pending
+- G005 只做基础平台显示
+- 不实现重力
+- 不实现碰撞
+- 不实现平台滚动
+
+---
+
+## T043 使用 run-project-next 自动执行 G005
+
+状态：pending
+角色：Developer
+目标：自动实现基础平台显示。
+
+### 验收标准
+
+- Developer 生成 G005-dev-report
+- G005 自动标记 done
+- 不做重力
+- 不做碰撞
+- 不做平台滚动
+
+---
+
+## T044 G005 Tester / Reviewer / Main Decision 完整闭环
+
+状态：pending
+角色：Developer
+目标：让 G005 完成测试、审查、综合决策。
+
+### 验收标准
+
+- 生成 G005-test-report
+- 生成 G005-review-report
+- 生成 G005-main-decision
+- 如果失败，只记录，不自动返工
+
+---
+
+## T045 第四阶段阶段总结与 Git 备份
+
+状态：pending
+角色：Reporter
+目标：总结第四阶段成果并提交推送。
+
+### 验收标准
+
+- 创建第四阶段总结报告
+- 更新 memory
+- git commit
+- git push
+- 工作区 clean
