@@ -168,6 +168,39 @@ Agent 输出协议 **不是业务代码**，它是自动化协作协议。
 
 **完成证据：** `reports/review/<task-id>-review-report.md`
 
+### 9.1 Machine Readable Result
+
+Reviewer 输出中必须包含 `## Machine Readable Result` 段落，内嵌 JSON 块：
+
+```markdown
+## Machine Readable Result
+
+```json
+{
+  "status": "PASS",
+  "decision": "APPROVE",
+  "issues": [],
+  "summary": "审查通过。",
+  "next_action": "可以进入下一步。"
+}
+```
+
+**字段说明：**
+
+| 字段 | 类型 | 必填 | 可选值 |
+|------|------|------|--------|
+| `status` | string | 是 | `PASS` / `FAIL` / `RETRY` / `BLOCKED` / `INFO` |
+| `decision` | string | 是 | `APPROVE` / `REQUEST_CHANGES` / `RETRY` / `BLOCKED` |
+| `issues` | string[] | 是 | 字符串数组，无问题为 `[]` |
+| `summary` | string | 是 | 简短结论 |
+| `next_action` | string | 是 | 建议下一步 |
+
+**重要说明：**
+
+- 自然语言报告可以保留，但 `runner.py` / Main Agent 后续优先读取 Machine Readable Result
+- Machine Readable Result 是程序解析的唯一入口
+- 如果 Reviewer 输出中缺少此块，解析函数应返回解析失败
+
 ## 10. Reporter Agent 输出协议
 
 **输出文件：** `reports/final/<stage>-summary.md`

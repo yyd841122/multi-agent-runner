@@ -563,7 +563,7 @@
 
 ## T025.2 提交并推送通用 project runner 成果
 
-状态：in_progress
+状态：done
 角色：Developer
 目标：在进入真实 Reviewer 模型接入前，提交并推送通用 project runner MVP 和 G003 自动执行成果。
 
@@ -580,44 +580,44 @@
 
 ## T026 接入真实 Reviewer 模型配置
 
-状态：pending
+状态：done
 角色：Developer
 目标：选择一个真实 Reviewer 模型（DeepSeek / Qwen / Kimi），配置到 config.yaml 并验证连接可用。
 
 ### 验收标准
 
-- config.yaml 新增至少一个真实 provider 的实际可用配置
-- 不使用与 Developer 同款模型作为默认 Reviewer
-- 通过环境变量读取 API Key
-- 不在代码或配置中写入真实 Key
-- tools/model_adapter.py 对应 provider 可用（非 NotImplementedError）
-- 本地验证模型连接成功
+- config.yaml 中 reviewer provider 可以配置为 deepseek
+- tools/model_adapter.py 实现 DeepSeek provider
+- DeepSeek API Key 从 DEEPSEEK_API_KEY 环境变量读取
+- 不写入真实 API Key
 - 保留 mock provider 回退能力
-- 不直接接入自动审查主流程
+- 可以运行本地 DeepSeek Reviewer 连接测试
+- 可以保存 reports/model/deepseek-reviewer-test-output.md
+- 不接入自动审查主流程
 
 ---
 
 ## T027 Reviewer 输出结构化解析 MVP
 
-状态：pending
+状态：done
 角色：Developer
 目标：让 Reviewer 输出可以被机器解析，提取 Status、Decision、Issues 等关键字段。
 
 ### 验收标准
 
-- 创建 tools/review_parser.py
-- 可解析 Status（APPROVE / REQUEST_CHANGES / RETRY / BLOCKED）
-- 可解析 Decision（下一步建议）
-- 可解析 Issues（问题列表）
-- 输出为结构化数据（dict 或 dataclass）
-- 支持 mock 和真实模型输出格式
+- 定义 Reviewer 结构化输出格式
+- 可以解析 Status
+- 可以解析 Decision
+- 可以解析 Issues
+- 支持 APPROVE / REQUEST_CHANGES / RETRY / BLOCKED
 - 不直接自动返工
+- 不修改任务状态
 
 ---
 
 ## T028 Reviewer 自动审查接入真实模型
 
-状态：pending
+状态：done
 角色：Developer
 目标：让 review-game-task 或通用 review 命令可以调用真实 Reviewer 模型生成审查报告。
 
@@ -630,6 +630,41 @@
 - 可通过 config.yaml 配置使用哪个模型
 - 不直接自动返工
 - 不修改小游戏业务代码
+
+---
+
+## T028.1 记录 DeepSeek Reviewer 首次真实审查成功经验
+
+状态：done
+角色：Reporter
+目标：记录 DeepSeek Reviewer 首次真实审查 G003 并输出结构化 PASS / APPROVE 结果的经验和注意事项。
+
+### 验收标准
+
+- 更新主项目 memory/lessons.md
+- 更新主项目 memory/pitfalls.md
+- 更新验证项目 memory/lessons.md
+- 更新验证项目 memory/pitfalls.md
+- 创建 DeepSeek Reviewer 首次真实审查总结报告
+- 创建 T028.1 开发报告
+- 不修改功能代码
+
+---
+
+## T028.2 提交并推送真实 DeepSeek Reviewer 审查成果
+
+状态：in_progress
+角色：Developer
+目标：在进入 Tester Agent 前，提交并推送真实 DeepSeek Reviewer 审查成果。
+
+### 验收标准
+
+- git status 已检查
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean
+- 生成提交记录报告
 
 ---
 

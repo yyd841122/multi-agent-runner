@@ -869,7 +869,20 @@ def main():
         _handle_run_project_next(project_path)
     elif args[0] == "review-game-task":
         task_id = args[1] if len(args) >= 2 else "G002"
-        run_reviewer_for_game_task(task_id)
+        report_path, parsed = run_reviewer_for_game_task(task_id)
+        print()
+        print("Reviewer 审查报告已生成：")
+        print(f"  {report_path}")
+        print()
+        if parsed and parsed.success:
+            print("结构化审查结果：")
+            print(f"  Status：{parsed.status}")
+            print(f"  Decision：{parsed.decision}")
+            print(f"  Issues：{len(parsed.issues) if parsed.issues else 0}")
+        elif parsed:
+            print(f"结构化审查结果解析失败：{parsed.error}")
+        else:
+            print("结构化审查结果解析失败：模型调用未成功")
     else:
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")

@@ -106,3 +106,34 @@ python runner.py run-project-next --project projects/down-100-floors-game
 - 子项目完成证据必须基于项目路径动态计算。
 - prompt 必须明确限制修改范围，避免误改主框架。
 - 通用化应从一个已验证项目开始，而不是一开始支持所有项目类型。
+
+## T028.1 DeepSeek Reviewer 首次真实审查成功经验
+
+### 成果
+
+`multi-agent-runner` 已经第一次完成真实模型分工链路：
+
+- Developer：Claude Code + GLM
+- Reviewer：DeepSeek API
+- Runner：调度、保存报告、解析结构化结果
+
+### 成功链路
+
+1. G003 已由 `run-project-next` 自动开发完成。
+2. G003 已生成 `projects/down-100-floors-game/reports/dev/G003-dev-report.md`。
+3. `review-game-task G003` 读取任务要求、开发报告和项目文件快照。
+4. 系统构造 Reviewer prompt。
+5. `model_adapter` 调用 DeepSeek Reviewer。
+6. DeepSeek 返回审查内容。
+7. Reviewer 输出包含 `Machine Readable Result`。
+8. runner 解析出 `Status=PASS`。
+9. runner 解析出 `Decision=APPROVE`。
+10. 审查报告保存为 `projects/down-100-floors-game/reports/review/G003-review-report.md`。
+
+### 关键经验
+
+- 开发模型和审查模型分离是必要的。
+- DeepSeek Reviewer 可以作为第一版独立审查模型。
+- Reviewer 输出必须包含机器可解析块，不能只依赖自然语言。
+- `Status / Decision / Issues` 是后续 Main Agent 综合决策的关键输入。
+- 真实审查结果先人工观察，不应立即自动返工。

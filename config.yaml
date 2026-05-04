@@ -22,9 +22,10 @@ models:
     model: mock-main
 
   reviewer:
-    provider: mock
-    model: mock-reviewer
-    note: "Reviewer 不应默认使用与 Developer 执行器相同的模型，避免自己审自己。"
+    provider: deepseek
+    model: deepseek-chat
+    fallback_provider: mock
+    note: "Reviewer 使用 DeepSeek，避免与 Developer 执行器使用同款模型。"
 
   tester:
     provider: mock
@@ -45,10 +46,11 @@ providers:
     default_model: "glm-4-flash"
 
   deepseek:
-    enabled: false
+    enabled: true
     api_key_env: DEEPSEEK_API_KEY
     base_url: "https://api.deepseek.com"
     default_model: "deepseek-chat"
+    timeout_seconds: 60
 
   kimi:
     enabled: false

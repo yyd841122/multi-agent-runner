@@ -62,3 +62,13 @@
 5. **子项目完成证据必须使用 `<project>/reports/dev/<task-id>-dev-report.md`。** 路径从项目根动态计算。
 6. **通用 runner 验证要先从已知项目开始。** 例如 `down-100-floors-game`，不要一上来测试未知项目。
 7. **不要在 Claude Code 会话内执行 `run-project-next`。** 嵌套调用会卡住。
+
+## T028.1 DeepSeek Reviewer 真实审查注意事项
+
+1. **不要把真实 Reviewer 模型的单次 PASS 直接视为最终质量保证。** 单次审查通过只说明当前任务边界内的验收标准满足，不代表整体质量。
+2. **不要在没有 Tester Agent 的情况下直接进入自动返工闭环。** 综合决策需要 Developer / Tester / Reviewer 三方结果。
+3. **不要让 Reviewer 自动修改代码，Reviewer 只给审查结论。** 审查和修改必须分离。
+4. **不要把 DeepSeek API Key 写入代码或配置文件。** Key 只从环境变量读取。
+5. **不要删除 mock provider，真实模型不可用时仍需回退或明确报错。** mock 是开发和调试的重要回退手段。
+6. **不要只保存自然语言审查报告，必须保留结构化 `Machine Readable Result`。** 后续 Main Agent 只消费结构化结果。
+7. **不要跳过人工观察阶段，真实 Reviewer 接入初期需要持续评估审查质量。** 模型输出格式可能不稳定。
