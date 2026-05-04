@@ -1147,3 +1147,255 @@
 - git commit
 - git push
 - 工作区 clean
+
+---
+
+## T046 设计第五阶段路线
+
+状态：done
+角色：Planner
+目标：基于前四阶段成果，设计第五阶段任务路线。
+
+### 验收标准
+
+- 创建第五阶段规划文档
+- 明确第五阶段目标
+- 明确下一批任务顺序
+- 优先设计重力和碰撞相关 Tester 协议
+- 继续服务最终自动化目标
+- 优先选择最小可验证改进
+- 不新增功能代码
+
+---
+
+## T046.1 新增 CHANGELOG.md 并记录第一至第四阶段里程碑与第五阶段规划
+
+状态：done
+角色：Reporter
+目标：新增根目录 CHANGELOG.md，集中记录项目阶段版本、核心成果、关键提交和第五阶段规划。
+
+### 验收标准
+
+- 创建 CHANGELOG.md
+- 记录第一阶段 v0.1.0
+- 记录第二阶段 v0.2.0
+- 记录第三阶段 v0.3.0
+- 记录第四阶段 v0.4.0
+- 记录第五阶段 v0.5.0-plan
+- 记录关键 commit
+- 说明 README / CHANGELOG / docs/tasks / reports / memory 的分工
+- 创建 T046.1 开发报告
+- 不修改功能代码
+
+---
+
+## T046.2 提交并推送第五阶段规划与 CHANGELOG
+
+状态：in_progress
+角色：Developer
+目标：在进入重力下落测试协议设计前，提交并推送第五阶段规划与 CHANGELOG 版本记录成果。
+
+### 验收标准
+
+- git status 已检查
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean
+- 生成提交记录报告
+
+---
+
+## T047 重力下落测试协议设计
+
+状态：pending
+角色：Architect
+目标：定义 Tester 如何检查简单重力下落逻辑。
+
+### 验收标准
+
+- 定义重力下落的测试检查项
+- 明确只检查垂直下落逻辑
+- 明确不测试碰撞
+- 明确不测试平台滚动
+- 明确不测试失败条件
+- 为 T049 实现 G006 做测试准备
+
+---
+
+## T048 新增 G006 简单重力下落任务
+
+状态：pending
+角色：Planner
+目标：在子项目任务清单中添加 G006。
+
+### 验收标准
+
+- 子项目 tasks.md 追加 G006 pending
+- G006 只做简单垂直下落
+- 不实现碰撞
+- 不实现平台滚动
+- 不实现失败条件
+- 不实现随机平台
+
+---
+
+## T049 使用 run-project-next 自动执行 G006
+
+状态：pending
+角色：Developer
+目标：自动实现简单重力下落。
+
+### 验收标准
+
+- Developer 生成 G006-dev-report
+- 玩家可以随时间向下移动
+- 重力下落逻辑清晰可测试
+- 不做平台碰撞
+- 不做平台滚动
+- 不做失败条件
+- 不做随机平台
+- 不做角色技能系统
+
+---
+
+## T050 G006 Tester / Reviewer / Main Decision 完整闭环
+
+状态：pending
+角色：Developer
+目标：让 G006 完成测试、审查、综合决策。
+
+### 验收标准
+
+- 生成 G006-test-report（基础测试）
+- 生成 G006-behavior-test-report（重力行为测试）
+- 生成 G006-review-report（DeepSeek 审查）
+- 生成 G006-main-decision（综合决策）
+- 如果失败，只记录，不自动返工
+- 不跳过证据链
+
+---
+
+## T051 碰撞检测测试协议设计
+
+状态：pending
+角色：Architect
+目标：设计玩家与平台基础碰撞的测试协议。
+
+### 验收标准
+
+- 定义碰撞检测的测试检查项
+- 明确只检测玩家落到平台上
+- 明确不做复杂物理
+- 明确不做平台滚动
+- 明确不做失败条件
+- 为 T053 实现 G007 做测试准备
+
+---
+
+## T052 新增 G007 玩家与平台基础碰撞任务
+
+状态：pending
+角色：Planner
+目标：在子项目任务清单中添加 G007。
+
+### 验收标准
+
+- 子项目 tasks.md 追加 G007 pending
+- G007 只做玩家落到平台时停止
+- 不做平台滚动
+- 不做随机平台
+- 不做失败条件
+- 不做角色技能系统
+
+---
+
+## T053 使用 run-project-next 自动执行 G007
+
+状态：pending
+角色：Developer
+目标：自动实现玩家与平台基础碰撞。
+
+### 验收标准
+
+- Developer 生成 G007-dev-report
+- 玩家下落到平台时停止或站在平台上
+- 不做平台滚动
+- 不做随机平台
+- 不做失败条件
+- 不做角色技能系统
+
+---
+
+## T054 G007 Tester / Reviewer / Main Decision 完整闭环
+
+状态：pending
+角色：Developer
+目标：让 G007 完成测试、审查、综合决策。
+
+### 验收标准
+
+- 生成 G007-test-report（基础测试）
+- 生成 G007-behavior-test-report（碰撞行为测试）
+- 生成 G007-review-report（DeepSeek 审查）
+- 生成 G007-main-decision（综合决策）
+- 如果失败，只记录，不自动返工
+- 不跳过证据链
+
+---
+
+## T055 自动返工执行人工确认协议设计
+
+状态：pending
+角色：Architect
+目标：设计用户确认后执行返工的协议。
+
+### 验收标准
+
+- 定义人工确认入口
+- 定义确认后的执行流程
+- 定义最大返工次数仍为 3
+- 定义人工介入条件
+- 不做完全无人值守
+- 不绕过用户确认
+
+---
+
+## T056 自动返工执行 MVP
+
+状态：pending
+角色：Developer
+目标：在用户确认后执行已有 rework prompt。
+
+### 验收标准
+
+- 可以读取已生成的 rework prompt
+- 用户确认后可以调用 Claude Code 执行返工
+- 返工后可以重新运行 Tester
+- 返工后可以重新运行 Reviewer
+- 返工后可以重新生成 Main Decision
+- 不自动无限循环
+- 不绕过用户确认
+- 不超过 3 次返工限制
+- 不修改 project.yaml 或主框架文件
+
+---
+
+## T057 第五阶段阶段总结与 Git 备份
+
+状态：pending
+角色：Reporter
+目标：总结第五阶段成果并提交推送。
+
+### 验收标准
+
+- 创建第五阶段总结报告
+- 更新 docs/phase-5-plan.md 验收标准
+- 更新主项目 memory/lessons.md
+- 更新主项目 memory/pitfalls.md
+- 更新验证项目 memory/lessons.md
+- 更新验证项目 memory/pitfalls.md
+- git status 已检查
+- 当前改动已提交
+- 已成功 push 到远程仓库
+- push 后工作区 clean
