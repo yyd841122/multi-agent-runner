@@ -743,7 +743,7 @@
 
 ## T031.2 提交并推送 G003 完整闭环成果
 
-状态：in_progress
+状态：done
 角色：Developer
 目标：在进入 G004 玩家键盘左右移动前，提交并推送 G003 的开发、测试、审查和综合决策完整闭环成果。
 
@@ -758,28 +758,64 @@
 
 ---
 
-## T032 继续开发小游戏 G003 玩家显示与左右移动
+## T031.3 修正 T032 为 G004 玩家键盘左右移动
 
-状态：pending
-角色：Developer
-目标：使用通用 project runner 自动执行 G003，实现玩家角色显示和键盘左右移动。
+状态：done
+角色：Planner
+目标：修正后续任务描述，将 T032 从继续开发 G003 调整为执行新的 G004 玩家键盘左右移动任务。
 
 ### 验收标准
 
-- 在 down-100-floors-game/docs/tasks.md 新增 G003 任务
-- 使用 run-project-next 自动执行
-- script.js 实现玩家角色显示
-- script.js 实现键盘左右移动（ArrowLeft / ArrowRight）
-- 不实现平台、重力、碰撞
-- 生成开发报告
-- 通过 Tester 静态检查
-- 通过 Reviewer 审查
+- T032 任务名称已从 G003 调整为 G004
+- T032 目标已调整为使用通用 project runner 自动执行 G004
+- 子项目 docs/tasks.md 已追加 G004 pending 任务
+- 不修改小游戏业务代码
+- 不执行 G004
+
+---
+
+## T032 使用通用 project runner 自动执行 G004 玩家键盘左右移动
+
+状态：done
+角色：Developer
+目标：使用通用 project runner 自动执行 G004，实现玩家角色的键盘左右移动能力。
+
+### 验收标准
+
+- 子项目 G004 已存在且状态为 pending
+- 可以使用 run-project-next 自动执行 G004
+- 玩家可以通过键盘左右方向键移动
+- 玩家移动限制在游戏区域内
+- 不实现重力
+- 不实现平台生成
+- 不实现碰撞检测
+- 不实现角色技能系统
+- G004 需要生成 Developer / Tester / Reviewer / Main Agent 证据链
+
+---
+
+## T032.1 记录 G004 完整闭环成功经验，并完成 T032
+
+状态：done
+角色：Reporter
+目标：记录 G004 玩家键盘左右移动任务的 Developer / Tester / Reviewer / Main Agent 完整闭环经验，并完成 T032 收尾。
+
+### 验收标准
+
+- T032 已标记为 done
+- 更新主项目 memory/lessons.md
+- 更新主项目 memory/pitfalls.md
+- 更新验证项目 memory/lessons.md
+- 更新验证项目 memory/pitfalls.md
+- 创建 G004 完整闭环总结报告
+- 创建 T032.1 开发报告
+- 不修改功能代码
 
 ---
 
 ## T033 第三阶段总结与 Git 备份
 
-状态：pending
+状态：in_progress
 角色：Reporter
 目标：总结第三阶段成果，更新经验沉淀，提交并推送到远程仓库。
 

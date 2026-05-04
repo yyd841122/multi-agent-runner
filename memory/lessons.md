@@ -180,3 +180,48 @@ python runner.py run-project-next --project projects/down-100-floors-game
 - Main Agent 不做具体开发，只做综合判断和下一步决策。
 - `COMPLETE` 应建立在多方证据一致通过的基础上。
 - 这为后续自动返工和自动推进下一任务提供了基础。
+
+## T032.1 G004 完整闭环成功经验
+
+### 成果
+
+`G004 实现玩家键盘左右移动` 已经完成完整闭环：
+
+- Developer Agent：自动开发完成
+- Tester Agent：静态测试 PASS
+- Reviewer Agent：DeepSeek 审查 APPROVE
+- Main Agent：综合决策 COMPLETE
+
+### 成功链路
+
+1. `run-project-next` 自动找到 G004 pending 任务。
+2. G004 自动标记为 `in_progress`。
+3. Claude Code 自动修改小游戏项目文件。
+4. G004 开发报告生成：`G004-dev-report.md`。
+5. G004 自动标记为 `done`。
+6. `test-game-task G004` 生成测试报告。
+7. Tester 结果为 `PASS`，16/16 项通过。
+8. `review-game-task G004` 调用 DeepSeek Reviewer。
+9. Reviewer 输出 `PASS / APPROVE / Issues=0`。
+10. `decide-game-task G004` 综合三方结果。
+11. Main Agent 输出 `COMPLETE`。
+
+### 关键经验
+
+- 小任务拆分有效：G003 只做玩家显示，G004 只做左右移动。
+- 使用同一套 Developer / Tester / Reviewer / Main Agent 链路，可以连续验证游戏功能演进。
+- Tester 当前仍是静态检查，能验证基础结构，但对移动行为的验证还需要后续增强。
+- Reviewer 可以辅助判断任务边界是否被扩大。
+- Main Agent 综合决策让任务完成状态更加可信。
+
+## T033 第三阶段经验总结
+
+### 核心经验
+
+- 通用 `run-project-next` 是从单项目验证走向多项目复用的关键一步。
+- DeepSeek Reviewer 接入后，开发模型和审查模型实现了职责分离。
+- Reviewer 输出必须结构化，才能被 Main Agent 稳定使用。
+- Tester Agent 即使先做静态检查，也能补齐"事实验证"环节。
+- Main Agent 综合决策必须基于 Developer / Tester / Reviewer 多方证据。
+- G003 / G004 连续闭环证明框架可以连续驱动真实项目迭代。
+- 小步任务边界非常重要：G003 只做玩家显示，G004 只做左右移动。

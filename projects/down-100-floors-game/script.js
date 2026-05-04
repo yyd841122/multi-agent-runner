@@ -1,5 +1,6 @@
 // G002: 基础页面交互 — 按钮点击、状态切换、楼层显示
 // G003: 玩家角色显示
+// G004: 玩家键盘左右移动
 
 (function () {
     const startBtn = document.getElementById('start-btn');
@@ -7,6 +8,16 @@
     const statusDisplay = document.getElementById('status-display');
     const gameArea = document.getElementById('game-area');
     const player = document.getElementById('player');
+
+    var MOVE_SPEED = 4;
+    var isPlaying = false;
+    var animFrameId = null;
+
+    // 按键状态
+    var keys = {
+        ArrowLeft: false,
+        ArrowRight: false
+    };
 
     // 玩家状态
     var playerState = {
@@ -34,6 +45,44 @@
         player.style.top = playerState.y + 'px';
     }
 
+    function handlePlayerMovement() {
+        var areaWidth = gameArea.clientWidth;
+        if (keys.ArrowLeft) {
+            playerState.x -= MOVE_SPEED;
+        }
+        if (keys.ArrowRight) {
+            playerState.x += MOVE_SPEED;
+        }
+        // 边界限制：左边界
+        if (playerState.x < 0) {
+            playerState.x = 0;
+        }
+        // 边界限制：右边界
+        if (playerState.x > areaWidth - playerState.width) {
+            playerState.x = areaWidth - playerState.width;
+        }
+    }
+
+    function gameLoop() {
+        if (!isPlaying) return;
+        handlePlayerMovement();
+        updatePlayerPosition();
+        animFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    function startGameLoop() {
+        isPlaying = true;
+        animFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    function stopGameLoop() {
+        isPlaying = false;
+        if (animFrameId) {
+            cancelAnimationFrame(animFrameId);
+            animFrameId = null;
+        }
+    }
+
     function resetUI() {
         floorDisplay.textContent = '0 / 100';
         setStatus('准备开始', 'status-ready');
@@ -44,7 +93,25 @@
         if (placeholder) placeholder.style.display = '';
         // 隐藏玩家角色
         player.style.display = 'none';
+        // 重置按键状态
+        keys.ArrowLeft = false;
+        keys.ArrowRight = false;
     }
+
+    // 键盘事件
+    document.addEventListener('keydown', function (e) {
+        if (!isPlaying) return;
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            e.preventDefault();
+            keys[e.key] = true;
+        }
+    });
+
+    document.addEventListener('keyup', function (e) {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            keys[e.key] = false;
+        }
+    });
 
     startBtn.addEventListener('click', function () {
         setStatus('游戏中', 'status-playing');
@@ -55,7 +122,9 @@
         if (placeholder) placeholder.style.display = 'none';
         // 初始化并显示玩家角色
         initPlayer();
-        console.log('Game started — player displayed at center top.');
+        // 启动游戏循环
+        startGameLoop();
+        console.log('Game started — player displayed at center top, keyboard movement enabled.');
     });
 
     resetUI();
