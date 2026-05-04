@@ -1007,7 +1007,7 @@
 
 ## T042.1 提交并推送 T038-T042 第四阶段中段成果
 
-状态：in_progress
+状态：done
 角色：Developer
 目标：在继续执行 G005 前，提交并推送 project.yaml、自动返工协议、返工 prompt 和 G005 任务规划成果。
 
