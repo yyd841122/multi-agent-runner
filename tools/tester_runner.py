@@ -437,3 +437,300 @@ def run_tester_for_game_task(task_id: str = "G003") -> Path:
     print(f"Failed：{result.failed_count}")
 
     return report_path, result
+
+
+# ---------------------------------------------------------------------------
+# 行为检查（Behavior Check）
+# ---------------------------------------------------------------------------
+
+@dataclass
+class BehaviorTestResult:
+    """行为检查汇总结果。"""
+    task_id: str
+    project_root: str
+    status: str  # PASS / FAIL / BLOCKED
+    result: str  # PASS / FAIL / BLOCKED
+    passed_count: int
+    failed_count: int
+    test_cases: list[TestCaseResult] = field(default_factory=list)
+    report_path: str | None = None
+
+
+def _check_keyword(
+    content: str, keywords: list[str], case_id: str, name: str
+) -> TestCaseResult:
+    """检查源码中是否包含任意关键词。"""
+    passed = contains_any(content, keywords)
+    matched = [kw for kw in keywords if kw in content]
+    if passed:
+        details = f"匹配关键词：{', '.join(matched)}"
+    else:
+        details = f"未匹配任何关键词：{', '.join(keywords)}"
+    return TestCaseResult(
+        id=case_id,
+        name=name,
+        required=True,
+        passed=passed,
+        details=details,
+    )
+
+
+def run_keyboard_movement_behavior_tests(
+    project_path: str | Path,
+    task_id: str = "G004",
+) -> BehaviorTestResult:
+    """对键盘左右移动逻辑执行源码静态行为检查。
+
+    检查项遵循 docs/tester-behavior-check-protocol.md 定义的四组 13 项。
+
+    Args:
+        project_path: 项目根目录路径
+        task_id: 任务编号
+
+    Returns:
+        BehaviorTestResult 汇总结果
+    """
+    project_root = Path(project_path)
+    js_path = project_root / "script.js"
+
+    # 检查 script.js 是否存在
+    if not js_path.exists():
+        return BehaviorTestResult(
+            task_id=task_id,
+            project_root=str(project_root),
+            status="BLOCKED",
+            result="BLOCKED",
+            passed_count=0,
+            failed_count=0,
+            test_cases=[TestCaseResult(
+                id="BLOCKED", name="script.js 不存在", required=True,
+                passed=False, details=f"文件缺失：{js_path}",
+            )],
+        )
+
+    # 读取源码
+    js_content = load_text(js_path)
+    all_cases: list[TestCaseResult] = []
+
+    # --- B 组：键盘事件检查 ---
+    all_cases.append(_check_keyword(
+        js_content, ["keydown", "addEventListener('keydown'", "onkeydown"],
+        "B-01", "键盘事件监听存在",
+    ))
+    all_cases.append(_check_keyword(
+        js_content, ["ArrowLeft", "keyCode === 37", "key === 'ArrowLeft'", "37"],
+        "B-02", "左方向键处理存在",
+    ))
+    all_cases.append(_check_keyword(
+        js_content, ["ArrowRight", "keyCode === 39", "key === 'ArrowRight'", "39"],
+        "B-03", "右方向键处理存在",
+    ))
+
+    # --- M 组：左右移动逻辑检查 ---
+    all_cases.append(_check_keyword(
+        js_content, ["playerState.x", "playerX", "player.x", "position.x"],
+        "M-01", "玩家横向位置变量存在",
+    ))
+    all_cases.append(_check_keyword(
+        js_content, ["x -", "x -= ", "position -", "-= MOVE_SPEED", "-= moveSpeed"],
+        "M-02", "左移逻辑存在",
+    ))
+    all_cases.append(_check_keyword(
+        js_content, ["x +", "x += ", "position +", "+= MOVE_SPEED", "+= moveSpeed"],
+        "M-03", "右移逻辑存在",
+    ))
+    all_cases.append(_check_keyword(
+        js_content, ["moveSpeed", "MOVE_SPEED", "speed", "SPEED", "step", "STEP"],
+        "M-04", "移动速度或步长存在",
+    ))
+
+    # --- L 组：边界限制检查 ---
+    all_cases.append(_check_keyword(
+        js_content, ["Math.max", ">= 0", "x < 0", ".x < 0", ".x = 0"],
+        "L-01", "左边界限制存在",
+    ))
+    all_cases.append(_check_keyword(
+        js_content, ["Math.min", "areaWidth", "clientWidth", "areaWidth - player"],
+        "L-02", "右边界限制存在",
+    ))
+    # L-03：同时存在左边界和右边界判断
+    has_left_boundary = contains_any(js_content, ["x < 0", ".x < 0", "x = 0", ".x = 0"])
+    has_right_boundary = contains_any(js_content, ["areaWidth", "clientWidth"])
+    l03_passed = has_left_boundary and has_right_boundary
+    all_cases.append(TestCaseResult(
+        id="L-03",
+        name="玩家不能移出游戏区域",
+        required=True,
+        passed=l03_passed,
+        details="左/右边界判断同时存在" if l03_passed else "缺少左边界或右边界判断",
+    ))
+
+    # --- U 组：玩家位置更新检查 ---
+    all_cases.append(_check_keyword(
+        js_content, ["updatePlayerPosition", "updatePosition", "render", "draw"],
+        "U-01", "位置更新函数存在",
+    ))
+    all_cases.append(_check_keyword(
+        js_content, ["style.left", "style.transform", "translateX", "offsetLeft"],
+        "U-02", "DOM 位置更新存在",
+    ))
+    # U-03：移动逻辑中调用位置更新函数
+    has_movement = contains_any(js_content, ["x +=", "x -=", "+= MOVE", "-= MOVE"])
+    has_update_call = contains_any(js_content, ["updatePlayerPosition()", "updatePosition()", "render()", "draw()"])
+    u03_passed = has_movement and has_update_call
+    all_cases.append(TestCaseResult(
+        id="U-03",
+        name="移动后调用更新函数",
+        required=True,
+        passed=u03_passed,
+        details="移动逻辑和位置更新调用同时存在" if u03_passed else "缺少移动逻辑或位置更新调用",
+    ))
+
+    # --- 汇总 ---
+    passed_count = sum(1 for c in all_cases if c.passed)
+    failed_count = len(all_cases) - passed_count
+    all_required_passed = all(c.passed for c in all_cases if c.required)
+
+    status = "PASS" if all_required_passed else "FAIL"
+    result = "PASS" if all_required_passed else "FAIL"
+
+    return BehaviorTestResult(
+        task_id=task_id,
+        project_root=str(project_root),
+        status=status,
+        result=result,
+        passed_count=passed_count,
+        failed_count=failed_count,
+        test_cases=all_cases,
+    )
+
+
+def save_behavior_test_report(
+    result: BehaviorTestResult,
+    output_path: str | Path,
+) -> Path:
+    """保存行为检查测试报告。"""
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # 任务名称映射
+    task_names = {
+        "G004": "实现玩家键盘左右移动",
+    }
+    task_name = task_names.get(result.task_id, result.task_id)
+
+    # 构建 Test Cases 表格行
+    table_rows = []
+    for tc in result.test_cases:
+        required_text = "是" if tc.required else "否"
+        result_text = "PASS" if tc.passed else "FAIL"
+        table_rows.append(f"| {tc.id} | {tc.name} | {required_text} | {result_text} | {tc.details} |")
+
+    table_str = "\n".join(table_rows)
+
+    # 构建 Failed Items
+    failed_cases = [tc for tc in result.test_cases if not tc.passed]
+    if failed_cases:
+        failed_items = "\n".join(f"- {tc.id} {tc.name}：{tc.details}" for tc in failed_cases)
+        fix_suggestions = "\n".join(f"- 修复 {tc.id} {tc.name}" for tc in failed_cases)
+    else:
+        failed_items = "（无失败项）"
+        fix_suggestions = "（无建议）"
+
+    # Next Action
+    if result.status == "PASS":
+        next_action = "建议进入 Main Agent 综合决策复核。"
+    elif result.status == "BLOCKED":
+        next_action = "建议检查源码文件是否存在或可读取。"
+    else:
+        next_action = "建议返回 Developer Agent 修复键盘移动逻辑。"
+
+    report = f"""# {result.task_id} Behavior Test Report
+
+## Agent
+
+Tester Agent
+
+## Task
+
+任务编号：{result.task_id}
+任务名称：{task_name}
+
+## Status
+
+{result.status}
+
+## Project
+
+{result.project_root}
+
+## Test Scope
+
+- 键盘事件检查
+- 左右移动逻辑检查
+- 边界限制检查
+- 玩家位置更新检查
+
+## Test Cases
+
+| 编号 | 测试项 | 必需 | 结果 | 说明 |
+|------|--------|------|------|------|
+{table_str}
+
+## Result
+
+{result.result}
+
+## Failed Items
+
+{failed_items}
+
+## Fix Suggestions
+
+{fix_suggestions}
+
+## Evidence
+
+- {result.project_root}/reports/test/{result.task_id}-behavior-test-report.md
+
+## Next Action
+
+{next_action}
+"""
+
+    output_path.write_text(report, encoding="utf-8")
+    return output_path
+
+
+def run_behavior_tester_for_game_task(task_id: str = "G004") -> tuple[Path, BehaviorTestResult]:
+    """对 down-100-floors-game 指定任务执行行为检查。
+
+    Args:
+        task_id: 游戏任务编号，默认 G004
+
+    Returns:
+        (报告路径, BehaviorTestResult)
+    """
+    runner_root = Path(__file__).parent.parent
+    game_project = runner_root / "projects" / "down-100-floors-game"
+
+    # 执行行为检查
+    result = run_keyboard_movement_behavior_tests(game_project, task_id)
+
+    # 将绝对路径转为相对路径
+    result.project_root = "projects/down-100-floors-game"
+
+    # 保存行为检查报告
+    report_path = game_project / "reports" / "test" / f"{task_id}-behavior-test-report.md"
+    save_behavior_test_report(result, report_path)
+
+    result.report_path = str(report_path)
+
+    # 输出摘要
+    print(f"已执行行为检查：{task_id}")
+    print(f"Status：{result.status}")
+    print(f"Result：{result.result}")
+    print(f"Passed：{result.passed_count}")
+    print(f"Failed：{result.failed_count}")
+
+    return report_path, result

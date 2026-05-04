@@ -294,3 +294,32 @@ Main Agent 综合决策规则：
 7. **覆盖率报告** — JS 代码覆盖率统计
 
 以上扩展均不在 T030 第一版范围内。
+
+## 11. 行为检查扩展
+
+基础静态检查用于验证页面结构和关键文件存在。
+
+行为检查用于进一步验证交互逻辑，例如：
+
+- 键盘事件监听
+- 左右移动逻辑
+- 边界限制
+- DOM 位置更新
+
+当前阶段行为检查仍然基于源码静态检查，不引入浏览器自动化。
+
+行为检查协议详见：`docs/tester-behavior-check-protocol.md`
+
+行为检查报告模板：`templates/agent-output/tester-behavior-check-template.md`
+
+行为检查完成证据：
+
+```text
+<project-root>/reports/test/<task-id>-behavior-test-report.md
+```
+
+基础静态检查和行为检查的关系：
+
+- 基础静态检查和行为检查独立判定
+- 两者都 PASS 才能视为 Tester 整体 PASS
+- Main Agent 应同时读取两个 Tester 证据

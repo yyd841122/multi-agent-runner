@@ -869,7 +869,7 @@
 
 ## T035 Tester 行为检查协议设计
 
-状态：pending
+状态：done
 角色：Architect
 目标：定义 Tester 如何检查键盘事件、边界移动、玩家位置更新等行为逻辑。
 
@@ -884,7 +884,7 @@
 
 ## T036 实现 Tester 键盘移动逻辑静态检查 MVP
 
-状态：pending
+状态：done
 角色：Developer
 目标：增强 Tester Agent，可以检查 G004 是否包含左右键监听、边界限制、位置更新函数。
 
@@ -901,7 +901,7 @@
 
 ## T037 G004 增强测试与 Main Decision 复核
 
-状态：pending
+状态：done
 角色：Developer
 目标：用增强 Tester 重新测试 G004，并重新生成 Main Decision。
 
@@ -911,6 +911,23 @@
 - Main Agent 重新读取 Developer / Tester / Reviewer 结果
 - 重新生成 G004 Main Decision
 - 不自动返工
+
+---
+
+## T037.1 提交并推送 Tester 行为检查增强成果
+
+状态：in_progress
+角色：Developer
+目标：在进入 project.yaml 配置驱动前，提交并推送 Tester 行为检查增强成果。
+
+### 验收标准
+
+- git status 已检查
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean
+- 生成提交记录报告
 
 ---
 

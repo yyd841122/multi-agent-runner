@@ -64,3 +64,13 @@ PASS / FAIL
 ## Next Action
 
 建议下一步：
+
+## Behavior Check Extension
+
+本模板只覆盖基础静态 Web 检查。
+
+如果任务涉及交互行为，例如键盘移动、点击响应、边界限制，应额外生成：
+
+`reports/test/<task-id>-behavior-test-report.md`
+
+行为检查协议详见：`docs/tester-behavior-check-protocol.md`

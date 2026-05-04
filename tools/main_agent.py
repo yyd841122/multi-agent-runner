@@ -502,3 +502,272 @@ def run_combined_decision_for_game_task(task_id: str = "G003") -> Path:
     save_combined_decision(decision, report_path)
 
     return report_path, decision
+
+
+# ---------------------------------------------------------------------------
+# T037: 增强综合决策（Developer / Tester / Behavior Tester / Reviewer 四方）
+# ---------------------------------------------------------------------------
+
+@dataclass
+class EnhancedCombinedDecision:
+    """增强综合决策结果（含行为测试）。"""
+    task_id: str
+    developer_report_exists: bool
+    basic_tester_status: str | None
+    basic_tester_result: str | None
+    behavior_tester_status: str | None
+    behavior_tester_result: str | None
+    behavior_report_exists: bool
+    reviewer_status: str | None
+    reviewer_decision: str | None
+    decision: str  # COMPLETE / REQUEST_CHANGES / RETRY / BLOCKED
+    reason: str
+    next_action: str
+    blocked: bool = False
+
+
+def decide_from_dev_test_behavior_review(
+    task_id: str,
+    dev_report_exists: bool,
+    basic_tester_data: dict,
+    behavior_tester_data: dict | None,
+    reviewer_data: dict,
+) -> EnhancedCombinedDecision:
+    """综合 Developer / Tester / Behavior Tester / Reviewer 四方结果生成 Main Decision。
+
+    Args:
+        task_id: 任务编号
+        dev_report_exists: 开发报告是否存在
+        basic_tester_data: 基础 Tester 报告解析结果
+        behavior_tester_data: 行为 Tester 报告解析结果（None 表示报告不存在）
+        reviewer_data: Reviewer 报告解析结果
+
+    Returns:
+        EnhancedCombinedDecision 增强综合决策结果
+    """
+    behavior_exists = behavior_tester_data is not None
+    b_status = behavior_tester_data.get("status") if behavior_tester_data else None
+    b_result = behavior_tester_data.get("result") if behavior_tester_data else None
+
+    # 规则 1：开发报告不存在
+    if not dev_report_exists:
+        return EnhancedCombinedDecision(
+            task_id=task_id,
+            developer_report_exists=False,
+            basic_tester_status=basic_tester_data.get("status"),
+            basic_tester_result=basic_tester_data.get("result"),
+            behavior_tester_status=b_status,
+            behavior_tester_result=b_result,
+            behavior_report_exists=behavior_exists,
+            reviewer_status=reviewer_data.get("status"),
+            reviewer_decision=reviewer_data.get("decision"),
+            decision="BLOCKED",
+            reason="缺少开发报告",
+            next_action="返回 Developer Agent 重新生成开发报告",
+            blocked=True,
+        )
+
+    # 规则 2：基础 Tester 失败
+    if basic_tester_data.get("result") != "PASS":
+        return EnhancedCombinedDecision(
+            task_id=task_id,
+            developer_report_exists=True,
+            basic_tester_status=basic_tester_data.get("status"),
+            basic_tester_result=basic_tester_data.get("result"),
+            behavior_tester_status=b_status,
+            behavior_tester_result=b_result,
+            behavior_report_exists=behavior_exists,
+            reviewer_status=reviewer_data.get("status"),
+            reviewer_decision=reviewer_data.get("decision"),
+            decision="REQUEST_CHANGES",
+            reason="基础 Tester 测试未通过",
+            next_action="返回 Developer Agent 修复测试失败项",
+        )
+
+    # 规则 3：行为 Tester 报告存在但失败
+    if behavior_exists and b_result != "PASS":
+        return EnhancedCombinedDecision(
+            task_id=task_id,
+            developer_report_exists=True,
+            basic_tester_status=basic_tester_data.get("status"),
+            basic_tester_result=basic_tester_data.get("result"),
+            behavior_tester_status=b_status,
+            behavior_tester_result=b_result,
+            behavior_report_exists=behavior_exists,
+            reviewer_status=reviewer_data.get("status"),
+            reviewer_decision=reviewer_data.get("decision"),
+            decision="REQUEST_CHANGES",
+            reason="行为 Tester 测试未通过",
+            next_action="返回 Developer Agent 修复行为逻辑问题",
+        )
+
+    # 规则 4：Reviewer 不批准
+    if reviewer_data.get("decision") != "APPROVE":
+        return EnhancedCombinedDecision(
+            task_id=task_id,
+            developer_report_exists=True,
+            basic_tester_status=basic_tester_data.get("status"),
+            basic_tester_result=basic_tester_data.get("result"),
+            behavior_tester_status=b_status,
+            behavior_tester_result=b_result,
+            behavior_report_exists=behavior_exists,
+            reviewer_status=reviewer_data.get("status"),
+            reviewer_decision=reviewer_data.get("decision"),
+            decision="REQUEST_CHANGES",
+            reason="Reviewer 审查未批准",
+            next_action="根据 Reviewer Issues 返回 Developer Agent 修复",
+        )
+
+    # 规则 5：全部通过
+    if behavior_exists:
+        reason = "Developer / Tester / Behavior Tester / Reviewer 证据均通过"
+    else:
+        reason = "Developer / Tester / Reviewer 证据均通过（无行为测试报告）"
+
+    return EnhancedCombinedDecision(
+        task_id=task_id,
+        developer_report_exists=True,
+        basic_tester_status=basic_tester_data.get("status"),
+        basic_tester_result=basic_tester_data.get("result"),
+        behavior_tester_status=b_status,
+        behavior_tester_result=b_result,
+        behavior_report_exists=behavior_exists,
+        reviewer_status=reviewer_data.get("status"),
+        reviewer_decision=reviewer_data.get("decision"),
+        decision="COMPLETE",
+        reason=reason,
+        next_action="可以进入下一个任务",
+    )
+
+
+def save_enhanced_combined_decision(
+    decision: EnhancedCombinedDecision, output_path: str | Path,
+) -> Path:
+    """保存增强综合决策报告。"""
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    dev_text = "exists" if decision.developer_report_exists else "missing"
+    basic_text = decision.basic_tester_result or "missing"
+    behavior_text = decision.behavior_tester_result if decision.behavior_report_exists else "missing"
+    reviewer_text = decision.reviewer_decision or "missing"
+
+    report = f"""# {decision.task_id} Main Decision Report V2
+
+## Agent
+
+Main Agent
+
+## Task
+
+任务编号：{decision.task_id}
+
+## Evidence Inputs
+
+- Developer Report: {dev_text}
+- Basic Tester Report: {basic_text}
+- Behavior Tester Report: {behavior_text}
+- Reviewer Report: {reviewer_text}
+
+## Parsed Results
+
+### Developer
+
+developer_report_exists: {'true' if decision.developer_report_exists else 'false'}
+
+### Basic Tester
+
+status: {decision.basic_tester_status or 'N/A'}
+result: {decision.basic_tester_result or 'N/A'}
+
+### Behavior Tester
+
+status: {decision.behavior_tester_status or 'N/A'}
+result: {decision.behavior_tester_result or 'N/A'}
+report_exists: {'true' if decision.behavior_report_exists else 'false'}
+
+### Reviewer
+
+status: {decision.reviewer_status or 'N/A'}
+decision: {decision.reviewer_decision or 'N/A'}
+
+## Main Decision
+
+{decision.decision}
+
+## Reason
+
+{decision.reason}
+
+## Next Action
+
+{decision.next_action}
+
+## Notes
+
+本报告为增强综合决策（含行为测试），不自动返工，不自动修改任务状态。
+"""
+
+    output_path.write_text(report, encoding="utf-8")
+    return output_path
+
+
+def run_enhanced_combined_decision_for_game_task(
+    task_id: str = "G004",
+) -> tuple[Path, EnhancedCombinedDecision]:
+    """对 down-100-floors-game 的指定任务生成增强综合决策报告。
+
+    读取 Developer / Basic Tester / Behavior Tester / Reviewer 四方报告，
+    生成增强版综合决策。
+
+    Args:
+        task_id: 游戏任务编号，默认 G004
+
+    Returns:
+        (报告路径, EnhancedCombinedDecision)
+    """
+    runner_root = Path(__file__).parent.parent
+    game_project = runner_root / "projects" / "down-100-floors-game"
+
+    # 1. 检查 Developer 报告
+    dev_report_path = game_project / "reports" / "dev" / f"{task_id}-dev-report.md"
+    dev_report_exists = dev_report_path.exists()
+
+    # 2. 读取并解析基础 Tester 报告
+    basic_tester_path = game_project / "reports" / "test" / f"{task_id}-test-report.md"
+    basic_tester_data = {"status": None, "result": None}
+    if basic_tester_path.exists():
+        basic_tester_data = parse_tester_report(
+            basic_tester_path.read_text(encoding="utf-8")
+        )
+
+    # 3. 读取并解析行为 Tester 报告（可选）
+    behavior_tester_path = game_project / "reports" / "test" / f"{task_id}-behavior-test-report.md"
+    behavior_tester_data = None
+    if behavior_tester_path.exists():
+        behavior_tester_data = parse_tester_report(
+            behavior_tester_path.read_text(encoding="utf-8")
+        )
+
+    # 4. 读取并解析 Reviewer 报告
+    reviewer_path = game_project / "reports" / "review" / f"{task_id}-review-report.md"
+    reviewer_data = {"status": None, "decision": None}
+    if reviewer_path.exists():
+        reviewer_data = parse_reviewer_report(
+            reviewer_path.read_text(encoding="utf-8")
+        )
+
+    # 5. 增强综合决策
+    decision = decide_from_dev_test_behavior_review(
+        task_id=task_id,
+        dev_report_exists=dev_report_exists,
+        basic_tester_data=basic_tester_data,
+        behavior_tester_data=behavior_tester_data,
+        reviewer_data=reviewer_data,
+    )
+
+    # 6. 保存报告为 v2
+    report_path = game_project / "reports" / "final" / f"{task_id}-main-decision-v2.md"
+    save_enhanced_combined_decision(decision, report_path)
+
+    return report_path, decision
