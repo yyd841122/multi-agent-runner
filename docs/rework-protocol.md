@@ -301,3 +301,23 @@ APPROVE_REWORK task=<task-id> round=<round>
 不接受模糊表达（"继续""可以""试一下""你看着办""自动处理"）作为确认。
 
 详细协议见 `docs/rework-execution-confirmation-protocol.md`。
+
+## 16. execute-rework MVP
+
+`execute-rework` 是返工执行前检查命令。
+
+用法：
+
+```bash
+python runner.py execute-rework --project <path> --task <id> --round <n> [--confirm "..."] [--no-dry-run]
+```
+
+MVP 只负责：
+
+- 校验返工轮次
+- 校验严格确认格式
+- 检查 rework prompt 是否存在
+- 生成执行检查报告
+- 返回 BLOCKED / READY_TO_EXECUTE / MANUAL_INTERVENTION
+
+MVP 不执行真实返工。

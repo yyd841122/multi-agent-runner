@@ -419,3 +419,91 @@ python runner.py run-project-task-full --allow-rework *
 返工命令属于 C 类（需要人工确认或任务显式授权）。
 
 详细协议见 `docs/rework-execution-confirmation-protocol.md`。
+
+## 16. Git Backup Command Execution Rule
+
+Git 备份任务允许自动执行 Git 命令，但必须逐条执行，不得合并为 `cd && git ...` 复合命令。
+
+### 允许的逐条执行方式
+
+在明确 Git 备份任务中，可以按顺序逐条执行：
+
+```bash
+pwd
+git status --short
+git check-ignore -v .env
+git diff --stat
+python runner.py
+git add <explicit-files>
+git commit -m "<message>"
+git push
+git status --short
+git log --oneline -1
+```
+
+如果任务明确允许提交全部改动，也可以执行：
+
+```bash
+git add .
+```
+
+但执行前必须先运行：
+
+```bash
+git status --short
+git check-ignore -v .env
+```
+
+### 禁止的复合命令
+
+禁止将 cd 与 Git 写入命令组合在同一行：
+
+```bash
+cd "E:/github_project/multi-agent-runner" && git add .
+cd "E:/github_project/multi-agent-runner" && git commit -m "..."
+cd "E:/github_project/multi-agent-runner" && git push
+cd "E:/github_project/multi-agent-runner" && git add . && git commit -m "..." && git push
+```
+
+原因：
+
+1. `cd && git` 复合命令可能绕过路径安全检查
+2. 可能在错误目录执行 Git 写入操作
+3. Claude Code 会触发 bare repository attack 相关安全确认
+4. 不应把此类复合命令加入 allowlist
+
+### 目录不正确时的处理
+
+执行 Git 备份任务前应先运行：
+
+```bash
+pwd
+```
+
+如果当前目录不是项目根目录：
+
+```
+E:/github_project/multi-agent-runner
+```
+
+则必须停止并报告，不得使用 `cd && git ...` 复合命令继续执行。
+
+### 推荐原则
+
+- 单条低风险命令自动执行
+- Git 备份命令在明确 Git 备份任务中逐条自动执行
+- 禁止 `cd + git` 复合命令
+- 不把危险或复合 Git 命令加入全局 allowlist
+
+## 17. execute-rework 权限边界
+
+`execute-rework` 不属于 A 类低风险命令，不得加入全局 allowlist。
+
+即使 MVP 只是 dry-run，也必须由任务提示词明确授权才能执行。
+
+```bash
+# 不得加入全局 allowlist
+python runner.py execute-rework *
+```
+
+未来如果支持真实返工执行，必须保持人工确认和最大 3 轮限制。

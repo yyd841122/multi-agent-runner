@@ -805,3 +805,28 @@ APPROVE_REWORK task=<task-id> round=<round>
 返工轮次最多 3 次，超过进入人工介入。
 
 详细协议见 `docs/rework-execution-confirmation-protocol.md`。
+
+### Git Backup Command Execution
+
+Git 备份类任务必须遵守以下规则：
+
+- 先使用 `pwd` 确认当前目录
+- 再逐条执行 `git status --short`、`git check-ignore -v .env`、`git diff --stat`
+- 再按任务授权执行 `git add`、`git commit`、`git push`
+- 提交后重新执行 `git status --short` 和 `git log --oneline -1`
+
+禁止使用：
+
+```bash
+cd <project-path> && git add . && git commit -m "..." && git push
+```
+
+如果当前目录不正确，必须停止并报告，而不是通过复合命令切换目录并继续提交。
+
+### execute-rework 与 full task loop
+
+`run-project-task-full` 默认不自动调用 `execute-rework`。
+
+当 full loop 进入 REWORK_CANDIDATE 后，可以提示用户运行 `generate-rework-prompt`，再由用户严格确认后运行 `execute-rework`。
+
+MVP 阶段 `execute-rework` 只做 dry-run 安全检查。

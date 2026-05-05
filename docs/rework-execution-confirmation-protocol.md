@@ -719,3 +719,26 @@ def parse_rework_confirmation(user_input):
 4. **返工成本估算**：在确认前提示本次返工预估的 API 调用次数和耗时
 5. **返工历史分析**：汇总返工成功率、常见失败原因、模型表现等
 6. **智能返工建议**：基于历史数据，建议是否值得继续返工或直接人工介入
+
+## 21. T056 MVP 行为
+
+`execute-rework` 第一版只实现执行前安全检查。
+
+默认行为：
+
+- dry-run=True
+- 不调用 Claude Code
+- 不修改业务代码
+- 只校验 task / round / confirm / prompt
+- 生成 execution check report
+
+只有未来明确实现真实执行能力时，才允许在严格确认后调用 Claude Code。
+
+已实现的本地验证场景：
+
+1. 未提供 confirm → BLOCKED
+2. 模糊确认（"继续"）→ BLOCKED
+3. task/round 不匹配 → BLOCKED
+4. round > 3 → MANUAL_INTERVENTION
+5. round < 1 → BLOCKED
+6. 正确确认 + prompt 存在 → READY_TO_EXECUTE（dry-run）

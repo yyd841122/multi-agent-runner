@@ -1864,23 +1864,54 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
+## T055.3 补充 Git 备份命令逐条执行规则，禁止 cd + git 复合命令
+
+状态：done
+角色：Safety Architect
+目标：补充 Git 备份命令执行规则，明确低风险命令可自动执行、Git 备份命令可逐条自动执行，但禁止 cd + git 复合命令。
+
+### 验收标准
+
+- 更新 docs/command-permission-policy.md
+- 更新 docs/full-task-loop-protocol.md
+- 明确单条低风险命令可以自动执行
+- 明确 Git 备份命令在 Git 备份任务中可以自动执行
+- 明确 Git 备份命令必须逐条执行
+- 明确禁止 `cd && git ...` 复合命令
+- 明确不在项目目录时应停止并报告
+- 更新 memory/lessons.md
+- 更新 memory/pitfalls.md
+- 创建总结报告
+- 创建开发报告
+- 不修改功能代码
+
+---
+
 ## T056 自动返工执行 MVP
 
-状态：pending
+状态：done
 角色：Developer
 目标：在用户确认后执行已有 rework prompt。
 
 ### 验收标准
 
-- 可以读取已生成的 rework prompt
-- 用户确认后可以调用 Claude Code 执行返工
-- 返工后可以重新运行 Tester
-- 返工后可以重新运行 Reviewer
-- 返工后可以重新生成 Main Decision
-- 不自动无限循环
-- 不绕过用户确认
-- 不超过 3 次返工限制
-- 不修改 project.yaml 或主框架文件
+- 新增 execute-rework 命令入口
+- 支持 project / task / round 参数
+- 支持 confirm 参数
+- 未提供 confirm 时必须 BLOCKED
+- confirm 格式错误时必须 BLOCKED
+- confirm 与 task / round 不匹配时必须 BLOCKED
+- round 小于 1 时必须 BLOCKED
+- round 大于 3 时必须进入人工介入或 BLOCKED
+- 环境类错误不得触发返工执行
+- 默认不调用 Claude Code 执行真实返工
+- 默认不修改业务代码
+- 支持 dry-run 或 ready 状态输出
+- 可以生成返工执行检查报告
+- 不把 execute-rework 加入全局 allowlist
+- 更新相关协议文档
+- 创建总结报告
+- 创建开发报告
 
 ---
 

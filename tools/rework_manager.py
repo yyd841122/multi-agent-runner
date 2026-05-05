@@ -359,3 +359,240 @@ def generate_rework_prompt_for_game_task(
     save_rework_prompt(prompt_content, prompt_path)
 
     return prompt_path, "rework_prompt"
+
+
+# ---------------------------------------------------------------------------
+# execute-rework 安全检查（T056 MVP）
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ReworkExecutionCheckResult:
+    """返工执行前安全检查结果。"""
+    task_id: str
+    round_number: int
+    status: str  # BLOCKED / READY_TO_EXECUTE / MANUAL_INTERVENTION
+    reason: str
+    confirmed: bool
+    confirmation_text: str | None
+    report_path: Path | None = None
+
+
+# 模糊确认黑名单
+_FUZZY_CONFIRM_BLACKLIST = frozenset({
+    "继续", "可以", "试一下", "你看着办", "自动处理",
+    "好的", "OK", "ok", "yes", "go", "do it",
+})
+
+
+def validate_rework_confirmation(
+    task_id: str,
+    round_number: int,
+    confirm: str | None,
+) -> tuple[bool, str]:
+    """校验返工确认格式。
+
+    接受：
+      确认执行 <task-id>-R<round> 返工
+      APPROVE_REWORK task=<task-id> round=<round>
+
+    Returns:
+        (is_valid, reason)
+    """
+    if not confirm:
+        return False, "未提供确认文本"
+
+    text = confirm.strip()
+
+    # 检查是否在模糊黑名单中
+    if text.lower() in {x.lower() for x in _FUZZY_CONFIRM_BLACKLIST} or text in _FUZZY_CONFIRM_BLACKLIST:
+        return False, "确认格式不匹配"
+
+    # 格式一：确认执行 <task-id>-R<round> 返工
+    pattern1 = rf"^确认执行\s+{re.escape(task_id)}-R{round_number}\s+返工$"
+    if re.match(pattern1, text):
+        return True, "确认通过"
+
+    # 格式二：APPROVE_REWORK task=<task-id> round=<round>
+    pattern2 = rf"^APPROVE_REWORK\s+task={re.escape(task_id)}\s+round={round_number}$"
+    if re.match(pattern2, text):
+        return True, "确认通过"
+
+    # 检查是否是正确格式但 task/round 不匹配
+    alt_pattern1 = r"^确认执行\s+([A-Z]\d+)-R(\d+)\s+返工$"
+    alt_pattern2 = r"^APPROVE_REWORK\s+task=([A-Z]\d+)\s+round=(\d+)$"
+
+    m1 = re.match(alt_pattern1, text)
+    m2 = re.match(alt_pattern2, text)
+    m = m1 or m2
+
+    if m:
+        confirm_task = m.group(1)
+        confirm_round = m.group(2)
+        if confirm_task != task_id or int(confirm_round) != round_number:
+            return False, "确认 task/round 与请求不一致"
+
+    return False, "确认格式不匹配"
+
+
+def validate_rework_round(round_number: int) -> tuple[bool, str]:
+    """校验返工轮次。
+
+    Returns:
+        (is_valid, reason)
+    """
+    if round_number < 1:
+        return False, "返工轮次不能小于 1"
+    if round_number > MAX_REWORK_ROUNDS:
+        return False, f"超过最大返工次数 {MAX_REWORK_ROUNDS}"
+    return True, "轮次检查通过"
+
+
+def _save_execution_check_report(
+    result: ReworkExecutionCheckResult,
+    project_root: Path,
+    task_id: str,
+    round_number: int,
+    dry_run: bool,
+    rework_prompt_exists: bool,
+) -> Path:
+    """生成返工执行检查报告。"""
+    report_dir = project_root / "reports" / "rework"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / f"{task_id}-R{round_number}-execution-check.md"
+
+    dry_run_text = "True" if dry_run else "False"
+    prompt_text = "存在" if rework_prompt_exists else "不存在"
+
+    report = f"""# Rework Execution Check Report
+
+## Task
+
+任务编号：{task_id}
+
+## Round
+
+R{round_number}
+
+## Status
+
+{result.status}
+
+## Confirmation
+
+确认文本：{result.confirmation_text or '（未提供）'}
+确认结果：{'通过' if result.confirmed else '未通过'}
+
+## Reason
+
+{result.reason}
+
+## Dry Run
+
+{dry_run_text}
+
+## Rework Prompt
+
+{prompt_text}
+
+## Safety Decision
+
+{'安全检查通过，可以进入执行准备。' if result.status == 'READY_TO_EXECUTE' else '安全检查未通过，执行被阻止。'}
+
+## Next Action
+
+"""
+
+    if result.status == "BLOCKED":
+        report += "请修正上述问题后重新执行 execute-rework。\n"
+    elif result.status == "MANUAL_INTERVENTION":
+        report += "已超过最大返工次数，请人工介入分析。\n"
+    elif result.status == "READY_TO_EXECUTE":
+        if dry_run:
+            report += "MVP 模式：dry-run 检查通过，未执行真实返工。\n"
+        else:
+            report += "检查通过，可以执行返工。\n"
+
+    report_path.write_text(report, encoding="utf-8")
+    return report_path
+
+
+def prepare_rework_execution(
+    project_root: Path,
+    task_id: str,
+    round_number: int,
+    confirm: str | None = None,
+    dry_run: bool = True,
+) -> ReworkExecutionCheckResult:
+    """执行返工前的安全检查。
+
+    MVP 默认 dry_run=True，不调用 Claude Code，不修改业务代码。
+
+    Returns:
+        ReworkExecutionCheckResult
+    """
+    project_root = Path(project_root)
+
+    # 1. 校验 round
+    round_valid, round_reason = validate_rework_round(round_number)
+    if not round_valid:
+        status = "MANUAL_INTERVENTION" if round_number > MAX_REWORK_ROUNDS else "BLOCKED"
+        result = ReworkExecutionCheckResult(
+            task_id=task_id,
+            round_number=round_number,
+            status=status,
+            reason=round_reason,
+            confirmed=False,
+            confirmation_text=confirm,
+        )
+        result.report_path = _save_execution_check_report(
+            result, project_root, task_id, round_number, dry_run, False
+        )
+        return result
+
+    # 2. 校验 confirm
+    confirm_valid, confirm_reason = validate_rework_confirmation(task_id, round_number, confirm)
+    if not confirm_valid:
+        result = ReworkExecutionCheckResult(
+            task_id=task_id,
+            round_number=round_number,
+            status="BLOCKED",
+            reason=confirm_reason,
+            confirmed=False,
+            confirmation_text=confirm,
+        )
+        result.report_path = _save_execution_check_report(
+            result, project_root, task_id, round_number, dry_run, False
+        )
+        return result
+
+    # 3. 检查 rework prompt 是否存在
+    rework_prompt_path = project_root / "prompts" / "rework_prompt.md"
+    rework_prompt_exists = rework_prompt_path.exists()
+
+    if not rework_prompt_exists:
+        result = ReworkExecutionCheckResult(
+            task_id=task_id,
+            round_number=round_number,
+            status="BLOCKED",
+            reason="rework prompt 不存在，请先运行 generate-rework-prompt",
+            confirmed=True,
+            confirmation_text=confirm,
+        )
+        result.report_path = _save_execution_check_report(
+            result, project_root, task_id, round_number, dry_run, False
+        )
+        return result
+
+    # 4. 全部检查通过
+    result = ReworkExecutionCheckResult(
+        task_id=task_id,
+        round_number=round_number,
+        status="READY_TO_EXECUTE",
+        reason="确认通过，但 MVP 不执行真实返工" if dry_run else "确认通过",
+        confirmed=True,
+        confirmation_text=confirm,
+    )
+    result.report_path = _save_execution_check_report(
+        result, project_root, task_id, round_number, dry_run, True
+    )
+    return result
