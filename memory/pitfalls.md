@@ -254,3 +254,10 @@
 - 不要跳过 Collision Tester 直接进入 Reviewer。
 - 不要重复执行已经完成的 Developer 阶段。
 - Reviewer API 超时后可以重试一次，但如果持续超时应停止并报告。
+
+## T054 G007 冗余任务关闭避坑
+
+- 不要因为任务列表里还有 T054 pending，就重复执行已经完成的 G007 Reviewer / Main Decision。
+- 不要重复执行已经完成的 G007 Developer。
+- 不要在证据链完整时再次调用 DeepSeek，避免浪费 API 和引入不一致结果。
+- 对于已由子任务完成的目标，应创建关闭记录，而不是重复执行。
