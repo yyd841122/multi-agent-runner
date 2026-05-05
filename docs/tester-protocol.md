@@ -323,3 +323,35 @@ Main Agent 综合决策规则：
 - 基础静态检查和行为检查独立判定
 - 两者都 PASS 才能视为 Tester 整体 PASS
 - Main Agent 应同时读取两个 Tester 证据
+
+## 12. 重力行为检查扩展
+
+基础静态检查用于验证页面结构和关键文件存在。
+
+行为检查用于验证键盘移动、边界限制和位置更新。
+
+重力行为检查用于验证玩家是否随时间向下移动，包括：
+
+- 重力常量（`GRAVITY` / `gravity`）
+- 垂直速度（`velocityY` / `vy`）
+- y 坐标更新（`playerState.y` / `playerY`）
+- gameLoop 中调用重力更新（`applyGravity` / `updateGravity` / `handleGravity`）
+- 不越界实现平台碰撞、平台滚动和失败条件
+
+当前阶段重力行为检查仍然基于源码静态检查，不引入浏览器自动化。
+
+重力行为检查协议详见：`docs/tester-gravity-check-protocol.md`
+
+重力行为检查报告模板：`templates/agent-output/tester-gravity-check-template.md`
+
+重力行为检查完成证据：
+
+```text
+<project-root>/reports/test/<task-id>-gravity-test-report.md
+```
+
+基础静态检查、行为检查和重力行为检查的关系：
+
+- 三类检查独立判定
+- 三者都 PASS 才能视为 Tester 整体 PASS
+- Main Agent 应同时读取三个 Tester 证据
