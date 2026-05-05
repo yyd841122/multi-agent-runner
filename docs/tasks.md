@@ -2034,16 +2034,16 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T059 实现 continuous task planner
 
-状态：pending
+状态：done
 角色：Developer
-目标：实现 `tools/continuous_runner.py`，包含 ContinuousRunState 和 dry-run 计划逻辑。
+目标：实现 `tools/continuous_task_planner.py`，包含 dry-run 计划生成逻辑。
 
 ### 验收标准
 
-- 新增 tools/continuous_runner.py
-- 新增 ContinuousRunState 数据结构
-- 新增 TaskRunResult 数据结构
+- 新增 tools/continuous_task_planner.py
+- 新增 PlannedTask 和 ContinuousTaskPlan 数据结构
 - 实现 dry-run 计划生成（读取任务列表、列出 pending 任务）
+- runner.py 新增 plan-project-loop 命令
 - 不调用 Claude Code
 - 不修改业务代码
 

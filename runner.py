@@ -39,6 +39,7 @@ from tools.main_agent import run_combined_decision_for_game_task
 from tools.main_agent import run_enhanced_combined_decision_for_game_task
 from tools.rework_manager import generate_rework_prompt_for_game_task, MAX_REWORK_ROUNDS, prepare_rework_execution, execute_confirmed_rework, prepare_full_loop_resume
 from tools.full_task_runner import run_project_task_full
+from tools.continuous_task_planner import build_continuous_task_plan
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -1168,6 +1169,35 @@ def main():
 
             if result.report_path:
                 print(f"Report：{result.report_path}")
+    elif args[0] == "plan-project-loop":
+        # T059 continuous task planner dry-run
+        max_tasks_val = 3
+        i = 1
+        while i < len(args):
+            if args[i] == "--max-tasks" and i + 1 < len(args):
+                max_tasks_val = int(args[i + 1])
+                i += 2
+            else:
+                i += 1
+
+        plan = build_continuous_task_plan(
+            project_root=PROJECT_ROOT,
+            max_tasks=max_tasks_val,
+            dry_run=True,
+        )
+
+        print()
+        print(f"PLAN_STATUS={plan.plan_status}")
+        print(f"NEXT_PENDING={plan.next_pending or 'NONE'}")
+        planned_ids = ",".join(t.task_id for t in plan.planned_tasks)
+        print(f"PLANNED_TASKS={planned_ids or 'NONE'}")
+        print(f"MAX_TASKS={plan.max_tasks}")
+        print(f"HARD_LIMIT={plan.hard_limit}")
+        print(f"DRY_RUN={plan.dry_run}")
+        print(f"HUMAN_REVIEW_REQUIRED={plan.human_review_required}")
+        print(f"STOP_REASON={plan.stop_reason or 'NONE'}")
+        print(f"Message：{plan.message}")
+        print(f"NEXT_ACTION={plan.next_action}")
     else:
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")
@@ -1193,6 +1223,7 @@ def main():
         print("  python runner.py generate-rework-prompt [任务编号] [轮次]  生成返工 prompt（默认 G004 轮次 1）")
         print("  python runner.py execute-rework --project <path> --task <id> --round <n> [--confirm \"...\"] [--real-execution] [--resume]  返工执行安全检查、confirmed stub 或 resume stub")
         print("  python runner.py run-project-task-full --project <path> --task <id>  单任务完整闭环（Developer/Tester/Reviewer/Decision）")
+        print("  python runner.py plan-project-loop [--max-tasks N]  连续任务推进计划（dry-run）")
 
 
 if __name__ == "__main__":
