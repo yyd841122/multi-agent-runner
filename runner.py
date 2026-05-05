@@ -1,5 +1,12 @@
 """multi-agent-runner 入口"""
 
+# 在所有 import 之前加载 .env，确保 API Key 可用
+try:
+    from tools.env_loader import load_dotenv_file
+    load_dotenv_file(".env", override=False)
+except Exception:
+    pass
+
 import re
 import sys
 from pathlib import Path
@@ -30,6 +37,7 @@ from tools.tester_runner import run_behavior_tester_for_game_task
 from tools.main_agent import run_combined_decision_for_game_task
 from tools.main_agent import run_enhanced_combined_decision_for_game_task
 from tools.rework_manager import generate_rework_prompt_for_game_task, MAX_REWORK_ROUNDS
+from tools.full_task_runner import run_project_task_full
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -969,6 +977,43 @@ def main():
         print(f"  Decision：{decision.decision}")
         print(f"  Reason：{decision.reason}")
         print(f"  Next Action：{decision.next_action}")
+    elif args[0] == "run-project-task-full":
+        # 解析 --project 和 --task 参数
+        project_path = None
+        task_id = None
+        i = 1
+        while i < len(args):
+            if args[i] == "--project" and i + 1 < len(args):
+                project_path = args[i + 1]
+                i += 2
+            elif args[i] == "--task" and i + 1 < len(args):
+                task_id = args[i + 1]
+                i += 2
+            else:
+                i += 1
+
+        if not project_path or not task_id:
+            print("缺少参数：--project 或 --task")
+            print("用法：python runner.py run-project-task-full --project <project-path> --task <task-id>")
+            return
+
+        loop_result = run_project_task_full(project_path, task_id)
+
+        print()
+        print("run-project-task-full 执行完成：")
+        print(f"项目路径：{loop_result.project_path}")
+        print(f"任务编号：{loop_result.task_id}")
+        print(f"最终状态：{loop_result.final_status}")
+        print()
+        print("阶段结果：")
+        for step in loop_result.steps:
+            status_text = step.status
+            print(f"  - {step.name}：{status_text}")
+        print()
+        if loop_result.full_loop_report_path:
+            print(f"完整闭环报告：{loop_result.full_loop_report_path}")
+        if loop_result.next_action:
+            print(f"下一步：{loop_result.next_action}")
     elif args[0] == "generate-rework-prompt":
         task_id = args[1] if len(args) >= 2 else "G004"
         rework_round = int(args[2]) if len(args) >= 3 else 1
@@ -1011,6 +1056,7 @@ def main():
         print("  python runner.py decide-game-task [任务编号] 综合决策小游戏项目指定任务（默认 G003）")
         print("  python runner.py decide-game-task-v2 [任务编号]  增强综合决策（含行为测试，默认 G004）")
         print("  python runner.py generate-rework-prompt [任务编号] [轮次]  生成返工 prompt（默认 G004 轮次 1）")
+        print("  python runner.py run-project-task-full --project <path> --task <id>  单任务完整闭环（Developer/Tester/Reviewer/Decision）")
 
 
 if __name__ == "__main__":

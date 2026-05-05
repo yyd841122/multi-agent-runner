@@ -186,3 +186,33 @@
 - 不要跳过范围控制检查，S 组检查防止越界实现。
 - 不要把重力检查报告和基础静态检查报告混在一个文件里。
 - 不要在重力测试中引入浏览器自动化，先从源码静态检查开始。
+
+## T049.0 单任务完整闭环自动化设计避坑
+
+- 不要误以为单个 Agent 能自动执行就等于全自动。
+- 不要让 full loop 在 Tester FAIL 后继续 Reviewer。
+- 不要在 Reviewer 429 或 Claude Code 超时时自动重试。
+- 不要跳过 Main Agent 综合决策。
+- 不要让返工自动无限循环。
+- 不要在没有 full task loop 的情况下直接做项目级 run-loop。
+- 不要让 full loop 自动执行 git push、文件删除等高风险操作。
+- 不要忽略命令权限策略，自动化必须有安全边界。
+
+## T049.3 run-project-task-full 首次验证避坑
+
+- 不要把 Reviewer BLOCKED 当作业务代码失败。
+- 缺少 `DEEPSEEK_API_KEY` 属于环境配置问题。
+- `.env` 必须确认被 `.gitignore` 忽略，避免泄露 API Key。
+- full loop 被阻塞后，不应盲目重新执行 Developer。
+- 当前 full loop 还没有 resume 机制，后续需要支持从 Reviewer 阶段恢复。
+- Specialized Tester 当前对 G006 仍为 SKIPPED，后续 T050 需要补 gravity tester。
+
+## T050.2 G006 与 .env 自动加载避坑
+
+- 不要提交 `.env` 到 GitHub。
+- 不要在日志中打印真实 API Key。
+- 不要把 `.env` 加载失败误判为业务代码失败。
+- 不要在 Reviewer 缺少 API Key 时继续 Main Decision。
+- 不要重复执行已经完成的 G006 Developer 阶段。
+- 不要把 G006 的重力下落与平台碰撞混在一起。
+- `.env` 自动加载后仍需要检查 `DEEPSEEK_API_KEY` 是否真实可用。

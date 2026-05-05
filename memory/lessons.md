@@ -327,3 +327,64 @@ G005 在执行 `run-project-next` 时出现了特殊情况：
 - 5 组 15 个检查项覆盖了重力常量、速度更新、位置更新、循环集成和范围控制。
 - 重力检查报告与基础静态检查报告、行为检查报告应分开保存，便于 Main Agent 综合判断。
 - 测试协议设计应明确为后续 T050 实现提供方向，包括函数建议和命令建议。
+
+## T049.3 run-project-task-full 首次验证经验
+
+### 成果
+
+`run-project-task-full` MVP 已完成首次真实验证：
+
+- 自动执行 Developer 阶段
+- 自动执行 Basic Tester 阶段
+- 自动进入 Reviewer 阶段
+- Reviewer 因缺少 `DEEPSEEK_API_KEY` 被正确 BLOCKED
+- 系统没有错误继续 Main Decision
+- 生成 `G006-full-loop-report.md`
+- 补充 API Key 后，Reviewer 和 Main Agent 可继续完成闭环
+
+### 关键经验
+
+- 单任务完整闭环自动化已经从协议和代码进入真实验证阶段。
+- full loop 遇到环境变量缺失时应停止，而不是继续错误决策。
+- `.env` 适合用于本地密钥管理，但必须被 `.gitignore` 忽略。
+- 当前 full loop 已能证明 Level 2 自动化初步落地。
+- 下一步应补 `.env` 自动加载能力和 full loop resume 能力。
+
+## T050.2 G006 完整闭环与 .env 自动加载经验
+
+### 成果
+
+G006 已完成完整闭环：
+
+- Developer：PASS
+- Basic Tester：PASS，16/16
+- Reviewer：PASS / APPROVE，Issues=0
+- Main Agent：COMPLETE
+
+`.env` 自动加载能力已完成：
+
+- `tools/env_loader.py` 支持读取项目根目录 `.env`
+- `runner.py` 启动时自动加载 `.env`
+- `.env` 被 `.gitignore` 忽略
+- `.env.example` 可作为安全示例文件提交
+- 不打印真实 API Key
+- 默认不覆盖已有系统环境变量
+
+### 关键经验
+
+- 本地模型 API Key 适合放在 `.env` 中管理，但必须确保 `.env` 不被 Git 跟踪。
+- `.env.example` 可以提交，用于说明需要哪些本地变量。
+- full loop 第一次卡在 Reviewer 是环境配置问题，不是业务代码问题。
+- `.env` 自动加载让 full loop 更接近真正自动化。
+- G006 证明简单重力下落可以作为独立任务完成闭环。
+
+## T049.0 单任务完整闭环自动化设计经验
+
+- 当前系统已经具备各 Agent 的单步能力，但真正自动化需要 full task loop 编排。
+- 单任务完整闭环是从半自动走向自动化落地的关键一步。
+- full loop 必须先覆盖一个任务生命周期，再考虑项目连续循环。
+- 自动化编排必须包含失败停止、返工 prompt、最大返工次数和人工介入边界。
+- 不应直接从单步命令跳到无人值守项目级循环。
+- 命令权限策略（A/B/C/D 四类）是安全自动化的基础，应随协议一起设计。
+- 专项 Tester 选择映射应可配置，后续新增测试类型只需扩展映射表。
+- full loop 第一版应只生成 rework prompt 不自动执行，验证闭环流程可靠后再开放自动返工。

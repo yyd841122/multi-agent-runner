@@ -418,3 +418,61 @@ pending → in_progress → done
 返工任务完成后仍需重新经过 Tester / Reviewer / Main Agent。
 
 返工协议详见：`docs/rework-protocol.md`
+
+## 17. 单任务完整闭环命令
+
+`run-project-task-full` 用于将单个任务的 Developer / Tester / Reviewer / Main Agent 串成完整闭环。
+
+它不替代 `run-project-next`，而是在其基础上增加测试、审查、综合决策和返工 prompt 生成。
+
+### 命令格式
+
+```powershell
+python runner.py run-project-task-full --project projects/down-100-floors-game --task G006
+```
+
+### 闭环流程
+
+1. 读取 project.yaml 和子项目 tasks.md
+2. 定位目标任务
+3. 执行 Developer（如需要）
+4. 检查 Developer 报告
+5. 执行基础 Tester
+6. 根据任务类型选择专项 Tester（如需要）
+7. 执行 Reviewer
+8. 执行 Main Agent 综合决策
+9. 如果 COMPLETE，结束
+10. 如果 REQUEST_CHANGES，生成 rework prompt
+11. 输出完整闭环报告
+
+### 关键规则
+
+- Tester FAIL 时不进入 Reviewer
+- Reviewer API 429 时停止，不重试
+- 最大返工次数：3
+- 第一版只生成 rework prompt，不自动执行返工
+
+### 专项 Tester 选择
+
+```python
+special_tester_map = {
+    "G004": "behavior",
+    "G006": "gravity",
+    "G007": "collision",
+}
+```
+
+### 报告路径
+
+```text
+<project-root>/reports/final/<task-id>-full-loop-report.md
+```
+
+### 命令权限策略
+
+- A 类（自动执行）：状态检查、测试、审查、决策
+- B 类（仅 Git 备份任务）：git add / commit / push
+- C 类（需人工确认）：文件删除、恢复、移动
+- D 类（禁止）：git reset --hard、批量删除
+
+详细协议：`docs/full-task-loop-protocol.md`

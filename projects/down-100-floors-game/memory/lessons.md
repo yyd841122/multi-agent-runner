@@ -1,5 +1,59 @@
 # Lessons
 
+## G006 简单重力下落完整闭环经验
+
+### 成果
+
+`G006 实现简单重力下落` 已完成：
+
+- Developer：PASS
+- Basic Tester：PASS，16/16
+- Reviewer：PASS / APPROVE
+- Main Agent：COMPLETE
+
+### 实现内容
+
+- 添加 `GRAVITY`
+- 添加玩家垂直速度 `vy`
+- 添加 `applyGravity()`
+- 在游戏循环中调用重力更新
+- 玩家 y 坐标随垂直速度变化
+- 未实现平台碰撞、平台滚动、随机平台和游戏失败条件
+
+### 经验
+
+- G006 可以作为重力下落最小闭环任务。
+- 重力逻辑应先独立于平台碰撞实现。
+- full loop 首次执行中遇到 Reviewer 环境问题，但 Developer 和 Tester 阶段自动化已跑通。
+- 后续应补 gravity tester，避免只靠基础静态测试和 Reviewer。
+
+## G006 完整闭环与重力下落经验
+
+### 成果
+
+`G006 实现简单重力下落` 已完成完整闭环：
+
+- Developer：done
+- Basic Tester：PASS
+- Reviewer：APPROVE
+- Main Agent：COMPLETE
+
+### 实现内容
+
+- 玩家开始游戏后会随时间向下移动
+- 存在 `GRAVITY`
+- 存在玩家垂直速度 `vy`
+- `applyGravity()` 更新 `vy` 和 `y`
+- `gameLoop` 调用重力更新逻辑
+- 玩家位置更新后页面显示正确
+- 未实现平台碰撞、平台滚动、随机平台、失败条件和角色技能
+
+### 经验
+
+- 重力下落应独立于平台碰撞完成。
+- G006 为后续 G007 平台碰撞奠定基础。
+- G006 后续仍需要 gravity tester 做专项验证。
+
 ## G002 第一次自动开发任务成功经验
 
 ### 成果

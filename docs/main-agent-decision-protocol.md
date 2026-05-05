@@ -150,3 +150,45 @@ Main Agent 不直接修改代码，而是输出：
 第一版不自动执行返工，只生成返工任务和返工 prompt，等待用户确认。
 
 返工协议详见：`docs/rework-protocol.md`
+
+## 12. Full Task Loop 中的 Main Agent
+
+在 full task loop 中，Main Agent 是最终状态裁决者。
+
+### 12.1 证据输入
+
+Main Agent 必须基于以下所有证据进行判断：
+
+| 证据 | 路径 | 必须 |
+|------|------|------|
+| Developer report | `reports/dev/<task-id>-dev-report.md` | 是 |
+| Basic Tester report | `reports/test/<task-id>-test-report.md` | 是 |
+| Specialized Tester report | `reports/test/<task-id>-<type>-test-report.md` | 如存在 |
+| Reviewer report | `reports/review/<task-id>-review-report.md` | 是 |
+
+### 12.2 判定规则
+
+```
+如果 Developer done AND Basic Tester PASS AND
+   (无专项 Tester OR 专项 Tester PASS) AND
+   Reviewer APPROVE:
+    → COMPLETE
+
+如果 Tester FAIL OR 专项 Tester FAIL:
+    → REQUEST_CHANGES
+
+如果 Reviewer REQUEST_CHANGES:
+    → REQUEST_CHANGES
+
+如果 模型限额 OR 超时 OR 缺报告:
+    → BLOCKED
+```
+
+### 12.3 关键原则
+
+- Main Agent 不能只依赖单一模型输出
+- 必须综合 Developer / Tester / 专项 Tester / Reviewer 所有证据
+- 不直接修改业务代码
+- 不自动执行返工（只生成 rework prompt）
+
+详细协议：`docs/full-task-loop-protocol.md`

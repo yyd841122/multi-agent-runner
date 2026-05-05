@@ -1247,7 +1247,7 @@
 
 ## T048.1 提交并推送 T047-T048 重力协议与 G006 任务规划成果
 
-状态：in_progress
+状态：done
 角色：Developer
 目标：在重新处理 G006 执行前，提交并推送重力测试协议和 G006 任务规划成果。
 
@@ -1264,28 +1264,173 @@
 
 ---
 
-## T049 使用 run-project-next 自动执行 G006
+## T049.0 设计单任务完整闭环自动化命令
 
-状态：pending
-角色：Developer
-目标：自动实现简单重力下落。
+状态：done
+角色：Architect
+目标：设计 run-project-task-full 命令，将 Developer / Tester / Reviewer / Main Agent 串成单任务完整闭环。
 
 ### 验收标准
 
-- Developer 生成 G006-dev-report
-- 玩家可以随时间向下移动
-- 重力下落逻辑清晰可测试
-- 不做平台碰撞
-- 不做平台滚动
-- 不做失败条件
-- 不做随机平台
-- 不做角色技能系统
+- 创建 docs/full-task-loop-protocol.md
+- 明确 run-project-task-full 命令格式
+- 明确单任务完整闭环步骤
+- 明确 Developer 执行规则
+- 明确 Tester 执行规则
+- 明确专项 Tester 选择规则
+- 明确 Reviewer 执行规则
+- 明确 Main Agent 决策规则
+- 明确失败与返工 prompt 生成规则
+- 明确最大返工次数限制
+- 明确人工介入边界
+- 不实现代码
+- 不执行 G006
+
+---
+
+## T049.1 实现 run-project-task-full MVP
+
+状态：done
+角色：Developer
+目标：实现单任务完整闭环命令 MVP，将 Developer / Tester / Reviewer / Main Agent 串起来。
+
+### 验收标准
+
+- 新增 tools/full_task_runner.py
+- 新增 runner.py 命令 run-project-task-full
+- 支持 --project 参数
+- 支持 --task 参数
+- 可以调用 Developer 阶段
+- 可以调用 Basic Tester 阶段
+- 可以调用 Reviewer 阶段
+- 可以调用 Main Decision 阶段
+- 可以生成 full-loop-report
+- 任一阶段失败时停止后续阶段
+- 不自动返工
+- 不自动重试
+- 不执行 G006
+
+---
+
+## T049.2 调整 T049 为使用 run-project-task-full 验证 G006
+
+状态：done
+角色：Planner
+目标：将 T049 从旧的 run-project-next 单步执行调整为 run-project-task-full 单任务完整闭环验证。
+
+### 验收标准
+
+- T049 名称已调整为 run-project-task-full 验证
+- T049 目标已调整为单任务完整闭环
+- T049 验收标准包含 Developer / Tester / Reviewer / Main Agent
+- T049 保持 pending
+- 不执行 G006
+- 不修改功能代码
+
+---
+
+## T049.3 记录 run-project-task-full 首次验证与 G006 完整闭环
+
+状态：done
+角色：Reporter
+目标：记录 run-project-task-full 首次真实验证结果、Reviewer BLOCKED 情况、.env 安全忽略、补跑 Reviewer / Main Decision 成功，以及 G006 完整闭环。
+
+### 验收标准
+
+- T049 已标记为 done
+- T049.3 已标记为 done
+- 记录 run-project-task-full 首次验证结果
+- 记录 Developer / Basic Tester / Specialized Tester / Reviewer 各阶段结果
+- 记录 Reviewer 因缺少 DEEPSEEK_API_KEY 被 BLOCKED
+- 记录 .env 已被 .gitignore 忽略
+- 记录手动加载 .env 后 Reviewer 通过
+- 记录 Main Agent 决策 COMPLETE
+- 更新主项目 memory/lessons.md
+- 更新主项目 memory/pitfalls.md
+- 更新验证项目 memory/lessons.md
+- 更新验证项目 memory/pitfalls.md
+- 创建总结报告
+- 创建开发报告
+- 不重新执行 G006
+- 不修改小游戏业务代码
+
+---
+
+## T049 使用 run-project-task-full 验证 G006 单任务完整闭环
+
+状态：done
+角色：Developer
+目标：使用 run-project-task-full 命令验证 G006 的 Developer / Tester / Reviewer / Main Agent 单任务完整闭环。
+
+### 验收标准
+
+- 使用 run-project-task-full 执行 G006
+- Developer 阶段可以自动执行 G006
+- Basic Tester 阶段可以自动执行
+- Reviewer 阶段可以自动执行
+- Main Decision 阶段可以自动执行
+- 可以生成 G006-full-loop-report.md
+- 如果 Developer 超时，应停止在 Developer 阶段
+- 如果 Tester FAIL，应停止并建议生成 rework prompt
+- 如果 Reviewer REQUEST_CHANGES，应停止并建议生成 rework prompt
+- 不自动执行返工
+- 不无限循环
+- 不跳过人工介入边界
+
+---
+
+## T050.1 添加 .env 自动加载能力
+
+状态：done
+角色：Developer
+目标：让 runner.py 启动时自动读取项目根目录 .env，加载 DeepSeek 等本地环境变量，避免手动 PowerShell 加载。
+
+### 验收标准
+
+- 新增 tools/env_loader.py
+- runner.py 启动时自动加载 .env
+- 支持读取 DEEPSEEK_API_KEY
+- 不覆盖已有系统环境变量
+- 不打印真实 API Key
+- 新增 .env.example
+- 确认 .env 被 .gitignore 忽略
+- 不调用 DeepSeek API
+- 不执行 G006
+- 不执行 full loop
+
+---
+
+## T050.2 记录 G006 完整闭环与 .env 自动加载能力，并完成 T050
+
+状态：done
+角色：Reporter
+目标：记录 G006 完整闭环结果和 .env 自动加载能力，并完成 T050 收尾。
+
+### 验收标准
+
+- T050 已标记为 done
+- T050.2 已标记为 done
+- 记录 G006 Developer 结果
+- 记录 G006 Basic Tester 结果
+- 记录 G006 Reviewer 结果
+- 记录 G006 Main Agent 结果
+- 记录 run-project-task-full 首次验证结果
+- 记录 .env 自动加载能力
+- 记录 .env 已被 .gitignore 忽略
+- 更新主项目 memory/lessons.md
+- 更新主项目 memory/pitfalls.md
+- 更新验证项目 memory/lessons.md
+- 更新验证项目 memory/pitfalls.md
+- 创建总结报告
+- 创建开发报告
+- 不重新执行 G006
+- 不调用 DeepSeek API
 
 ---
 
 ## T050 G006 Tester / Reviewer / Main Decision 完整闭环
 
-状态：pending
+状态：done
 角色：Developer
 目标：让 G006 完成测试、审查、综合决策。
 
@@ -1297,6 +1442,23 @@
 - 生成 G006-main-decision（综合决策）
 - 如果失败，只记录，不自动返工
 - 不跳过证据链
+
+---
+
+## T050.3 Git 提交并推送 T047-T050 所有工作
+
+状态：in_progress
+角色：Developer
+目标：将 T047-T050 所有新增和修改文件提交并推送到远程仓库。
+
+### 验收标准
+
+- 所有 T047-T050 新增文件已提交
+- 所有 T047-T050 修改文件已提交
+- .env 不被提交（已在 .gitignore 中）
+- git push 成功
+- 工作区干净
+- python runner.py 显示 T051 为下一个 pending
 
 ---
 

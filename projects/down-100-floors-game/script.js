@@ -2,6 +2,7 @@
 // G003: 玩家角色显示
 // G004: 玩家键盘左右移动
 // G005: 基础平台显示
+// G006: 简单重力下落
 
 (function () {
     const startBtn = document.getElementById('start-btn');
@@ -12,6 +13,7 @@
     const platformEls = gameArea.querySelectorAll('.platform');
 
     var MOVE_SPEED = 4;
+    var GRAVITY = 0.3;
     var isPlaying = false;
     var animFrameId = null;
 
@@ -26,7 +28,8 @@
         x: 0,
         y: 0,
         width: 30,
-        height: 30
+        height: 30,
+        vy: 0
     };
 
     // 平台固定布局：left(百分比), top(px), width(百分比)
@@ -50,6 +53,7 @@
         var areaWidth = gameArea.clientWidth;
         playerState.x = (areaWidth - playerState.width) / 2;
         playerState.y = 20;
+        playerState.vy = 0;
         updatePlayerPosition();
         player.style.display = 'block';
     }
@@ -103,9 +107,15 @@
         }
     }
 
+    function applyGravity() {
+        playerState.vy += GRAVITY;
+        playerState.y += playerState.vy;
+    }
+
     function gameLoop() {
         if (!isPlaying) return;
         handlePlayerMovement();
+        applyGravity();
         updatePlayerPosition();
         animFrameId = requestAnimationFrame(gameLoop);
     }
