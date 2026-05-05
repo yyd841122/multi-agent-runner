@@ -2051,9 +2051,9 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T060 实现 run-project-loop 命令
 
-状态：pending
+状态：done
 角色：Developer
-目标：在 runner.py 中新增 `run-project-loop` 命令，集成 continuous_runner。
+目标：实现 `run-project-loop` dry-run 命令，复用 continuous_task_planner 模拟连续任务推进。
 
 ### 验收标准
 

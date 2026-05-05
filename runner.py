@@ -40,6 +40,7 @@ from tools.main_agent import run_enhanced_combined_decision_for_game_task
 from tools.rework_manager import generate_rework_prompt_for_game_task, MAX_REWORK_ROUNDS, prepare_rework_execution, execute_confirmed_rework, prepare_full_loop_resume
 from tools.full_task_runner import run_project_task_full
 from tools.continuous_task_planner import build_continuous_task_plan
+from tools.continuous_task_planner import run_project_loop_dry_run
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -1198,6 +1199,66 @@ def main():
         print(f"STOP_REASON={plan.stop_reason or 'NONE'}")
         print(f"Message：{plan.message}")
         print(f"NEXT_ACTION={plan.next_action}")
+    elif args[0] == "run-project-loop":
+        # T060 run-project-loop dry-run
+        max_tasks_val = 3
+        execute_mode = False
+        i = 1
+        while i < len(args):
+            if args[i] == "--max-tasks" and i + 1 < len(args):
+                max_tasks_val = int(args[i + 1])
+                i += 2
+            elif args[i] == "--execute":
+                execute_mode = True
+                i += 1
+            elif args[i] == "--dry-run":
+                i += 1
+            else:
+                i += 1
+
+        # T060: 不支持 --execute
+        if execute_mode:
+            print()
+            print("ERROR：--execute 当前不支持")
+            print("T060 只实现 dry-run 模式，真实执行将在后续任务实现。")
+            print("请去掉 --execute 参数后重试。")
+            return
+
+        result = run_project_loop_dry_run(
+            project_root=PROJECT_ROOT,
+            max_tasks=max_tasks_val,
+        )
+
+        print()
+        print(f"LOOP_STATUS={result.loop_status}")
+        print(f"RUN_ID={result.run_id}")
+        print(f"DRY_RUN={result.dry_run}")
+        print(f"MAX_TASKS={result.max_tasks}")
+        planned_str = ",".join(result.planned_tasks)
+        completed_str = ",".join(result.completed_tasks)
+        failed_str = ",".join(result.failed_tasks)
+        print(f"PLANNED_TASKS={planned_str or 'NONE'}")
+        print(f"COMPLETED_TASKS={completed_str or 'NONE'}")
+        print(f"FAILED_TASKS={failed_str or 'NONE'}")
+        print(f"CURRENT_TASK={result.current_task or 'NONE'}")
+        print(f"NEXT_TASK={result.next_task or 'NONE'}")
+        print(f"STOP_REASON={result.stop_reason or 'NONE'}")
+        print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required}")
+        print(f"TASK_EXECUTION_PERFORMED=false")
+        print(f"CLAUDE_CODE_CALLED=false")
+        print(f"BUSINESS_CODE_CHANGED=false")
+        print(f"NEXT_ACTION={result.next_action}")
+        print()
+        # 每个任务的详细结果
+        if result.task_results:
+            print("--- Task Results ---")
+            for tr in result.task_results:
+                print(f"  {tr.task_id}: status={tr.task_status}, "
+                      f"execution_performed={tr.execution_performed}, "
+                      f"stop_reason={tr.stop_reason or 'NONE'}, "
+                      f"next_action={tr.next_action}")
+            print()
+        print(f"Message：{result.message}")
     else:
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")
@@ -1224,6 +1285,7 @@ def main():
         print("  python runner.py execute-rework --project <path> --task <id> --round <n> [--confirm \"...\"] [--real-execution] [--resume]  返工执行安全检查、confirmed stub 或 resume stub")
         print("  python runner.py run-project-task-full --project <path> --task <id>  单任务完整闭环（Developer/Tester/Reviewer/Decision）")
         print("  python runner.py plan-project-loop [--max-tasks N]  连续任务推进计划（dry-run）")
+        print("  python runner.py run-project-loop [--max-tasks N] [--dry-run]  连续任务模拟推进（dry-run）")
 
 
 if __name__ == "__main__":
