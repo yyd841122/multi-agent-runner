@@ -734,3 +734,372 @@ def run_behavior_tester_for_game_task(task_id: str = "G004") -> tuple[Path, Beha
     print(f"Failed：{result.failed_count}")
 
     return report_path, result
+
+
+# ---------------------------------------------------------------------------
+# 碰撞行为检查（Collision Check）
+# ---------------------------------------------------------------------------
+
+@dataclass
+class CollisionTestResult:
+    """碰撞行为检查汇总结果。"""
+    task_id: str
+    project_root: str
+    status: str  # PASS / FAIL / BLOCKED
+    result: str  # PASS / FAIL / BLOCKED
+    passed_count: int
+    failed_count: int
+    test_cases: list[TestCaseResult] = field(default_factory=list)
+    report_path: str | None = None
+
+
+def run_collision_behavior_tests(
+    project_path: str | Path,
+    task_id: str = "G007",
+) -> CollisionTestResult:
+    """对玩家与平台基础碰撞逻辑执行源码静态行为检查。
+
+    检查项遵循 docs/tester-collision-check-protocol.md 定义的六组 18 项。
+
+    Args:
+        project_path: 项目根目录路径
+        task_id: 任务编号
+
+    Returns:
+        CollisionTestResult 汇总结果
+    """
+    project_root = Path(project_path)
+    js_path = project_root / "script.js"
+
+    # 检查 script.js 是否存在
+    if not js_path.exists():
+        return CollisionTestResult(
+            task_id=task_id,
+            project_root=str(project_root),
+            status="BLOCKED",
+            result="BLOCKED",
+            passed_count=0,
+            failed_count=0,
+            test_cases=[TestCaseResult(
+                id="BLOCKED", name="script.js 不存在", required=True,
+                passed=False, details=f"文件缺失：{js_path}",
+            )],
+        )
+
+    # 读取源码
+    js_content = load_text(js_path)
+    all_cases: list[TestCaseResult] = []
+
+    # --- C 组：碰撞函数 / 状态检查 ---
+    all_cases.append(_check_keyword(
+        js_content,
+        ["checkPlatformCollision", "detectPlatformCollision",
+         "handlePlatformCollision", "resolvePlatformCollision",
+         "checkCollision", "collisionDetection"],
+        "C-01", "碰撞检测函数存在",
+    ))
+    all_cases.append(_check_keyword(
+        js_content,
+        ["vy > 0", "velocityY > 0", "vy >= 0", "velocityY >= 0",
+         "playerState.vy > 0", "playerState.velocityY > 0",
+         "isFalling", "falling"],
+        "C-02", "碰撞逻辑在下落时执行",
+    ))
+    has_on_platform = contains_any(js_content, [
+        "isOnPlatform", "onPlatform", "currentPlatform",
+        "grounded", "isGrounded", "standingOn",
+    ])
+    all_cases.append(TestCaseResult(
+        id="C-03",
+        name="存在站立状态或平台接触状态",
+        required=False,
+        passed=has_on_platform,
+        details="匹配到站立状态关键词" if has_on_platform else "未匹配站立状态关键词（非必需）",
+    ))
+
+    # --- P 组：平台数据检查 ---
+    all_cases.append(_check_keyword(
+        js_content,
+        ["platforms", "PLATFORM_LAYOUT", "platformData", "platformList"],
+        "P-01", "平台数据存在",
+    ))
+    has_platform_struct = contains_any(js_content, [
+        ".x", ".y", ".width", ".height",
+        "platform.x", "platform.y", "platform.width", "platform.height",
+        "plat.x", "plat.y", "plat.width", "plat.height",
+    ])
+    all_cases.append(TestCaseResult(
+        id="P-02",
+        name="平台有 x/y/width/height 信息",
+        required=True,
+        passed=has_platform_struct,
+        details="平台数据包含位置和尺寸信息" if has_platform_struct else "平台数据缺少位置或尺寸信息",
+    ))
+    all_cases.append(_check_keyword(
+        js_content,
+        ["forEach", ".some(", ".find(", "for (", "for("],
+        "P-03", "碰撞逻辑遍历平台",
+    ))
+
+    # --- L 组：落到平台检查 ---
+    all_cases.append(_check_keyword(
+        js_content,
+        ["playerBottom", "playerState.y + playerHeight",
+         "playerState.y + PLAYER_HEIGHT", "player.y + player.height",
+         "playerY + playerH", "bottom"],
+        "L-01", "判断玩家底部位置",
+    ))
+    has_horizontal_overlap = contains_any(js_content, [
+        "playerLeft", "playerRight", "platformLeft", "platformRight",
+        "playerState.x + playerWidth", "playerX + playerWidth",
+        "overlap", "horizontalOverlap", "x + width",
+    ])
+    all_cases.append(TestCaseResult(
+        id="L-02",
+        name="判断玩家水平范围重叠",
+        required=True,
+        passed=has_horizontal_overlap,
+        details="存在水平范围重叠判断" if has_horizontal_overlap else "缺少水平范围重叠判断",
+    ))
+    all_cases.append(_check_keyword(
+        js_content,
+        ["previousY", "previousBottom", "lastY", "prevY", "oldY",
+         "vy >= 0", "velocityY >= 0", "vy > 0", "velocityY > 0",
+         "playerState.vy >= 0", "playerState.velocityY >= 0",
+         "fromAbove"],
+        "L-03", "判断从上方落到平台",
+    ))
+
+    # --- S 组：停止下落检查 ---
+    all_cases.append(_check_keyword(
+        js_content,
+        ["playerState.y = platform.y - playerHeight",
+         "playerState.y = platform.y - PLAYER_HEIGHT",
+         "playerState.y = plat.y", "playerY = platform.y",
+         "playerState.y = platform.y - height",
+         "snapTo", "snapToPlatform"],
+        "S-01", "落到平台后修正 y 坐标",
+    ))
+    all_cases.append(_check_keyword(
+        js_content,
+        ["velocityY = 0", "vy = 0", "playerState.vy = 0",
+         "playerState.velocityY = 0", "speedY = 0",
+         "verticalSpeed = 0"],
+        "S-02", "落到平台后垂直速度归零",
+    ))
+    all_cases.append(_check_keyword(
+        js_content,
+        ["style.top", "updatePlayerPosition", "updatePosition",
+         "renderPlayer", "drawPlayer"],
+        "S-03", "更新玩家 DOM 位置",
+    ))
+
+    # --- T 组：防穿透检查 ---
+    all_cases.append(_check_keyword(
+        js_content,
+        ["previousY", "lastY", "prevY", "oldY",
+         "vy > 0", "velocityY > 0", "playerState.vy > 0"],
+        "T-01", "使用上一帧位置或下落方向避免误判",
+    ))
+    has_y_fix = contains_any(js_content, [
+        "playerState.y = platform.y", "playerState.y = plat.y",
+        "playerY = platform.y", "playerState.y = platform.y -",
+        "snapToPlatform", "clampY",
+    ])
+    all_cases.append(TestCaseResult(
+        id="T-02",
+        name="玩家不能直接穿过平台",
+        required=True,
+        passed=has_y_fix,
+        details="存在 y 坐标修正逻辑" if has_y_fix else "缺少 y 坐标修正逻辑",
+    ))
+    all_cases.append(_check_keyword(
+        js_content,
+        ["vy >= 0", "velocityY >= 0", "vy > 0", "velocityY > 0",
+         "playerState.vy >= 0", "playerState.velocityY >= 0",
+         "isFalling", "falling"],
+        "T-03", "碰撞只在下落时触发",
+    ))
+
+    # --- O 组：范围限制检查（不应出现） ---
+    has_scroll = contains_any(js_content, [
+        "scrollPlatforms", "platformScroll", "movePlatforms", "scrollOffset",
+    ])
+    all_cases.append(TestCaseResult(
+        id="O-01",
+        name="不包含平台滚动逻辑",
+        required=True,
+        passed=not has_scroll,
+        details="未检测到平台滚动逻辑" if not has_scroll else "检测到平台滚动逻辑，越界实现",
+    ))
+    has_random = contains_any(js_content, ["Math.random"])
+    all_cases.append(TestCaseResult(
+        id="O-02",
+        name="不包含随机平台生成",
+        required=True,
+        passed=not has_random,
+        details="未检测到 Math.random" if not has_random else "检测到 Math.random，需确认是否用于平台生成",
+    ))
+    has_game_over = contains_any(js_content, [
+        "gameOver", "isGameOver", "checkFail", "failCondition",
+    ])
+    all_cases.append(TestCaseResult(
+        id="O-03",
+        name="不包含游戏失败条件",
+        required=True,
+        passed=not has_game_over,
+        details="未检测到游戏失败条件" if not has_game_over else "检测到游戏失败条件，越界实现",
+    ))
+
+    # --- 汇总 ---
+    passed_count = sum(1 for c in all_cases if c.passed)
+    failed_count = len(all_cases) - passed_count
+    all_required_passed = all(c.passed for c in all_cases if c.required)
+
+    status = "PASS" if all_required_passed else "FAIL"
+    result = "PASS" if all_required_passed else "FAIL"
+
+    return CollisionTestResult(
+        task_id=task_id,
+        project_root=str(project_root),
+        status=status,
+        result=result,
+        passed_count=passed_count,
+        failed_count=failed_count,
+        test_cases=all_cases,
+    )
+
+
+def save_collision_test_report(
+    result: CollisionTestResult,
+    output_path: str | Path,
+) -> Path:
+    """保存碰撞行为检查测试报告。"""
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    task_names = {
+        "G007": "实现玩家与平台基础碰撞",
+    }
+    task_name = task_names.get(result.task_id, result.task_id)
+
+    table_rows = []
+    for tc in result.test_cases:
+        required_text = "是" if tc.required else "否"
+        result_text = "PASS" if tc.passed else "FAIL"
+        table_rows.append(f"| {tc.id} | {tc.name} | {required_text} | {result_text} | {tc.details} |")
+
+    table_str = "\n".join(table_rows)
+
+    failed_cases = [tc for tc in result.test_cases if not tc.passed and tc.required]
+    if failed_cases:
+        failed_items = "\n".join(f"- {tc.id} {tc.name}：{tc.details}" for tc in failed_cases)
+        fix_suggestions = "\n".join(f"- 修复 {tc.id} {tc.name}" for tc in failed_cases)
+    else:
+        failed_items = "（无失败项）"
+        fix_suggestions = "（无建议）"
+
+    out_of_scope = [tc for tc in result.test_cases if not tc.passed and tc.id.startswith("O-")]
+    if out_of_scope:
+        scope_items = "\n".join(f"- {tc.id} {tc.name}：{tc.details}" for tc in out_of_scope)
+    else:
+        scope_items = "（无越界发现）"
+
+    if result.status == "PASS":
+        next_action = "建议进入 Main Agent 综合决策复核。"
+    elif result.status == "BLOCKED":
+        next_action = "建议检查源码文件是否存在或可读取。"
+    else:
+        next_action = "建议返回 Developer Agent 修复碰撞逻辑。"
+
+    report = f"""# {result.task_id} Collision Test Report
+
+## Agent
+
+Tester Agent
+
+## Task
+
+任务编号：{result.task_id}
+任务名称：{task_name}
+
+## Status
+
+{result.status}
+
+## Project
+
+{result.project_root}
+
+## Test Scope
+
+- 碰撞函数 / 状态检查（C 组）
+- 平台数据检查（P 组）
+- 玩家落到平台检查（L 组）
+- 停止下落检查（S 组）
+- 防穿透检查（T 组）
+- 范围限制检查（O 组）
+
+## Test Cases
+
+| 编号 | 测试项 | 必需 | 结果 | 说明 |
+|------|--------|------|------|------|
+{table_str}
+
+## Result
+
+{result.result}
+
+## Failed Items
+
+{failed_items}
+
+## Out-of-Scope Findings
+
+{scope_items}
+
+## Fix Suggestions
+
+{fix_suggestions}
+
+## Evidence
+
+- {result.project_root}/reports/test/{result.task_id}-collision-test-report.md
+
+## Next Action
+
+{next_action}
+"""
+
+    output_path.write_text(report, encoding="utf-8")
+    return output_path
+
+
+def run_collision_tester_for_game_task(task_id: str = "G007") -> tuple[Path, CollisionTestResult]:
+    """对 down-100-floors-game 指定任务执行碰撞行为检查。
+
+    Args:
+        task_id: 游戏任务编号，默认 G007
+
+    Returns:
+        (报告路径, CollisionTestResult)
+    """
+    runner_root = Path(__file__).parent.parent
+    game_project = runner_root / "projects" / "down-100-floors-game"
+
+    result = run_collision_behavior_tests(game_project, task_id)
+
+    result.project_root = "projects/down-100-floors-game"
+
+    report_path = game_project / "reports" / "test" / f"{task_id}-collision-test-report.md"
+    save_collision_test_report(result, report_path)
+
+    result.report_path = str(report_path)
+
+    print(f"已执行碰撞检查：{task_id}")
+    print(f"Status：{result.status}")
+    print(f"Result：{result.result}")
+    print(f"Passed：{result.passed_count}")
+    print(f"Failed：{result.failed_count}")
+
+    return report_path, result

@@ -19,6 +19,7 @@ from tools.project_runner import (
 )
 from tools.task_manager import load_tasks_file
 from tools.tester_runner import run_tester_for_game_task
+from tools.tester_runner import run_collision_tester_for_game_task
 from tools.reviewer_runner import run_reviewer_for_game_task
 from tools.main_agent import run_combined_decision_for_game_task
 
@@ -62,12 +63,35 @@ SPECIAL_TESTER_MAP = {
 def maybe_run_specialized_tester(
     project_path: Path, task_id: str,
 ) -> FullTaskStepResult | None:
-    """根据任务类型选择专项 Tester。MVP 先只记录未启用。"""
+    """根据任务类型选择专项 Tester。"""
     tester_type = SPECIAL_TESTER_MAP.get(task_id)
     if tester_type is None:
         return None
 
-    # MVP: 专项 Tester 尚未集成到 full loop，跳过
+    # G007: Collision Tester
+    if tester_type == "collision":
+        try:
+            report_path, result = run_collision_tester_for_game_task(task_id)
+            return FullTaskStepResult(
+                name="Collision Tester",
+                status=result.status,
+                success=result.result == "PASS",
+                report_path=str(report_path),
+                message=(
+                    f"Status: {result.status}, "
+                    f"Passed: {result.passed_count}, "
+                    f"Failed: {result.failed_count}"
+                ),
+            )
+        except Exception as e:
+            return FullTaskStepResult(
+                name="Collision Tester",
+                status="BLOCKED",
+                success=False,
+                message=f"Collision Tester 执行异常：{e}",
+            )
+
+    # 其他专项 Tester 尚未集成，跳过
     return FullTaskStepResult(
         name=f"Specialized Tester ({tester_type})",
         status="SKIPPED",

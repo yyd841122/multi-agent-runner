@@ -34,6 +34,7 @@ from tools.reviewer_runner import run_reviewer_for_game_task
 from tools.project_runner import run_project_next
 from tools.tester_runner import run_tester_for_game_task
 from tools.tester_runner import run_behavior_tester_for_game_task
+from tools.tester_runner import run_collision_tester_for_game_task
 from tools.main_agent import run_combined_decision_for_game_task
 from tools.main_agent import run_enhanced_combined_decision_for_game_task
 from tools.rework_manager import generate_rework_prompt_for_game_task, MAX_REWORK_ROUNDS
@@ -966,6 +967,18 @@ def main():
         print(f"  Result：{result.result}")
         print(f"  Passed：{result.passed_count}")
         print(f"  Failed：{result.failed_count}")
+    elif args[0] == "test-game-collision":
+        task_id = args[1] if len(args) >= 2 else "G007"
+        report_path, result = run_collision_tester_for_game_task(task_id)
+        print()
+        print("Tester 碰撞测试报告已生成：")
+        print(f"  {report_path}")
+        print()
+        print("碰撞测试结果：")
+        print(f"  Status：{result.status}")
+        print(f"  Result：{result.result}")
+        print(f"  Passed：{result.passed_count}")
+        print(f"  Failed：{result.failed_count}")
     elif args[0] == "decide-game-task-v2":
         task_id = args[1] if len(args) >= 2 else "G004"
         report_path, decision = run_enhanced_combined_decision_for_game_task(task_id)
@@ -1053,6 +1066,7 @@ def main():
         print("  python runner.py review-game-task [任务编号]  审查小游戏项目指定任务（默认 G002）")
         print("  python runner.py test-game-task [任务编号]   测试小游戏项目指定任务（默认 G003）")
         print("  python runner.py test-game-behavior [任务编号]  行为检查小游戏项目指定任务（默认 G004）")
+        print("  python runner.py test-game-collision [任务编号]  碰撞检查小游戏项目指定任务（默认 G007）")
         print("  python runner.py decide-game-task [任务编号] 综合决策小游戏项目指定任务（默认 G003）")
         print("  python runner.py decide-game-task-v2 [任务编号]  增强综合决策（含行为测试，默认 G004）")
         print("  python runner.py generate-rework-prompt [任务编号] [轮次]  生成返工 prompt（默认 G004 轮次 1）")

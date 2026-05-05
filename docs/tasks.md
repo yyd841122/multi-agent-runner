@@ -1558,7 +1558,7 @@
 
 ## T051.2 提交并推送 T051 碰撞测试协议与 shell 命令策略修正
 
-状态：in_progress
+状态：done
 角色：Developer
 目标：在进入 G007 任务规划前，提交并推送 T051 碰撞测试协议与 Bash / PowerShell 命令策略修正成果。
 
@@ -1577,18 +1577,72 @@
 
 ## T052 新增 G007 玩家与平台基础碰撞任务
 
-状态：pending
+状态：done
 角色：Planner
 目标：在子项目任务清单中添加 G007。
 
 ### 验收标准
 
 - 子项目 tasks.md 追加 G007 pending
-- G007 只做玩家落到平台时停止
-- 不做平台滚动
-- 不做随机平台
-- 不做失败条件
-- 不做角色技能系统
+- G007 只做玩家与平台基础碰撞
+- G007 基于 G005 固定平台和 G006 简单重力
+- 明确后续由 Claude Code 执行 Developer
+- 明确后续由 Tester 执行基础测试与碰撞专项测试
+- 明确后续由 DeepSeek Reviewer 审查
+- 明确后续由 Main Agent 综合决策
+- 不实现平台滚动
+- 不实现随机平台
+- 不实现游戏失败条件
+- 不实现角色技能系统
+- 不修改小游戏业务代码
+
+---
+
+## T052.1 实现 G007 Collision Tester MVP
+
+状态：done
+角色：Developer
+目标：实现 G007 碰撞专项 Tester MVP，让 run-project-task-full 在 G007 阶段可以执行 Collision Tester，而不是跳过专项测试。
+
+### 验收标准
+
+- 新增或扩展 Collision Tester 实现
+- 新增 runner.py 命令 test-game-collision
+- 支持命令 python runner.py test-game-collision G007
+- 可以读取 G007 任务要求
+- 可以读取 script.js
+- 可以检查碰撞函数或碰撞处理逻辑
+- 可以检查平台数据
+- 可以检查玩家底部与平台顶部判断
+- 可以检查水平范围重叠判断
+- 可以检查落到平台后 y 坐标修正
+- 可以检查垂直速度归零或停止增加
+- 可以检查不包含平台滚动
+- 可以检查不包含随机平台
+- 可以检查不包含游戏失败条件
+- 可以生成 G007-collision-test-report.md
+- run-project-task-full 可以在 G007 时调用 Collision Tester
+- 不执行 G007 Developer
+- 不修改小游戏业务代码
+
+---
+
+## T052.2 提交并推送 G007 任务规划与 Collision Tester MVP
+
+状态：in_progress
+角色：Developer
+目标：在执行 G007 自动开发前，提交并推送 G007 任务规划与 Collision Tester MVP。
+
+### 验收标准
+
+- git status 已检查
+- `.env` 确认被 `.gitignore` 忽略
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean
+- python runner.py 正常显示 T053
+- 生成提交记录报告
 
 ---
 
