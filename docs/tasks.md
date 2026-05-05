@@ -2009,3 +2009,106 @@ T054 原始目标已经由以下任务前置完成：
 - 当前改动已提交
 - 已成功 push 到远程仓库
 - push 后工作区 clean
+
+---
+
+## T058 设计连续任务自动推进协议
+
+状态：done
+角色：Architect
+目标：设计从单任务闭环升级为连续任务自动推进的协议。
+
+### 验收标准
+
+- 创建 docs/continuous-task-auto-advance-design.md
+- 明确第六阶段 MVP 边界
+- 明确核心状态模型（ContinuousRunState）
+- 明确 continue / stop 条件
+- 明确 CLI 设计（推荐 run-project-loop）
+- 明确执行流程（dry-run + execute）
+- 明确安全规则
+- 至少 14 个验证场景
+- 不实现代码
+
+---
+
+## T059 实现 continuous task planner
+
+状态：pending
+角色：Developer
+目标：实现 `tools/continuous_runner.py`，包含 ContinuousRunState 和 dry-run 计划逻辑。
+
+### 验收标准
+
+- 新增 tools/continuous_runner.py
+- 新增 ContinuousRunState 数据结构
+- 新增 TaskRunResult 数据结构
+- 实现 dry-run 计划生成（读取任务列表、列出 pending 任务）
+- 不调用 Claude Code
+- 不修改业务代码
+
+---
+
+## T060 实现 run-project-loop 命令
+
+状态：pending
+角色：Developer
+目标：在 runner.py 中新增 `run-project-loop` 命令，集成 continuous_runner。
+
+### 验收标准
+
+- 新增 run-project-loop 命令入口
+- 支持 --project / --max-tasks / --start-task / --dry-run / --execute 参数
+- --dry-run 默认 true，只输出计划
+- --execute 时调用 run-project-task-full 执行任务
+- 任务间安全检查
+- 生成 run summary
+- 不自动 git push
+- 不自动 execute-rework
+
+---
+
+## T061 验证 max_tasks=1 dry-run
+
+状态：pending
+角色：Developer
+目标：验证单任务 dry-run 计划输出。
+
+### 验收标准
+
+- max_tasks=1 dry-run 只输出 1 个任务的计划
+- 不调用 Claude Code
+- 不修改业务代码
+- 输出 run_id / loop_status / next_action
+
+---
+
+## T062 验证 max_tasks=3 dry-run
+
+状态：pending
+角色：Developer
+目标：验证多任务 dry-run 计划输出和停止条件。
+
+### 验收标准
+
+- max_tasks=3 dry-run 输出 3 个任务的计划
+- 验证无 pending 时停止
+- 验证 max_tasks 超上限自动修正
+- 不调用 Claude Code
+- 不修改业务代码
+
+---
+
+## T063 提交并推送第六阶段 MVP
+
+状态：pending
+角色：Developer
+目标：提交并推送 T058-T062 第六阶段 MVP 成果。
+
+### 验收标准
+
+- git status 已检查
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean
