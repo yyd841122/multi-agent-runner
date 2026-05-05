@@ -355,3 +355,41 @@ Main Agent 综合决策规则：
 - 三类检查独立判定
 - 三者都 PASS 才能视为 Tester 整体 PASS
 - Main Agent 应同时读取三个 Tester 证据
+
+## 13. 碰撞行为检查扩展
+
+基础静态检查用于验证页面结构和关键文件存在。
+
+行为检查用于验证键盘移动、边界限制和位置更新。
+
+重力行为检查用于验证玩家是否随时间向下移动。
+
+碰撞行为检查用于验证玩家与平台基础碰撞，包括：
+
+- 碰撞检测函数
+- 平台数据
+- 玩家底部位置
+- 水平范围重叠
+- 从上方落到平台
+- 落到平台后 y 坐标修正
+- 落到平台后垂直速度归零
+- 防穿透检查
+- 不越界实现平台滚动、随机平台和失败条件
+
+当前阶段碰撞行为检查仍然基于源码静态检查，不引入浏览器自动化。
+
+碰撞行为检查协议详见：`docs/tester-collision-check-protocol.md`
+
+碰撞行为检查报告模板：`templates/agent-output/tester-collision-check-template.md`
+
+碰撞行为检查完成证据：
+
+```text
+<project-root>/reports/test/<task-id>-collision-test-report.md
+```
+
+基础静态检查、行为检查、重力行为检查和碰撞行为检查的关系：
+
+- 四类检查独立判定
+- 四者都 PASS 才能视为 Tester 整体 PASS
+- Main Agent 应同时读取四个 Tester 证据

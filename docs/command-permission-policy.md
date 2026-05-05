@@ -55,6 +55,15 @@ python -m py_compile tools/reviewer_runner.py
 python -m py_compile tools/main_agent.py
 ```
 
+### Bash 文件检查
+
+```bash
+test -f <path>
+tail -n <number> <path>
+head -n <number> <path>
+grep -n "<pattern>" <path>
+```
+
 ### PowerShell 文件检查
 
 ```powershell
@@ -205,9 +214,10 @@ Bash(git remote -v*)
 Bash(git check-ignore*)
 Bash(python runner.py*)
 Bash(python -m py_compile*)
-Bash(Test-Path*)
-Bash(Get-Content*)
-Bash(Select-String*)
+Bash(test -f*)
+Bash(tail -n*)
+Bash(head -n*)
+Bash(grep -n*)
 ```
 
 ### Git 备份命令的配置建议
@@ -325,3 +335,64 @@ git log --oneline -1        # 确认提交
 - 支持任务级别权限声明（任务提示词中声明允许的命令）
 - 支持权限审计日志
 - 支持权限策略版本管理
+
+## 14. Bash 与 PowerShell 命令差异
+
+Claude Code 在当前 Windows 项目中可能通过 `Bash(...)` 执行命令。
+因此，自动执行授权应优先使用 Bash 版本命令。
+
+### 文件存在检查
+
+Bash：
+
+```bash
+test -f docs/tasks.md && echo "OK"
+test -f reports/dev/T051-dev-report.md && echo "OK"
+```
+
+PowerShell：
+
+```powershell
+Test-Path docs\tasks.md
+Test-Path reports\dev\T051-dev-report.md
+```
+
+### 文件读取
+
+Bash：
+
+```bash
+tail -n 120 docs/tasks.md
+head -n 80 docs/tasks.md
+```
+
+PowerShell：
+
+```powershell
+Get-Content docs\tasks.md -Encoding UTF8 -Tail 120
+Get-Content docs\tasks.md -Encoding UTF8 -Head 80
+```
+
+### 文本搜索
+
+Bash：
+
+```bash
+grep -n "T051\|T052" docs/tasks.md
+grep -n "run-project-task-full" runner.py
+```
+
+PowerShell：
+
+```powershell
+Select-String -Path docs\tasks.md -Pattern "T051|T052" -Context 0,8
+Select-String -Path runner.py -Pattern "run-project-task-full"
+```
+
+### 规则
+
+- 不要在 `Bash(...)` 中使用 `Test-Path`
+- 不要在 `Bash(...)` 中使用 `Get-Content`
+- 不要在 `Bash(...)` 中使用 `Select-String`
+- Bash 路径优先使用 `/`
+- PowerShell 路径可以使用 `\`

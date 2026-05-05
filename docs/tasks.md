@@ -1490,7 +1490,7 @@
 
 ## T050.3b 提交并推送命令权限白名单策略
 
-状态：in_progress
+状态：done
 角色：Developer
 目标：提交并推送 Claude Code 安全命令自动执行白名单策略文档。
 
@@ -1509,18 +1509,69 @@
 
 ## T051 碰撞检测测试协议设计
 
-状态：pending
+状态：done
 角色：Architect
 目标：设计玩家与平台基础碰撞的测试协议。
 
 ### 验收标准
 
-- 定义碰撞检测的测试检查项
-- 明确只检测玩家落到平台上
-- 明确不做复杂物理
-- 明确不做平台滚动
-- 明确不做失败条件
-- 为 T053 实现 G007 做测试准备
+- 创建 docs/tester-collision-check-protocol.md
+- 创建 Tester 碰撞检查报告模板
+- 明确 G007 玩家与平台基础碰撞测试范围
+- 明确碰撞检测状态检查项
+- 明确平台状态检查项
+- 明确玩家落到平台上的检查项
+- 明确玩家不穿透平台的检查项
+- 明确不测试平台滚动
+- 明确不测试随机平台
+- 明确不测试游戏失败条件
+- 明确不测试角色技能系统
+- 明确 T054 实现方向
+- 不修改小游戏业务代码
+
+---
+
+## T051.1 修正命令权限策略中的 Bash / PowerShell 命令差异
+
+状态：done
+角色：Safety Architect
+目标：修正自动执行命令白名单中的 shell 差异，明确 Bash 与 PowerShell 的对应命令，避免 Claude Code 在 Bash 环境中执行 PowerShell 命令失败。
+
+### 验收标准
+
+- 更新 docs/command-permission-policy.md
+- 明确 Bash 环境下的文件存在检查命令
+- 明确 PowerShell 环境下的文件存在检查命令
+- 明确 Bash 环境下的文件读取命令
+- 明确 PowerShell 环境下的文件读取命令
+- 明确 Bash 环境下的文本搜索命令
+- 明确 PowerShell 环境下的文本搜索命令
+- 移除 Bash 白名单中的 PowerShell 命令示例
+- 更新 docs/full-task-loop-protocol.md
+- 更新 memory/lessons.md
+- 更新 memory/pitfalls.md
+- 创建总结报告
+- 创建开发报告
+- 不修改功能代码
+
+---
+
+## T051.2 提交并推送 T051 碰撞测试协议与 shell 命令策略修正
+
+状态：in_progress
+角色：Developer
+目标：在进入 G007 任务规划前，提交并推送 T051 碰撞测试协议与 Bash / PowerShell 命令策略修正成果。
+
+### 验收标准
+
+- git status 已检查
+- `.env` 确认被 `.gitignore` 忽略
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean
+- python runner.py 正常显示 T052
+- 生成提交记录报告
 
 ---
 

@@ -746,3 +746,24 @@ elif command == "run-project-task-full":
 - 文件恢复和删除需要人工确认或任务显式授权
 - 危险命令禁止执行
 - `.env` 和 API Key 永远不能提交或打印
+
+### Shell Compatibility
+
+自动化命令必须考虑当前 shell 类型。
+
+如果 Claude Code 使用 `Bash(...)`，应优先使用：
+
+- `test -f`
+- `tail -n`
+- `head -n`
+- `grep -n`
+- 正斜杠路径 `/`
+
+如果明确在 PowerShell 中执行，才使用：
+
+- `Test-Path`
+- `Get-Content`
+- `Select-String`
+- 反斜杠路径 `\`
+
+后续任务提示词应优先提供 Bash 版本验收命令，避免在 Bash 环境中执行 PowerShell 命令失败。
