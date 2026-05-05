@@ -802,6 +802,7 @@ def run_collision_behavior_tests(
         js_content,
         ["vy > 0", "velocityY > 0", "vy >= 0", "velocityY >= 0",
          "playerState.vy > 0", "playerState.velocityY > 0",
+         "playerState.vy >= 0", "playerState.vy < 0",
          "isFalling", "falling"],
         "C-02", "碰撞逻辑在下落时执行",
     ))
@@ -864,8 +865,11 @@ def run_collision_behavior_tests(
     all_cases.append(_check_keyword(
         js_content,
         ["previousY", "previousBottom", "lastY", "prevY", "oldY",
+         "prevBottom", "prevYBottom",
+         "playerBottom - playerState.vy", "playerBottom - vy",
          "vy >= 0", "velocityY >= 0", "vy > 0", "velocityY > 0",
-         "playerState.vy >= 0", "playerState.velocityY >= 0",
+         "playerState.vy >= 0", "playerState.vy > 0",
+         "playerState.vy < 0", "playerState.velocityY >= 0",
          "fromAbove"],
         "L-03", "判断从上方落到平台",
     ))
@@ -877,6 +881,11 @@ def run_collision_behavior_tests(
          "playerState.y = platform.y - PLAYER_HEIGHT",
          "playerState.y = plat.y", "playerY = platform.y",
          "playerState.y = platform.y - height",
+         "playerState.y = bounds.top - playerState.height",
+         "playerState.y = bounds.top - playerHeight",
+         "bounds.top - playerState.height",
+         "bounds.top - player.height",
+         "platformTop - playerHeight",
          "snapTo", "snapToPlatform"],
         "S-01", "落到平台后修正 y 坐标",
     ))
@@ -898,12 +907,18 @@ def run_collision_behavior_tests(
     all_cases.append(_check_keyword(
         js_content,
         ["previousY", "lastY", "prevY", "oldY",
-         "vy > 0", "velocityY > 0", "playerState.vy > 0"],
+         "prevBottom", "previousBottom",
+         "playerBottom - playerState.vy", "playerBottom - vy",
+         "vy > 0", "velocityY > 0", "playerState.vy > 0",
+         "playerState.vy < 0", "playerState.vy >= 0"],
         "T-01", "使用上一帧位置或下落方向避免误判",
     ))
     has_y_fix = contains_any(js_content, [
         "playerState.y = platform.y", "playerState.y = plat.y",
         "playerY = platform.y", "playerState.y = platform.y -",
+        "playerState.y = bounds.top", "bounds.top - playerState.height",
+        "bounds.top - player.height", "bounds.top - playerHeight",
+        "platformTop - playerHeight",
         "snapToPlatform", "clampY",
     ])
     all_cases.append(TestCaseResult(
@@ -916,7 +931,9 @@ def run_collision_behavior_tests(
     all_cases.append(_check_keyword(
         js_content,
         ["vy >= 0", "velocityY >= 0", "vy > 0", "velocityY > 0",
-         "playerState.vy >= 0", "playerState.velocityY >= 0",
+         "playerState.vy >= 0", "playerState.vy > 0",
+         "playerState.vy < 0", "playerState.velocityY >= 0",
+         "playerState.velocityY < 0",
          "isFalling", "falling"],
         "T-03", "碰撞只在下落时触发",
     ))

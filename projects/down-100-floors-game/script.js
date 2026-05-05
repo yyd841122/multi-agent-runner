@@ -3,6 +3,7 @@
 // G004: 玩家键盘左右移动
 // G005: 基础平台显示
 // G006: 简单重力下落
+// G007: 玩家与平台基础碰撞
 
 (function () {
     const startBtn = document.getElementById('start-btn');
@@ -112,10 +113,49 @@
         playerState.y += playerState.vy;
     }
 
+    // G007: 计算平台的像素边界（left/width 从百分比转换为像素）
+    function getPlatformBounds(platform) {
+        var areaWidth = gameArea.clientWidth;
+        var leftPx = (platform.leftPct / 100) * areaWidth;
+        var widthPx = (platform.widthPct / 100) * areaWidth;
+        return {
+            left: leftPx,
+            top: platform.top,
+            right: leftPx + widthPx,
+            bottom: platform.top + 12  // platform height from CSS (border-box)
+        };
+    }
+
+    // G007: 碰撞检测 — 玩家下落时检测是否落到平台顶面
+    function checkPlatformCollision() {
+        if (playerState.vy < 0) return; // 向上移动时不检测
+
+        var playerBottom = playerState.y + playerState.height;
+        var playerLeft = playerState.x;
+        var playerRight = playerState.x + playerState.width;
+        var prevBottom = playerBottom - playerState.vy; // 上一帧底部位置
+
+        for (var i = 0; i < platforms.length; i++) {
+            var bounds = getPlatformBounds(platforms[i]);
+
+            // 垂直方向：玩家底部穿过或接触到平台顶部，且上一帧在平台上方
+            if (playerBottom >= bounds.top && prevBottom <= bounds.top) {
+                // 水平方向：玩家与平台有重叠
+                if (playerRight > bounds.left && playerLeft < bounds.right) {
+                    // 碰撞：将玩家放在平台顶部，垂直速度归零
+                    playerState.y = bounds.top - playerState.height;
+                    playerState.vy = 0;
+                    return;
+                }
+            }
+        }
+    }
+
     function gameLoop() {
         if (!isPlaying) return;
         handlePlayerMovement();
         applyGravity();
+        checkPlatformCollision();
         updatePlayerPosition();
         animFrameId = requestAnimationFrame(gameLoop);
     }

@@ -415,3 +415,12 @@ G006 已完成完整闭环：
 - 自动化提示词应优先使用 Bash 通用命令：`test -f`、`tail -n`、`grep -n`。
 - 如果确实需要 PowerShell 命令，应明确指定 PowerShell 执行环境。
 - 命令权限白名单必须同时区分 Bash 和 PowerShell 写法。
+
+## T053.4 G007 完整闭环经验
+
+- G007 通过自动化链路完成了 Developer、Basic Tester、Collision Tester、Reviewer、Main Agent 的完整闭环。
+- Collision Tester 首次失败并不一定代表业务代码错误，可能是 Tester 关键词匹配过窄。
+- T053.1 修正 Tester 后，G007 碰撞专项测试通过，说明专项 Tester 需要持续迭代。
+- DeepSeek Reviewer 适合在 Tester 通过后做实现范围与代码质量审查。
+- Main Agent 应基于 Developer / Tester / Reviewer 多方证据做最终决策。
+- Reviewer 首次超时后重试成功，说明 API 调用需要合理的超时和重试策略。

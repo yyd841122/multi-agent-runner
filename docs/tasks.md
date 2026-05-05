@@ -1629,7 +1629,7 @@
 
 ## T052.2 提交并推送 G007 任务规划与 Collision Tester MVP
 
-状态：in_progress
+状态：done
 角色：Developer
 目标：在执行 G007 自动开发前，提交并推送 G007 任务规划与 Collision Tester MVP。
 
@@ -1648,7 +1648,7 @@
 
 ## T053 使用 run-project-next 自动执行 G007
 
-状态：pending
+状态：done
 角色：Developer
 目标：自动实现玩家与平台基础碰撞。
 
@@ -1660,6 +1660,110 @@
 - 不做随机平台
 - 不做失败条件
 - 不做角色技能系统
+
+---
+
+## T053.1 修正 Collision Tester 关键词匹配，兼容 G007 实际实现
+
+状态：done
+角色：Developer
+目标：修正 G007 Collision Tester 关键词匹配，使其兼容 G007 实际实现中的 playerState.vy、prevBottom、bounds.top、playerState.height 等代码模式。
+
+### 验收标准
+
+- Collision Tester 支持 `playerState.vy`
+- Collision Tester 支持 `prevBottom`
+- Collision Tester 支持 `bounds.top`
+- Collision Tester 支持 `playerState.height`
+- Collision Tester 支持 `playerState.y = bounds.top - playerState.height`
+- Collision Tester 支持 `playerState.vy < 0` 这类反向判断写法
+- 重新运行 `python runner.py test-game-collision G007`
+- G007 Collision Tester 误判项减少或通过
+- 生成新的 G007-collision-test-report.md
+- 创建 T053.1 开发报告
+- 不修改 G007 业务代码
+- 不调用 DeepSeek API
+- 不执行 run-project-task-full
+
+---
+
+## T053.2 重新运行 G007 Collision Tester
+
+状态：done
+角色：Tester
+目标：在修正 Collision Tester 匹配规则后，重新运行 G007 碰撞专项测试，确认误判已消除。
+
+### 验收标准
+
+- 重新执行 `python runner.py test-game-collision G007`
+- G007 Collision Tester 结果为 PASS
+- G007-collision-test-report.md 已更新
+- 记录 Passed / Failed 数量
+- 不修改 G007 业务代码
+- 不调用 DeepSeek API
+- 不执行 run-project-task-full
+
+---
+
+## T053.3 补跑 G007 Reviewer / Main Decision
+
+状态：done
+角色：Developer
+目标：在 G007 Developer / Basic Tester / Collision Tester 均通过后，补跑 DeepSeek Reviewer 与 Main Agent 综合决策。
+
+### 验收标准
+
+- 执行 `python runner.py review-game-task G007`
+- Reviewer 结果为 PASS / APPROVE
+- 生成 G007-review-report.md
+- 执行 `python runner.py decide-game-task G007`
+- Main Agent 决策为 COMPLETE
+- 生成 G007-main-decision.md
+- 不重新执行 Developer
+- 不执行 run-project-task-full
+
+---
+
+## T053.4 记录 G007 完整闭环
+
+状态：done
+角色：Reporter
+目标：记录 G007 玩家与平台基础碰撞完整闭环结果，总结 Developer / Tester / Collision Tester / Reviewer / Main Agent 协作情况。
+
+### 验收标准
+
+- 记录 G007 Developer 结果
+- 记录 G007 Basic Tester 结果
+- 记录 G007 Collision Tester 结果
+- 记录 G007 Reviewer 结果
+- 记录 G007 Main Agent 结果
+- 更新主项目 memory/lessons.md
+- 更新主项目 memory/pitfalls.md
+- 更新验证项目 memory/lessons.md
+- 更新验证项目 memory/pitfalls.md
+- 创建完整闭环总结报告
+- 创建开发报告
+- 不重新执行 G007
+- 不修改小游戏业务代码
+
+---
+
+## T053.5 提交并推送 G007 自动化完整闭环成果
+
+状态：in_progress
+角色：Developer
+目标：在处理 T054 前，提交并推送 G007 自动化完整闭环成果。
+
+### 验收标准
+
+- git status 已检查
+- `.env` 确认被 `.gitignore` 忽略
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean
+- python runner.py 正常显示 T054
+- 生成提交记录报告
 
 ---
 

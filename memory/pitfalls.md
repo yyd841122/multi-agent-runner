@@ -245,3 +245,12 @@
 - 不要在 `Bash(...)` 中使用 `Select-String`。
 - 不要把 PowerShell 命令加入 Bash 白名单。
 - 自动验收命令应优先使用 Bash 兼容写法。
+
+## T053.4 G007 完整闭环避坑
+
+- 不要在 Collision Tester FAIL 后直接判定 Developer 失败，应先判断是否为 Tester 误判。
+- 不要为了让测试通过而放宽范围限制检查。
+- 不要在 G007 中同时加入平台滚动、随机平台或失败条件。
+- 不要跳过 Collision Tester 直接进入 Reviewer。
+- 不要重复执行已经完成的 Developer 阶段。
+- Reviewer API 超时后可以重试一次，但如果持续超时应停止并报告。
