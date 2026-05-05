@@ -37,7 +37,7 @@ from tools.tester_runner import run_behavior_tester_for_game_task
 from tools.tester_runner import run_collision_tester_for_game_task
 from tools.main_agent import run_combined_decision_for_game_task
 from tools.main_agent import run_enhanced_combined_decision_for_game_task
-from tools.rework_manager import generate_rework_prompt_for_game_task, MAX_REWORK_ROUNDS, prepare_rework_execution
+from tools.rework_manager import generate_rework_prompt_for_game_task, MAX_REWORK_ROUNDS, prepare_rework_execution, execute_confirmed_rework, prepare_full_loop_resume
 from tools.full_task_runner import run_project_task_full
 
 PROJECT_ROOT = Path(__file__).parent
@@ -1054,6 +1054,8 @@ def main():
         round_number = None
         confirm_text = None
         dry_run = True
+        real_execution = False
+        resume = False
         i = 1
         while i < len(args):
             if args[i] == "--project" and i + 1 < len(args):
@@ -1071,41 +1073,101 @@ def main():
             elif args[i] == "--no-dry-run":
                 dry_run = False
                 i += 1
+            elif args[i] == "--real-execution":
+                real_execution = True
+                i += 1
+            elif args[i] == "--resume":
+                resume = True
+                i += 1
             else:
                 i += 1
 
         if not project_path or not task_id or round_number is None:
             print("缺少参数：--project / --task / --round")
-            print("用法：python runner.py execute-rework --project <path> --task <id> --round <n> [--confirm \"...\"]")
+            print("用法：python runner.py execute-rework --project <path> --task <id> --round <n> [--confirm \"...\"] [--real-execution] [--resume]")
             return
 
-        result = prepare_rework_execution(
-            project_root=Path(project_path),
-            task_id=task_id,
-            round_number=round_number,
-            confirm=confirm_text,
-            dry_run=dry_run,
-        )
+        if resume:
+            # T056.5 full loop resume 分支
+            # --resume 必须配合 --real-execution
+            if not real_execution:
+                print("错误：--resume 必须配合 --real-execution 使用")
+                return
+            # --resume 必须配合 --confirm
+            if not confirm_text:
+                print("错误：--resume 必须配合 --confirm 使用")
+                return
 
-        print()
-        if result.status == "BLOCKED":
-            print("execute-rework 被阻止：")
-            print(f"Status：BLOCKED")
-            print(f"Reason：{result.reason}")
-            print(f"Next Action：请使用严格确认格式")
-        elif result.status == "MANUAL_INTERVENTION":
-            print("execute-rework 进入人工介入：")
-            print(f"Status：MANUAL_INTERVENTION")
-            print(f"Reason：{result.reason}")
-            print(f"Next Action：请人工检查失败原因")
-        elif result.status == "READY_TO_EXECUTE":
-            print("execute-rework 检查通过：")
-            print(f"Status：READY_TO_EXECUTE")
-            print(f"Dry Run：{'True' if dry_run else 'False'}")
-            print(f"Reason：{result.reason}")
+            result = prepare_full_loop_resume(
+                project_root=Path(project_path),
+                task_id=task_id,
+                round_number=round_number,
+                confirm=confirm_text,
+                real_execution=True,
+            )
 
-        if result.report_path:
-            print(f"Report：{result.report_path}")
+            print()
+            print(f"resume_requested={result.resume_requested}")
+            print(f"resume_allowed={result.resume_allowed}")
+            print(f"resume_target={result.resume_target}")
+            print(f"resume_reason={result.resume_reason}")
+            print(f"loop_status={result.loop_status}")
+            print(f"EXECUTION_MODE={result.execution_mode}")
+            print(f"candidate_status={result.candidate_status}")
+            print(f"execution_allowed={result.execution_allowed}")
+            print(f"real_execution_performed={result.real_execution_performed}")
+            print(f"CHECK_RESULT={result.safety_status}")
+            print(f"Message：{result.message}")
+            print(f"NEXT_ACTION={result.next_action}")
+        elif real_execution:
+            # T056.2 confirmed rework execution 分支
+            result = execute_confirmed_rework(
+                project_root=Path(project_path),
+                task_id=task_id,
+                round_number=round_number,
+                confirm=confirm_text,
+                real_execution=True,
+            )
+
+            print()
+            print(f"execution_allowed={result.execution_allowed}")
+            print(f"real_execution_requested={result.real_execution_requested}")
+            print(f"real_execution_performed={result.real_execution_performed}")
+            print(f"EXECUTION_MODE={result.execution_mode}")
+            print(f"CHECK_RESULT={result.safety_status}")
+            print(f"confirmation_status={result.confirmation_status}")
+            print(f"round_status={result.round_status}")
+            print(f"Message：{result.message}")
+            print(f"NEXT_ACTION={result.next_action}")
+        else:
+            # T056 dry-run safety check（保持原有行为）
+            result = prepare_rework_execution(
+                project_root=Path(project_path),
+                task_id=task_id,
+                round_number=round_number,
+                confirm=confirm_text,
+                dry_run=dry_run,
+            )
+
+            print()
+            if result.status == "BLOCKED":
+                print("execute-rework 被阻止：")
+                print(f"Status：BLOCKED")
+                print(f"Reason：{result.reason}")
+                print(f"Next Action：请使用严格确认格式")
+            elif result.status == "MANUAL_INTERVENTION":
+                print("execute-rework 进入人工介入：")
+                print(f"Status：MANUAL_INTERVENTION")
+                print(f"Reason：{result.reason}")
+                print(f"Next Action：请人工检查失败原因")
+            elif result.status == "READY_TO_EXECUTE":
+                print("execute-rework 检查通过：")
+                print(f"Status：READY_TO_EXECUTE")
+                print(f"Dry Run：{'True' if dry_run else 'False'}")
+                print(f"Reason：{result.reason}")
+
+            if result.report_path:
+                print(f"Report：{result.report_path}")
     else:
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")
@@ -1129,7 +1191,7 @@ def main():
         print("  python runner.py decide-game-task [任务编号] 综合决策小游戏项目指定任务（默认 G003）")
         print("  python runner.py decide-game-task-v2 [任务编号]  增强综合决策（含行为测试，默认 G004）")
         print("  python runner.py generate-rework-prompt [任务编号] [轮次]  生成返工 prompt（默认 G004 轮次 1）")
-        print("  python runner.py execute-rework --project <path> --task <id> --round <n> [--confirm \"...\"]  返工执行安全检查（MVP dry-run）")
+        print("  python runner.py execute-rework --project <path> --task <id> --round <n> [--confirm \"...\"] [--real-execution] [--resume]  返工执行安全检查、confirmed stub 或 resume stub")
         print("  python runner.py run-project-task-full --project <path> --task <id>  单任务完整闭环（Developer/Tester/Reviewer/Decision）")
 
 

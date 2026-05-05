@@ -1915,6 +1915,83 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
+## T056.2 实现 confirmed rework execution
+
+状态：done
+角色：Developer
+目标：在 dry-run safety gate 基础上实现 confirmed rework execution stub。
+
+### 验收标准
+
+- 新增 ReworkConfirmedExecutionResult 数据结构
+- 新增 execute_confirmed_rework 函数
+- 新增 --real-execution 命令参数
+- 无 --real-execution 时保持原有 dry-run 行为
+- 有 --real-execution 且全部检查通过时进入 confirmed stub
+- execution_allowed=True 且 real_execution_performed=False
+- 拒绝场景全覆盖（缺少确认、模糊确认、round 错误、prompt 不存在）
+- 不调用 Claude Code
+- 不修改业务代码
+
+---
+
+## T056.3 验证一次返工候选流程
+
+状态：done
+角色：Developer
+目标：验证一次 rework candidate flow 的 dry-run 和 confirmed stub。
+
+### 验收标准
+
+- 选择安全候选任务（G007-R1）
+- 执行 dry-run candidate flow 验证
+- 执行 confirmed stub candidate flow 验证
+- 确认不调用 Claude Code
+- 确认不修改业务代码
+- 生成验证报告
+
+---
+
+## T056.4 设计 full loop resume
+
+状态：done
+角色：Architect
+目标：设计 confirmed rework execution stub 通过后，如何安全恢复主流程继续调度下一个 pending task。
+
+### 验收标准
+
+- 创建 docs/full-loop-resume-design.md
+- 明确 resume 状态模型
+- 明确 CLI 方案（推荐复用 execute-rework + --resume）
+- 明确安全规则
+- 明确验证场景（至少 10 个）
+- 明确 T056.5 实现范围
+- 不实现代码
+- 不修改 runner.py
+- 不修改 tools/rework_manager.py
+
+---
+
+## T056.5 实现 full loop resume
+
+状态：done
+角色：Developer
+目标：实现 full loop resume stub，让 confirmed rework execution 通过后可以安全恢复主流程。
+
+### 验收标准
+
+- 新增 ReworkResumeResult 数据结构
+- 新增 prepare_full_loop_resume 函数
+- 新增 --resume 命令参数
+- --resume 必须配合 --real-execution 和 --confirm 使用
+- 全部检查通过时 resume_allowed=true, resume_target=NEXT_PENDING
+- 拒绝场景全覆盖（参数缺失、confirm 错误、round 错误、prompt 不存在）
+- 不调用 Claude Code
+- 不修改业务代码
+- 不带 --resume 时保持原有行为
+
+---
+
 ## T057 第五阶段阶段总结与 Git 备份
 
 状态：pending

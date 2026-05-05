@@ -596,3 +596,226 @@ def prepare_rework_execution(
         result, project_root, task_id, round_number, dry_run, True
     )
     return result
+
+
+# ---------------------------------------------------------------------------
+# confirmed rework execution（T056.2）
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ReworkConfirmedExecutionResult:
+    """confirmed rework execution 结果。"""
+    task_id: str
+    requested_round: int
+    max_rounds: int
+    confirmation_status: str       # confirmed / rejected / missing
+    round_status: str              # valid / invalid / exceeded
+    execution_mode: str            # dry_run / confirmed_rework_execution_stub
+    execution_allowed: bool
+    real_execution_requested: bool
+    real_execution_performed: bool
+    safety_status: str             # pass / fail
+    message: str
+    next_action: str
+    report_path: Path | None = None
+
+
+def execute_confirmed_rework(
+    project_root: Path,
+    task_id: str,
+    round_number: int,
+    confirm: str | None = None,
+    real_execution: bool = False,
+) -> ReworkConfirmedExecutionResult:
+    """confirmed rework execution stub。
+
+    本函数在 prepare_rework_execution 的基础上增加 confirmed execution 分支。
+    即使 real_execution=True 且全部检查通过，也不真正调用 Claude Code。
+
+    Returns:
+        ReworkConfirmedExecutionResult
+    """
+    project_root = Path(project_root)
+
+    # 1. 校验 round
+    round_valid, round_reason = validate_rework_round(round_number)
+    if not round_valid:
+        is_exceeded = round_number > MAX_REWORK_ROUNDS
+        return ReworkConfirmedExecutionResult(
+            task_id=task_id,
+            requested_round=round_number,
+            max_rounds=MAX_REWORK_ROUNDS,
+            confirmation_status="missing",
+            round_status="exceeded" if is_exceeded else "invalid",
+            execution_mode="dry_run",
+            execution_allowed=False,
+            real_execution_requested=real_execution,
+            real_execution_performed=False,
+            safety_status="fail",
+            message=round_reason,
+            next_action="请修正轮次后重试" if not is_exceeded else "请人工介入",
+        )
+
+    # 2. 校验 confirm
+    confirm_valid, confirm_reason = validate_rework_confirmation(task_id, round_number, confirm)
+    if not confirm_valid:
+        return ReworkConfirmedExecutionResult(
+            task_id=task_id,
+            requested_round=round_number,
+            max_rounds=MAX_REWORK_ROUNDS,
+            confirmation_status="missing" if not confirm else "rejected",
+            round_status="valid",
+            execution_mode="dry_run",
+            execution_allowed=False,
+            real_execution_requested=real_execution,
+            real_execution_performed=False,
+            safety_status="fail",
+            message=confirm_reason,
+            next_action="请使用严格确认格式",
+        )
+
+    # 3. 检查 rework prompt
+    rework_prompt_path = project_root / "prompts" / "rework_prompt.md"
+    if not rework_prompt_path.exists():
+        return ReworkConfirmedExecutionResult(
+            task_id=task_id,
+            requested_round=round_number,
+            max_rounds=MAX_REWORK_ROUNDS,
+            confirmation_status="confirmed",
+            round_status="valid",
+            execution_mode="dry_run",
+            execution_allowed=False,
+            real_execution_requested=real_execution,
+            real_execution_performed=False,
+            safety_status="fail",
+            message="rework prompt 不存在，请先运行 generate-rework-prompt",
+            next_action="请先生成 rework prompt",
+        )
+
+    # 4. 全部检查通过
+    if real_execution:
+        # confirmed execution stub：不真正调用 Claude Code
+        return ReworkConfirmedExecutionResult(
+            task_id=task_id,
+            requested_round=round_number,
+            max_rounds=MAX_REWORK_ROUNDS,
+            confirmation_status="confirmed",
+            round_status="valid",
+            execution_mode="confirmed_rework_execution_stub",
+            execution_allowed=True,
+            real_execution_requested=True,
+            real_execution_performed=False,
+            safety_status="pass",
+            message="安全检查通过，confirmed execution stub 已就绪",
+            next_action="ready_for_T056.3_candidate_flow_validation",
+        )
+    else:
+        # dry-run allow
+        return ReworkConfirmedExecutionResult(
+            task_id=task_id,
+            requested_round=round_number,
+            max_rounds=MAX_REWORK_ROUNDS,
+            confirmation_status="confirmed",
+            round_status="valid",
+            execution_mode="dry_run",
+            execution_allowed=True,
+            real_execution_requested=False,
+            real_execution_performed=False,
+            safety_status="pass",
+            message="安全检查通过，dry-run 模式",
+            next_action="使用 --real-execution 进入 confirmed execution",
+        )
+
+
+# ---------------------------------------------------------------------------
+# full loop resume（T056.5）
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ReworkResumeResult:
+    """full loop resume 结果。"""
+    task_id: str
+    rework_round: int
+    candidate_status: str       # validated / missing / failed
+    execution_mode: str         # resume_stub
+    execution_allowed: bool
+    real_execution_performed: bool
+    resume_requested: bool
+    resume_allowed: bool
+    resume_target: str          # NEXT_PENDING / BLOCKED
+    resume_reason: str
+    loop_status: str            # resume_stub_ready / resume_blocked
+    safety_status: str          # pass / fail
+    next_action: str
+    message: str
+
+
+def prepare_full_loop_resume(
+    project_root: Path,
+    task_id: str,
+    round_number: int,
+    confirm: str | None = None,
+    real_execution: bool = False,
+) -> ReworkResumeResult:
+    """full loop resume stub。
+
+    复用 execute_confirmed_rework 的全部安全检查逻辑。
+    不调用 Claude Code，不修改业务代码。
+
+    Returns:
+        ReworkResumeResult
+    """
+    # 复用 confirmed execution 的全部校验逻辑
+    exec_result = execute_confirmed_rework(
+        project_root=project_root,
+        task_id=task_id,
+        round_number=round_number,
+        confirm=confirm,
+        real_execution=real_execution,
+    )
+
+    # 全部检查通过 → resume_allowed=true
+    if exec_result.execution_allowed and exec_result.safety_status == "pass":
+        return ReworkResumeResult(
+            task_id=task_id,
+            rework_round=round_number,
+            candidate_status="validated",
+            execution_mode="resume_stub",
+            execution_allowed=True,
+            real_execution_performed=False,
+            resume_requested=True,
+            resume_allowed=True,
+            resume_target="NEXT_PENDING",
+            resume_reason="all safety checks passed",
+            loop_status="resume_stub_ready",
+            safety_status="pass",
+            next_action="ready_for_next_pending_task",
+            message="Resume stub: all safety checks passed, ready to resume main loop",
+        )
+
+    # 任一检查未通过 → resume_allowed=false
+    if exec_result.round_status in ("invalid", "exceeded"):
+        reason = f"round {exec_result.round_status}: {exec_result.message}"
+    elif exec_result.confirmation_status in ("missing", "rejected"):
+        reason = f"confirmation {exec_result.confirmation_status}: {exec_result.message}"
+    elif exec_result.safety_status == "fail":
+        reason = f"safety check failed: {exec_result.message}"
+    else:
+        reason = exec_result.message
+
+    return ReworkResumeResult(
+        task_id=task_id,
+        rework_round=round_number,
+        candidate_status="missing",
+        execution_mode="resume_stub",
+        execution_allowed=exec_result.execution_allowed,
+        real_execution_performed=False,
+        resume_requested=True,
+        resume_allowed=False,
+        resume_target="BLOCKED",
+        resume_reason=reason,
+        loop_status="resume_blocked",
+        safety_status=exec_result.safety_status,
+        next_action="fix_resume_preconditions",
+        message=f"Resume blocked: {reason}",
+    )
