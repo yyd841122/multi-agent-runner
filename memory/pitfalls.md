@@ -310,3 +310,13 @@
 - 不要在未确认时执行返工，REWORK_CANDIDATE 不等于返工执行。
 - 不要把静态检查结果当成物理逻辑的完整验证。
 - 不要在第六阶段直接实现无人值守循环，应先设计连续推进协议。
+
+## T058-T062 第六阶段 MVP 避坑
+
+- 不要把 dry-run 输出误认为真实自动化。dry-run 只模拟推进，不执行任何任务。
+- 不要让 --execute 在未设计安全协议前可用。T060 明确拒绝 --execute。
+- 不要把 LOOP_STATUS=dry_run_completed 和 stopped_on_max_tasks 混淆。前者是自然结束，后者是达到上限截断。
+- 不要在 planner 和 loop 中重复实现任务读取逻辑，应复用 task_manager。
+- 不要在验证任务中修改代码文件，验证只运行命令和记录结果。
+- 不要跳过 max_tasks=0 和 max_tasks>10 的边界测试，这些是安全边界。
+- 不要把 NEXT_TASK=NONE 误认为系统错误，可能只是所有 pending 任务都已 planned。

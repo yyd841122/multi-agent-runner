@@ -2099,16 +2099,31 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T063 提交并推送第六阶段 MVP
+## T063 第六阶段 MVP 汇总检查与阶段小结
 
-状态：pending
+状态：done
 角色：Developer
-目标：提交并推送 T058-T062 第六阶段 MVP 成果。
+目标：汇总检查第六阶段 MVP 成果，生成阶段小结报告，更新 memory。
 
 ### 验收标准
 
-- git status 已检查
-- 当前改动已提交
-- commit message 清晰
-- 已成功 push 到远程仓库
-- push 后工作区 clean
+- 汇总检查所有第六阶段任务（T058-T062）
+- 生成 stage-6-mvp-summary.md
+- 复核 plan-project-loop 和 run-project-loop 命令
+- 更新 memory/lessons.md 和 memory/pitfalls.md
+- 不实现新功能
+
+---
+
+## T064 设计 run-project-loop execute mode 安全协议
+
+状态：pending
+角色：Architect
+目标：设计 `run-project-loop --execute` 的安全执行协议，定义真实执行任务时的安全边界、状态管理和人工介入条件。
+
+### 验收标准
+
+- 定义 execute mode 的安全协议
+- 定义任务间状态管理和失败处理
+- 定义人工介入边界
+- 不直接实现代码

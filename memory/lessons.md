@@ -486,3 +486,17 @@ G006 已完成完整闭环：
 - resume stub 为连续推进奠定基础，resume_target=NEXT_PENDING 为调度器提供了接口。
 - A/B/C/D 命令权限策略是安全自动化的基础。
 - .env 自动加载简化了 API Key 管理，但必须确保 .env 不被 Git 跟踪。
+
+## T058-T062 第六阶段 MVP 经验
+
+### 核心经验
+
+- 连续任务推进应先实现 planner dry-run，再实现 loop dry-run，最后才考虑真实执行。
+- `plan-project-loop` 和 `run-project-loop` 是两个独立能力：plan 只读不模拟，loop 才做模拟推进。
+- max_tasks 必须有硬上限（10）和默认值（3），防止一次性规划过多任务。
+- max_tasks=0 应明确拒绝，max_tasks>hard_limit 应自动裁剪，两者行为不同。
+- LOOP_STATUS 需要区分 `stopped_on_max_tasks`（达到上限截断）和 `dry_run_completed`（自然结束）。
+- RUN_ID 格式 `loop-YYYYMMDD-HHMMSS-<6hex>` 便于追溯和日志关联。
+- 验证任务（T061/T062）也应独立提交，保持提交粒度一致。
+- dry-run 输出的 TASK_EXECUTION_PERFORMED=false / CLAUDE_CODE_CALLED=false / BUSINESS_CODE_CHANGED=false 是安全保证的关键标志。
+- 第六阶段从设计到实现到验证全部 dry-run，未执行任何真实任务，证明分阶段安全推进策略有效。
