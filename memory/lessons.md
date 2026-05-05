@@ -500,3 +500,17 @@ G006 已完成完整闭环：
 - 验证任务（T061/T062）也应独立提交，保持提交粒度一致。
 - dry-run 输出的 TASK_EXECUTION_PERFORMED=false / CLAUDE_CODE_CALLED=false / BUSINESS_CODE_CHANGED=false 是安全保证的关键标志。
 - 第六阶段从设计到实现到验证全部 dry-run，未执行任何真实任务，证明分阶段安全推进策略有效。
+
+## T064 Execute Mode 安全设计经验
+
+### 核心经验
+
+- 从 dry-run 到 execute 必须单独设计 safety gate，不能复用 dry-run 的安全假设。
+- execute mode 的 max_tasks 硬限制应该低于 dry-run（execute=3 vs dry-run=10），因为真实执行失败代价高。
+- 不能把 dry-run 成功等同于允许真实执行，两者是独立的安全域。
+- 确认短语必须精确匹配（EXECUTE_PROJECT_LOOP），yes/ok/确认等模糊确认必须拒绝。
+- execute mode 需要独立的前置检查（preflight），比 dry-run 更严格（9 项 vs 2 项）。
+- rework candidate 出现时应停止而不是自动执行 execute-rework，rework 需要人工确认。
+- Git backup 应停止并提醒，不自动 push，push 需要人工确认。
+- CLI 方案推荐复用 run-project-loop 加 --execute，而非新增独立命令，最小化改动和用户学习成本。
+- execute mode MVP 只允许 max_tasks=1，逐步放开到 2、3，经验积累后再提高上限。

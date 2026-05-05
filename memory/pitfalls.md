@@ -320,3 +320,14 @@
 - 不要在验证任务中修改代码文件，验证只运行命令和记录结果。
 - 不要跳过 max_tasks=0 和 max_tasks>10 的边界测试，这些是安全边界。
 - 不要把 NEXT_TASK=NONE 误认为系统错误，可能只是所有 pending 任务都已 planned。
+
+## T064 Execute Mode 安全设计避坑
+
+- 不要把 dry-run 的安全假设直接用于 execute mode，execute 需要独立的前置检查和停止条件。
+- 不要让 execute mode 复用 dry-run 的 max_tasks 硬限制（10），execute 应该更低（3）。
+- 不要把 dry-run 成功视为 execute 安全的充分条件，dry-run 不执行任务。
+- 不要接受模糊确认（yes/ok/确认/同意），execute 确认必须精确匹配 EXECUTE_PROJECT_LOOP。
+- 不要在 execute mode 中自动执行 execute-rework，rework 需要人工确认。
+- 不要在 execute mode 中自动 git push，push 需要人工确认。
+- 不要在 execute mode MVP 中允许 max_tasks > 1，MVP 先验证单任务执行。
+- 不要让 --execute 和 --dry-run 同时传入，两者互斥。

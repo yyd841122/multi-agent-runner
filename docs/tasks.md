@@ -2117,13 +2117,87 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T064 设计 run-project-loop execute mode 安全协议
 
-状态：pending
+状态：done
 角色：Architect
 目标：设计 `run-project-loop --execute` 的安全执行协议，定义真实执行任务时的安全边界、状态管理和人工介入条件。
 
 ### 验收标准
 
-- 定义 execute mode 的安全协议
-- 定义任务间状态管理和失败处理
-- 定义人工介入边界
-- 不直接实现代码
+- 定义 execute mode 的安全协议 ✓
+- 定义任务间状态管理和失败处理 ✓
+- 定义人工介入边界 ✓
+- 不直接实现代码 ✓
+
+---
+
+## T065 实现 execute mode safety gate
+
+状态：pending
+角色：Developer
+目标：在 runner.py 和 continuous_task_planner.py 中实现 execute mode 的前置检查、确认协议和 execute 硬限制。
+
+### 验收标准
+
+- 实现 preflight 检查（9 项）
+- 实现确认短语校验（精确匹配 EXECUTE_PROJECT_LOOP）
+- 实现 execute mode max_tasks 硬限制（3）
+- 实现 --execute 和 --dry-run 互斥检查
+- 不实现真实任务执行（只做 safety gate）
+
+---
+
+## T066 实现 max_tasks=1 execute stub
+
+状态：pending
+角色：Developer
+目标：实现 execute mode 下 max_tasks=1 的最小 stub 执行，只走一个任务闭环。
+
+### 验收标准
+
+- 实现 ExecuteLoopState 数据结构
+- 实现 max_tasks=1 的 execute 流程
+- 调用 run_project_task_full 执行单任务
+- 实现任务后结果检查（continue conditions）
+- 实现停止条件判断
+
+---
+
+## T067 验证 execute confirm 拒绝场景
+
+状态：pending
+角色：Tester
+目标：验证所有确认拒绝场景（不带 execute、缺 confirm、模糊确认、max_tasks 非法、dirty 工作区等）。
+
+### 验收标准
+
+- 验证场景 1-9 和 15（共 10 个拒绝场景）
+- 每个场景记录输入和预期输出
+- 不执行真实任务
+
+---
+
+## T068 验证 max_tasks=1 execute stub
+
+状态：pending
+角色：Tester
+目标：验证 max_tasks=1 execute stub 的执行和停止行为。
+
+### 验收标准
+
+- 验证场景 10-14, 16-17（共 7 个场景）
+- 记录每场景的输入、输出和行为
+- 确认安全边界有效
+
+---
+
+## T069 提交并推送 execute mode safety MVP
+
+状态：pending
+角色：Git Backup
+目标：提交并推送 T064-T068 所有工作成果。
+
+### 验收标准
+
+- 所有修改已提交
+- 已推送到远程
+- 工作区 clean
