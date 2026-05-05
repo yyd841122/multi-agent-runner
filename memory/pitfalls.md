@@ -216,3 +216,13 @@
 - 不要重复执行已经完成的 G006 Developer 阶段。
 - 不要把 G006 的重力下落与平台碰撞混在一起。
 - `.env` 自动加载后仍需要检查 `DEEPSEEK_API_KEY` 是否真实可用。
+
+## T050.3a Claude Code 命令权限避坑
+
+- 不要为了省事开启无边界自动执行。
+- 不要把 Git 备份权限扩展到普通开发任务。
+- 不要让 Claude Code 自动执行 `git reset --hard` 或 `git clean -fd`。
+- 不要让 Claude Code 打印 `.env` 内容。
+- 不要把 `.env` 加入 Git。
+- 不要把删除文件命令加入低风险白名单。
+- 不要跳过提交前的 `git status --short` 检查。

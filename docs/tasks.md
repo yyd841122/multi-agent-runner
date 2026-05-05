@@ -1447,7 +1447,7 @@
 
 ## T050.3 Git 提交并推送 T047-T050 所有工作
 
-状态：in_progress
+状态：done
 角色：Developer
 目标：将 T047-T050 所有新增和修改文件提交并推送到远程仓库。
 
@@ -1459,6 +1459,51 @@
 - git push 成功
 - 工作区干净
 - python runner.py 显示 T051 为下一个 pending
+
+---
+
+## T050.3a 配置 Claude Code 安全命令自动执行白名单
+
+状态：done
+角色：Safety Architect
+目标：建立 Claude Code 安全命令自动执行白名单，减少低风险命令的人工确认，提高自动化程度。
+
+### 验收标准
+
+- 创建 docs/command-permission-policy.md
+- 明确 A 类低风险自动执行命令
+- 明确 B 类 Git 备份任务自动执行命令
+- 明确 C 类需要人工确认命令
+- 明确 D 类禁止自动执行命令
+- 明确 Claude Code /permissions 配置建议
+- 明确不得打印 API Key
+- 明确不得提交 .env
+- 明确不得自动执行危险删除命令
+- 更新 docs/full-task-loop-protocol.md
+- 更新 memory/lessons.md
+- 更新 memory/pitfalls.md
+- 创建总结报告
+- 创建开发报告
+- 不修改功能代码
+
+---
+
+## T050.3b 提交并推送命令权限白名单策略
+
+状态：in_progress
+角色：Developer
+目标：提交并推送 Claude Code 安全命令自动执行白名单策略文档。
+
+### 验收标准
+
+- git status 已检查
+- `.env` 确认被 `.gitignore` 忽略
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean
+- python runner.py 正常显示 T051
+- 生成提交记录报告
 
 ---
 

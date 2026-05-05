@@ -732,3 +732,17 @@ elif command == "run-project-task-full":
 2. 用 G006 验证完整闭环
 3. 验证失败停止逻辑
 4. 验证 rework prompt 生成
+
+---
+
+## Command Permission Policy
+
+`run-project-task-full` 和后续自动化命令必须遵守 `docs/command-permission-policy.md`。
+
+核心原则：
+
+- 低风险命令自动执行
+- Git 备份任务中允许 Git 提交推送
+- 文件恢复和删除需要人工确认或任务显式授权
+- 危险命令禁止执行
+- `.env` 和 API Key 永远不能提交或打印
