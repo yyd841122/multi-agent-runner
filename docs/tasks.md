@@ -2085,9 +2085,9 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T062 验证 max_tasks=3 dry-run
 
-状态：pending
+状态：done
 角色：Developer
-目标：验证多任务 dry-run 计划输出和停止条件。
+目标：验证多任务 dry-run 计划输出和停止条件，确认 max_tasks=3 最多模拟 3 个任务。
 
 ### 验收标准
 
