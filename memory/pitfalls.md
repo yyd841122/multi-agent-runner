@@ -289,3 +289,24 @@
 - 不要超过 3 轮返工。R4+ 必须进入人工介入。
 - 不要把环境错误（API Key 缺失、429）误判为代码返工。
 - 不要跳过 rework prompt 存在性检查。
+
+## T056.2 confirmed rework execution stub 避坑
+
+- 不要在 confirmed stub 中设置 real_execution_performed=true。
+- 不要让 --real-execution 绕过 dry-run 的任何安全检查。
+- 不要把 confirmed stub 的 execution_allowed=true 误认为真实执行已发生。
+
+## T056.5 full loop resume stub 避坑
+
+- 不要让 --resume 单独使用，必须配合 --real-execution 和 --confirm。
+- 不要在 resume stub 中自动执行下一个 pending task。
+- 不要把 resume_allowed=true 误认为连续任务自动推进已实现。
+- 不要让 resume 绕过 execute-rework 的任何安全检查。
+
+## T057 第五阶段避坑总结
+
+- 不要在 Tester FAIL 后继续 Reviewer，应立即停止闭环。
+- 不要把环境阻塞（API Key 缺失、429）误判为代码返工。
+- 不要在未确认时执行返工，REWORK_CANDIDATE 不等于返工执行。
+- 不要把静态检查结果当成物理逻辑的完整验证。
+- 不要在第六阶段直接实现无人值守循环，应先设计连续推进协议。

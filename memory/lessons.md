@@ -458,3 +458,31 @@ G006 已完成完整闭环：
 - execute-rework 不应进入全局 allowlist。
 - 确认格式校验应区分"格式错误"和"task/round 不匹配"两种场景。
 - 中文和英文两种确认格式可以覆盖不同用户习惯。
+
+## T056.2 confirmed rework execution stub 经验
+
+- confirmed stub 在 dry-run 基础上增加了 real_execution_requested 和 execution_allowed 语义。
+- 即使全部检查通过，real_execution_performed 始终为 false。
+- 拒绝场景应区分 confirmation_status（missing / rejected）、round_status（invalid / exceeded）和 safety_status（fail）。
+- 不带 --real-execution 时必须保持原有 dry-run 行为不变。
+
+## T056.5 full loop resume stub 经验
+
+- resume stub 复用 execute_confirmed_rework 的全部校验逻辑，避免重复造轮子。
+- --resume 必须配合 --real-execution 和 --confirm 使用，单独使用应返回错误。
+- resume_allowed=true 只代表"安全检查已全部通过"，不代表真实执行了返工。
+- resume_target=NEXT_PENDING 为第六阶段调度器提供了接口。
+- 不带 --resume 时保持 T056.2 原有行为不变。
+
+## T057 第五阶段经验总结
+
+### 核心经验
+
+- 单任务完整闭环（run-project-task-full）是从半自动走向自动化的关键一步。
+- 专项 Tester 需要持续迭代，G007 Collision Tester 首次失败是关键词匹配过窄。
+- 返工执行必须与返工 prompt 生成分离，REWORK_CANDIDATE 不等于返工执行。
+- 严格确认格式可以避免用户一句"继续"导致系统误执行。
+- 最大 3 次返工限制是防止死循环的关键边界。
+- resume stub 为连续推进奠定基础，resume_target=NEXT_PENDING 为调度器提供了接口。
+- A/B/C/D 命令权限策略是安全自动化的基础。
+- .env 自动加载简化了 API Key 管理，但必须确保 .env 不被 Git 跟踪。
