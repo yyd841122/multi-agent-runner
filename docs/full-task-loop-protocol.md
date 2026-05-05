@@ -767,3 +767,41 @@ elif command == "run-project-task-full":
 - 反斜杠路径 `\`
 
 后续任务提示词应优先提供 Bash 版本验收命令，避免在 Bash 环境中执行 PowerShell 命令失败。
+
+## Rework Execution Confirmation
+
+`run-project-task-full` 遇到 Tester FAIL、Reviewer REQUEST_CHANGES 或 Main Agent REQUEST_CHANGES 时，可以进入 REWORK_CANDIDATE。
+
+REWORK_CANDIDATE 只表示"建议返工"，不表示"立即执行返工"。
+
+默认行为：
+
+- 停止 full loop
+- 生成或建议生成 rework prompt
+- 输出失败证据
+- 等待用户确认
+
+禁止默认行为：
+
+- 自动重试 Developer
+- 自动执行返工
+- 自动进入下一轮
+- 无限循环
+
+后续如实现 `--allow-rework`，也必须要求严格人工确认。
+
+确认格式：
+
+```text
+确认执行 <task-id>-R<round> 返工
+
+或：
+
+APPROVE_REWORK task=<task-id> round=<round>
+```
+
+不接受模糊表达。
+
+返工轮次最多 3 次，超过进入人工介入。
+
+详细协议见 `docs/rework-execution-confirmation-protocol.md`。

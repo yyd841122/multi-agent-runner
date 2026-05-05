@@ -268,3 +268,36 @@ python runner.py generate-rework-prompt G004
 - 检查 `docs/tasks.md` 中是否已有 `G004-R1`
 - 如果没有，使用 `G004-R1`
 - 如果已有，使用下一个编号 `G004-R2`
+
+## 15. 返工执行人工确认
+
+自动返工分为两个阶段：
+
+1. 返工 prompt 生成
+2. 返工执行
+
+当前系统允许自动生成 rework prompt，但不允许自动执行返工。
+
+返工执行必须满足：
+
+- 任务处于 REWORK_CANDIDATE
+- 已生成 rework prompt
+- 返工轮次不超过 R3
+- 用户输入严格确认格式
+- 工作区状态允许执行
+
+严格确认格式包括：
+
+```text
+确认执行 <task-id>-R<round> 返工
+
+或：
+
+APPROVE_REWORK task=<task-id> round=<round>
+```
+
+未确认时，系统只能输出建议，不得调用 Claude Code 执行返工。
+
+不接受模糊表达（"继续""可以""试一下""你看着办""自动处理"）作为确认。
+
+详细协议见 `docs/rework-execution-confirmation-protocol.md`。

@@ -396,3 +396,26 @@ Select-String -Path runner.py -Pattern "run-project-task-full"
 - 不要在 `Bash(...)` 中使用 `Select-String`
 - Bash 路径优先使用 `/`
 - PowerShell 路径可以使用 `\`
+
+## 15. Rework Command Permission Boundary
+
+返工执行属于高风险写入操作，不属于 A 类低风险命令。
+
+以下命令不得加入全局 allowlist：
+
+```bash
+python runner.py execute-rework *
+python runner.py run-project-task-full --allow-rework *
+```
+
+只有在满足以下条件时才可执行返工相关命令：
+
+1. 任务已经进入 REWORK_CANDIDATE
+2. 已生成 rework prompt
+3. 用户输入严格确认格式（`确认执行 <task-id>-R<round> 返工` 或 `APPROVE_REWORK task=<task-id> round=<round>`）
+4. 未超过最大返工次数 3
+5. 没有 API Key 泄露风险
+
+返工命令属于 C 类（需要人工确认或任务显式授权）。
+
+详细协议见 `docs/rework-execution-confirmation-protocol.md`。

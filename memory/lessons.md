@@ -431,3 +431,13 @@ G006 已完成完整闭环：
 - T054 的原始目标已由 T053.2 / T053.3 / T053.4 完成，因此 T054 只做关闭记录是合理的。
 - 自动化项目中需要允许任务被前置完成后进行"记录关闭"，避免重复调用模型和重复执行 Developer。
 - G007 证明 Claude Code Developer、Collision Tester、DeepSeek Reviewer、Main Agent 可以形成有效协作链路。
+
+## T055 自动返工执行人工确认协议经验
+
+- 自动化不能等于无限自动返工。返工执行是高风险写入操作，必须与 rework prompt 生成区分。
+- Tester FAIL 或 Reviewer REQUEST_CHANGES 可以进入 REWORK_CANDIDATE，但不能直接执行返工。
+- 严格人工确认格式（`确认执行 <task-id>-R<round> 返工` 或 `APPROVE_REWORK task=<id> round=<n>`）可以避免用户一句"继续"导致系统误执行。
+- 最大 3 次返工限制是防止死循环的关键边界，超过 3 次必须生成人工介入报告。
+- 环境阻塞（API Key 缺失、429、网络错误）不应触发返工，应直接进入 BLOCKED。
+- 返工命令不得进入全局 allowlist，只能在满足全部前置条件时执行。
+- REWORK_CANDIDATE 只允许生成证据和建议，不允许修改任何业务代码。

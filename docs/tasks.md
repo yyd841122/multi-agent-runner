@@ -1815,18 +1815,52 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T055 自动返工执行人工确认协议设计
 
-状态：pending
+状态：done
 角色：Architect
 目标：设计用户确认后执行返工的协议。
 
 ### 验收标准
 
-- 定义人工确认入口
-- 定义确认后的执行流程
-- 定义最大返工次数仍为 3
-- 定义人工介入条件
-- 不做完全无人值守
-- 不绕过用户确认
+- 创建 docs/rework-execution-confirmation-protocol.md
+- 创建 rework execution confirmation 模板
+- 明确返工触发条件
+- 明确返工候选状态
+- 明确人工确认格式
+- 明确确认后才允许执行返工
+- 明确未确认时只生成 rework prompt
+- 明确最大返工次数为 3
+- 明确超过 3 次进入人工介入
+- 明确禁止无限循环
+- 明确禁止自动重复执行返工
+- 明确如何记录返工轮次
+- 明确如何与 run-project-task-full 衔接
+- 更新 docs/rework-protocol.md
+- 更新 docs/full-task-loop-protocol.md
+- 更新 docs/command-permission-policy.md
+- 更新 memory/lessons.md
+- 更新 memory/pitfalls.md
+- 创建总结报告
+- 创建开发报告
+- 不实现自动返工执行代码
+
+---
+
+## T055.1 提交并推送自动返工执行人工确认协议
+
+状态：in_progress
+角色：Developer
+目标：提交并推送 T055 自动返工执行人工确认协议成果。
+
+### 验收标准
+
+- git status 已检查
+- `.env` 确认被 `.gitignore` 忽略
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean
+- python runner.py 正常显示 T056
+- 生成提交记录报告
 
 ---
 
