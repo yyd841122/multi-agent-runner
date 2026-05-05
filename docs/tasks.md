@@ -2070,9 +2070,9 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T061 验证 max_tasks=1 dry-run
 
-状态：pending
+状态：done
 角色：Developer
-目标：验证单任务 dry-run 计划输出。
+目标：验证单任务 dry-run 计划输出，确认 max_tasks=1 只规划 1 个任务并在达到上限后停止。
 
 ### 验收标准
 
