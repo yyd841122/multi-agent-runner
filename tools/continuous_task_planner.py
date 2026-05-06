@@ -1702,6 +1702,339 @@ def run_project_loop_real_call_run_once_safety_shell(
     )
 
 
+# ---------------------------------------------------------------------------
+# T086: Workspace Helpers + Child Command Output Parser
+# ---------------------------------------------------------------------------
+
+
+def _snapshot_workspace(project_root: Path) -> set[str]:
+    """快照当前 workspace 状态（git status --short 输出行集合）。
+
+    Args:
+        project_root: 项目根目录
+
+    Returns:
+        git status --short 输出行集合（每行一个文件状态）
+    """
+    try:
+        result = subprocess.run(
+            ["git", "status", "--short"],
+            capture_output=True,
+            text=True,
+            cwd=str(project_root),
+        )
+        if result.stdout.strip():
+            return set(result.stdout.strip().splitlines())
+        return set()
+    except Exception:
+        return set()
+
+
+def _classify_workspace_changes(
+    before: set[str], after: set[str],
+) -> tuple[str, list[str]]:
+    """比较 workspace 前后快照，分类变更。
+
+    Args:
+        before: 执行前 git status --short 行集合
+        after: 执行后 git status --short 行集合
+
+    Returns:
+        (classification, changed_files)
+        classification: "clean" / "dirty_expected" / "dirty_unexpected" / "dirty_business_code"
+    """
+    new_files = after - before
+    if not new_files:
+        return "clean", []
+
+    changed = sorted(new_files)
+
+    # 剥离 git status 前缀（格式：XY filename，前 3 字符为状态标记）
+    def _strip_git_prefix(f: str) -> str:
+        return f[3:] if len(f) > 3 else f
+
+    # 预期变更前缀
+    expected_prefixes = ("reports/", "docs/tasks.md")
+    unexpected = [
+        f for f in changed
+        if not any(_strip_git_prefix(f).startswith(p) for p in expected_prefixes)
+    ]
+
+    # 检查是否有业务代码变更
+    business_extensions = (".html", ".css", ".js", ".py", ".yaml", ".json")
+    business_files = [
+        f for f in changed
+        if any(_strip_git_prefix(f).endswith(ext) for ext in business_extensions)
+        and not _strip_git_prefix(f).startswith(("reports/", "docs/"))
+    ]
+
+    if business_files:
+        return "dirty_business_code", changed
+
+    if unexpected:
+        return "dirty_unexpected", changed
+
+    return "dirty_expected", changed
+
+
+def _infer_claude_code_called(
+    steps: list[dict] | None,
+    workspace_status: str,
+) -> str:
+    """推断 Claude Code 是否被调用。
+
+    基于 steps 中是否有 Developer step 且 success，以及 workspace 变化推断。
+
+    Args:
+        steps: FullTaskStepResult 的字典列表（或 None）
+        workspace_status: workspace 分类结果
+
+    Returns:
+        "yes" / "no" / "unknown"
+    """
+    if not steps:
+        return "no"
+
+    # 有 Developer step 且 success → 已调用
+    for step in steps:
+        name = step.get("name", "") if isinstance(step, dict) else getattr(step, "name", "")
+        success = step.get("success", False) if isinstance(step, dict) else getattr(step, "success", False)
+        if name == "Developer" and success:
+            return "yes"
+
+    # workspace 有变化 → unknown
+    if workspace_status != "clean":
+        return "unknown"
+
+    return "unknown"
+
+
+def _infer_business_code_changed(
+    workspace_status: str,
+    changed_files: list[str],
+) -> str:
+    """推断业务代码是否变更。
+
+    Args:
+        workspace_status: workspace 分类结果
+        changed_files: 变更文件列表
+
+    Returns:
+        "yes" / "no" / "unknown"
+    """
+    if workspace_status == "clean":
+        return "no"
+
+    business_extensions = (".html", ".css", ".js", ".py", ".yaml", ".json")
+    business_files = [
+        f for f in changed_files
+        if any(f.strip().endswith(ext) for ext in business_extensions)
+        and not f.strip().startswith(("reports/", "docs/"))
+    ]
+
+    if business_files:
+        return "yes"
+
+    return "unknown"
+
+
+# ---------------------------------------------------------------------------
+# T086: Child Command Output Parser
+# ---------------------------------------------------------------------------
+
+# 需要解析的 KEY 列表
+_PARSER_KNOWN_KEYS = frozenset({
+    "TASK_ID",
+    "CHECK_RESULT",
+    "TASK_STATUS",
+    "NEXT_PENDING",
+    "REAL_TASK_EXECUTION",
+    "CLAUDE_CODE_CALLED",
+    "BUSINESS_CODE_CHANGED",
+    "WORKTREE_STATUS",
+    "REPORT_PATHS",
+    "FINAL_STATUS",
+    "FULL_LOOP_REPORT",
+})
+
+# 必需字段（缺失时 parse_check_result=fail）
+_PARSER_REQUIRED_KEYS = frozenset({
+    "CHECK_RESULT",
+})
+
+
+@dataclass
+class ChildCommandParseResult:
+    """子命令输出解析结果。
+
+    解析 KEY=value 格式的 stdout，
+    缺失字段按安全规则降级。
+    不执行任何命令，不修改任何文件。
+    """
+
+    raw_stdout_present: bool               # stdout 是否非空
+    raw_stderr_present: bool               # stderr 是否非空
+    exit_code: int                         # 子命令退出码
+    task_id: str                           # 解析的 task_id
+    check_result: str                      # 解析的 CHECK_RESULT（pass/fail）
+    task_status: str                       # 解析的 TASK_STATUS
+    next_pending: str                      # 解析的 NEXT_PENDING
+    real_task_execution: str               # 解析的 REAL_TASK_EXECUTION
+    claude_code_called: str                # 解析的 CLAUDE_CODE_CALLED
+    business_code_changed: str             # 解析的 BUSINESS_CODE_CHANGED
+    worktree_status: str                   # 解析的 WORKTREE_STATUS
+    report_paths: list[str]                # 解析的 REPORT_PATHS（逗号分隔 → list）
+    missing_required_fields: list[str]     # 缺失的必需字段
+    unknown_fields: list[str]              # 值为 unknown 的字段名列表
+    parse_status: str                      # "parsed" / "parsed_with_missing_fields" / "parse_failed"
+    parse_check_result: str                # "pass" / "fail"
+    stop_reason: str | None                # 停止原因
+    human_review_required: bool            # 是否需要人工审查
+    message: str                           # 详细消息
+
+
+def parse_child_command_output(
+    stdout_text: str,
+    stderr_text: str = "",
+    exit_code: int = 0,
+) -> ChildCommandParseResult:
+    """解析子命令 KEY=value 格式输出。
+
+    支持：
+    - 多行 stdout
+    - 忽略非 KEY=value 的普通日志行
+    - 大小写保持的 key
+    - REPORT_PATHS 逗号分隔为 list
+    - 缺失字段按安全规则降级
+
+    不执行任何命令，不修改任何文件。
+
+    Args:
+        stdout_text: 子命令 stdout 文本
+        stderr_text: 子命令 stderr 文本
+        exit_code: 子命令退出码
+
+    Returns:
+        ChildCommandParseResult
+    """
+    raw_stdout_present = bool(stdout_text and stdout_text.strip())
+    raw_stderr_present = bool(stderr_text and stderr_text.strip())
+
+    # --- 空 stdout 处理 ---
+    if not raw_stdout_present:
+        return ChildCommandParseResult(
+            raw_stdout_present=False,
+            raw_stderr_present=raw_stderr_present,
+            exit_code=exit_code,
+            task_id="",
+            check_result="",
+            task_status="unknown",
+            next_pending="",
+            real_task_execution="unknown",
+            claude_code_called="unknown",
+            business_code_changed="unknown",
+            worktree_status="unknown",
+            report_paths=[],
+            missing_required_fields=["CHECK_RESULT"],
+            unknown_fields=["TASK_STATUS", "CLAUDE_CODE_CALLED", "BUSINESS_CODE_CHANGED", "WORKTREE_STATUS"],
+            parse_status="parse_failed",
+            parse_check_result="fail",
+            stop_reason="empty_stdout",
+            human_review_required=True,
+            message="解析失败：stdout 为空，无法解析任何字段。",
+        )
+
+    # --- 解析 KEY=value ---
+    parsed: dict[str, str] = {}
+    for line in stdout_text.strip().splitlines():
+        line = line.strip()
+        if "=" not in line:
+            continue
+        # 分割第一个 =
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip()
+        if key and value and key in _PARSER_KNOWN_KEYS:
+            parsed[key] = value
+
+    # --- 收集缺失字段 ---
+    missing_required: list[str] = []
+    for req_key in _PARSER_REQUIRED_KEYS:
+        if req_key not in parsed:
+            missing_required.append(req_key)
+
+    unknown_fields: list[str] = []
+    for key in ("TASK_STATUS", "CLAUDE_CODE_CALLED", "BUSINESS_CODE_CHANGED", "WORKTREE_STATUS"):
+        if key not in parsed:
+            unknown_fields.append(key)
+
+    # --- 确定 parse_status ---
+    if missing_required:
+        parse_status = "parse_failed"
+        parse_check_result = "fail"
+        stop_reason = f"missing_{missing_required[0].lower()}"
+    elif unknown_fields:
+        parse_status = "parsed_with_missing_fields"
+        parse_check_result = "pass"
+        stop_reason = None
+    else:
+        parse_status = "parsed"
+        parse_check_result = "pass"
+        stop_reason = None
+
+    # --- 构建 check_result ---
+    check_result = parsed.get("CHECK_RESULT", "")
+    if not check_result and not missing_required:
+        # CHECK_RESULT 在 parsed 中但值为空
+        parse_check_result = "fail"
+        stop_reason = "empty_check_result"
+
+    # --- REPORT_PATHS 解析 ---
+    report_paths_str = parsed.get("REPORT_PATHS", "")
+    report_paths: list[str] = []
+    if report_paths_str:
+        report_paths = [p.strip() for p in report_paths_str.split(",") if p.strip()]
+
+    # --- 组装消息 ---
+    parts = []
+    if parse_status == "parsed":
+        parts.append("解析完成：所有必需字段和可选字段均已解析。")
+    elif parse_status == "parsed_with_missing_fields":
+        parts.append(f"解析完成（有缺失可选字段）：{', '.join(unknown_fields)}。")
+    else:
+        parts.append(f"解析失败：缺失必需字段 {', '.join(missing_required)}。")
+    if exit_code != 0:
+        parts.append(f"注意：exit_code={exit_code} 非 0，需要后续执行层处理。")
+    parts.append(f"共解析 {len(parsed)} 个字段。")
+
+    message = " ".join(parts)
+
+    # --- 构建 check_result 语义 ---
+    child_check_result = check_result if check_result else "unknown"
+
+    return ChildCommandParseResult(
+        raw_stdout_present=True,
+        raw_stderr_present=raw_stderr_present,
+        exit_code=exit_code,
+        task_id=parsed.get("TASK_ID", ""),
+        check_result=child_check_result,
+        task_status=parsed.get("TASK_STATUS", "unknown"),
+        next_pending=parsed.get("NEXT_PENDING", ""),
+        real_task_execution=parsed.get("REAL_TASK_EXECUTION", "unknown"),
+        claude_code_called=parsed.get("CLAUDE_CODE_CALLED", "unknown"),
+        business_code_changed=parsed.get("BUSINESS_CODE_CHANGED", "unknown"),
+        worktree_status=parsed.get("WORKTREE_STATUS", "unknown"),
+        report_paths=report_paths,
+        missing_required_fields=missing_required,
+        unknown_fields=unknown_fields,
+        parse_status=parse_status,
+        parse_check_result=parse_check_result,
+        stop_reason=stop_reason,
+        human_review_required=bool(missing_required or unknown_fields),
+        message=message,
+    )
+
+
 def _resolve_subproject_path(project_root: Path, task_id: str) -> Path:
     """根据任务 ID 前缀解析子项目路径。
 

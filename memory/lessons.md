@@ -609,3 +609,14 @@ G006 已完成完整闭环：
 - 模式互斥检查应在 CLI 层和函数层双重覆盖：CLI 层更早、更清晰，函数层在函数被其他入口调用时仍然有效。
 - 复用 validate_real_call_safety() 可避免重复实现双重确认、max_tasks 检查和 workspace 检查。run-once safety shell 只需额外添加与其他模式的互斥检查。
 - dirty workspace 下无法实测 pass 路径，可通过函数级验证确认数据结构和字段值。clean workspace 下的完整 E2E 验证留给 T087。
+
+## T086 Child Command Parser Dry-Run 实现经验
+
+### 核心经验
+
+- KEY=value 格式解析应使用白名单机制（_PARSER_KNOWN_KEYS），只识别已知 key，避免解析无关行。
+- 缺失必需字段（CHECK_RESULT）和缺失可选字段应分开处理：必需字段缺失 → parse_failed，可选字段缺失 → parsed_with_missing_fields + unknown 值。
+- unknown 字段不能降级为 no。unknown 代表信息不足，no 代表确认未发生，语义不同。
+- git status --short 输出行有前缀（如 `A  `、`M  `），分类变更时必须先剥离前 3 字符再检查文件路径。
+- workspace 分类应区分 dirty_business_code（有 .html/.css/.js/.py 等变更）和 dirty_unexpected（有未知变更）和 dirty_expected（只有 reports/ docs/ 变更）。
+- parser dry-run CLI 内置样例字符串是低风险、高效率的验证方式，适合在 dirty workspace 下验证解析逻辑。

@@ -47,6 +47,7 @@ from tools.continuous_task_planner import run_project_loop_real_call_stub
 from tools.continuous_task_planner import validate_real_call_safety
 from tools.continuous_task_planner import run_project_loop_real_call_dry_run_executor
 from tools.continuous_task_planner import run_project_loop_real_call_run_once_safety_shell
+from tools.continuous_task_planner import parse_child_command_output
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -1176,6 +1177,121 @@ def main():
 
             if result.report_path:
                 print(f"Report：{result.report_path}")
+    elif args[0] == "parse-child-output-dry-run":
+        # T086: child command output parser dry-run
+        sample_type = "pass"
+        if len(args) >= 3 and args[1] == "--sample":
+            sample_type = args[2]
+        elif len(args) >= 2 and not args[1].startswith("-"):
+            sample_type = args[1]
+
+        # 内置样例 stdout
+        _SAMPLE_PASS = (
+            "TASK_ID=G008\n"
+            "CHECK_RESULT=pass\n"
+            "TASK_STATUS=done\n"
+            "NEXT_PENDING=G009\n"
+            "REAL_TASK_EXECUTION=yes\n"
+            "CLAUDE_CODE_CALLED=yes\n"
+            "BUSINESS_CODE_CHANGED=yes\n"
+            "WORKTREE_STATUS=dirty_business_code\n"
+            "REPORT_PATHS=reports/dev/G008-dev-report.md,reports/test/G008-test-report.md\n"
+            "FINAL_STATUS=COMPLETE\n"
+            "FULL_LOOP_REPORT=reports/G008-full-loop-report.md\n"
+        )
+        _SAMPLE_FAIL = (
+            "TASK_ID=G008\n"
+            "CHECK_RESULT=fail\n"
+            "TASK_STATUS=failed\n"
+            "NEXT_PENDING=\n"
+            "REAL_TASK_EXECUTION=yes\n"
+            "CLAUDE_CODE_CALLED=yes\n"
+            "BUSINESS_CODE_CHANGED=no\n"
+            "WORKTREE_STATUS=clean\n"
+            "REPORT_PATHS=reports/dev/G008-dev-report.md\n"
+            "FINAL_STATUS=FAILED\n"
+            "FULL_LOOP_REPORT=reports/G008-full-loop-report.md\n"
+        )
+        _SAMPLE_MISSING_CHECK_RESULT = (
+            "TASK_ID=G008\n"
+            "TASK_STATUS=done\n"
+            "REAL_TASK_EXECUTION=yes\n"
+            "CLAUDE_CODE_CALLED=yes\n"
+            "BUSINESS_CODE_CHANGED=no\n"
+            "WORKTREE_STATUS=clean\n"
+        )
+        _SAMPLE_MISSING_OPTIONAL = (
+            "TASK_ID=G008\n"
+            "CHECK_RESULT=pass\n"
+            "REAL_TASK_EXECUTION=yes\n"
+        )
+        _SAMPLE_WITH_LOGS = (
+            "[INFO] Starting task execution...\n"
+            "[DEBUG] Validating preconditions...\n"
+            "TASK_ID=G008\n"
+            "CHECK_RESULT=pass\n"
+            "TASK_STATUS=done\n"
+            "[INFO] Task completed successfully.\n"
+            "CLAUDE_CODE_CALLED=yes\n"
+            "BUSINESS_CODE_CHANGED=no\n"
+            "WORKTREE_STATUS=clean\n"
+            "REPORT_PATHS=reports/dev/G008-dev-report.md\n"
+            "[INFO] Writing report...\n"
+        )
+        _SAMPLE_EMPTY = ""
+        _SAMPLE_EXIT_CODE_NONZERO = (
+            "TASK_ID=G008\n"
+            "CHECK_RESULT=pass\n"
+            "TASK_STATUS=done\n"
+            "CLAUDE_CODE_CALLED=yes\n"
+            "BUSINESS_CODE_CHANGED=no\n"
+            "WORKTREE_STATUS=clean\n"
+            "REPORT_PATHS=reports/dev/G008-dev-report.md\n"
+        )
+
+        _SAMPLES = {
+            "pass": _SAMPLE_PASS,
+            "fail": _SAMPLE_FAIL,
+            "missing-check-result": _SAMPLE_MISSING_CHECK_RESULT,
+            "missing-optional": _SAMPLE_MISSING_OPTIONAL,
+            "with-logs": _SAMPLE_WITH_LOGS,
+            "empty": _SAMPLE_EMPTY,
+            "exit-code-nonzero": _SAMPLE_EXIT_CODE_NONZERO,
+        }
+
+        stdout_text = _SAMPLES.get(sample_type, _SAMPLE_PASS)
+        exit_code = 2 if sample_type == "exit-code-nonzero" else 0
+
+        result = parse_child_command_output(
+            stdout_text=stdout_text,
+            stderr_text="",
+            exit_code=exit_code,
+        )
+
+        print()
+        print(f"PARSE_STATUS={result.parse_status}")
+        print(f"PARSE_CHECK_RESULT={result.parse_check_result}")
+        print(f"RAW_STDOUT_PRESENT={result.raw_stdout_present}")
+        print(f"RAW_STDERR_PRESENT={result.raw_stderr_present}")
+        print(f"EXIT_CODE={result.exit_code}")
+        print(f"TASK_ID={result.task_id}")
+        print(f"CHECK_RESULT={result.check_result}")
+        print(f"TASK_STATUS={result.task_status}")
+        print(f"NEXT_PENDING={result.next_pending}")
+        print(f"REAL_TASK_EXECUTION={result.real_task_execution}")
+        print(f"CLAUDE_CODE_CALLED={result.claude_code_called}")
+        print(f"BUSINESS_CODE_CHANGED={result.business_code_changed}")
+        print(f"WORKTREE_STATUS={result.worktree_status}")
+        report_paths_str = ",".join(result.report_paths) if result.report_paths else "NONE"
+        print(f"REPORT_PATHS={report_paths_str}")
+        missing_str = ",".join(result.missing_required_fields) if result.missing_required_fields else "NONE"
+        print(f"MISSING_REQUIRED_FIELDS={missing_str}")
+        unknown_str = ",".join(result.unknown_fields) if result.unknown_fields else "NONE"
+        print(f"UNKNOWN_FIELDS={unknown_str}")
+        print(f"STOP_REASON={result.stop_reason or 'NONE'}")
+        print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required}")
+        print()
+        print(f"Message：{result.message}")
     elif args[0] == "plan-project-loop":
         # T059 continuous task planner dry-run
         max_tasks_val = 3

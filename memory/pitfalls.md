@@ -402,3 +402,11 @@
 - 不要在 dirty workspace 下期望能验证 pass 路径。dirty workspace 会被 safety gate 先拦截，函数级验证是 dirty 状态下的补充手段。
 - 不要把 --real-call-run-once 和 --real-call-dry-run 设计为可以同时使用。run-once 是 T079 dry-run executor 的升级路径，两者互斥。
 - 不要在 run-once safety shell 中调用 run_project_task_full。safety shell 的职责是"检查通过 + 构造调用信息"，真实调用是 T090。
+
+## T086 Child Command Parser Dry-Run 避坑
+
+- 不要在 _classify_workspace_changes 中直接用 git status 行做 startswith 检查。行格式是 `XY filename`（前 3 字符为状态标记），必须先剥离前缀再检查文件路径，否则 `A  reports/xxx.md` 不会匹配 `reports/`。
+- 不要把缺失可选字段的值默认为 no 或空字符串。CLAUDE_CODE_CALLED 和 BUSINESS_CODE_CHANGED 缺失时必须为 unknown，与确认的 no 语义不同。
+- 不要把 parse_check_result=pass 和 CHECK_RESULT=pass 混为一谈。parse_check_result 代表解析是否成功，CHECK_RESULT 代表子命令执行结果。
+- 不要假设 REPORT_PATHS 只有一个路径。应使用逗号分隔解析为 list。
+- 不要在 parser 中忽略 exit_code 非 0 的情况。虽然 parser 本身不处理 exit_code，但应在 message 中说明，供后续执行层决策。

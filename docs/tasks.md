@@ -2502,22 +2502,28 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T086 实现 child command parser
+## T086 实现 child command parser ✅
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 FullTaskLoopResult 解析、workspace 检测、CLAUDE_CODE_CALLED 和 BUSINESS_CODE_CHANGED 推断函数。
 
 ### 验收标准
 
-- 实现 _snapshot_workspace() 函数
-- 实现 _classify_workspace_changes() 函数
-- 实现 _infer_claude_code_called() 函数
-- 实现 _infer_business_code_changed() 函数
-- 支持模拟 FullTaskLoopResult 输入解析
-- 不真实调用 run_project_task_full
-- 不调用 Claude Code
-- 不修改业务代码
+- ✅ 实现 _snapshot_workspace() 函数
+- ✅ 实现 _classify_workspace_changes() 函数
+- ✅ 实现 _infer_claude_code_called() 函数
+- ✅ 实现 _infer_business_code_changed() 函数
+- ✅ 实现 ChildCommandParseResult 数据结构
+- ✅ 实现 parse_child_command_output() 函数
+- ✅ 新增 parse-child-output-dry-run CLI
+- ✅ 10 个验证场景全部 PASS
+- ✅ 不真实调用 run_project_task_full
+- ✅ 不调用 Claude Code
+- ✅ 不修改业务代码
+
+<!-- NEXT_PENDING=T087 -->
+<!-- NEXT_STAGE=Stage 6 -->
 
 ---
 
