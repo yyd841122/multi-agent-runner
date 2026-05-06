@@ -410,3 +410,11 @@
 - 不要把 parse_check_result=pass 和 CHECK_RESULT=pass 混为一谈。parse_check_result 代表解析是否成功，CHECK_RESULT 代表子命令执行结果。
 - 不要假设 REPORT_PATHS 只有一个路径。应使用逗号分隔解析为 list。
 - 不要在 parser 中忽略 exit_code 非 0 的情况。虽然 parser 本身不处理 exit_code，但应在 message 中说明，供后续执行层决策。
+
+## T090 Real-call Run-once MVP 小结避坑
+
+- 不要把 run-once safety shell 的 CHECK_RESULT=pass 误认为真实执行成功。safety shell 只构造调用信息，不执行任何真实操作。
+- 不要把 child parser 能解析样例输出误认为可以处理真实执行结果。parser 验证的是解析逻辑，不是执行链路。
+- 不要把 pass 后停止误认为是 bug。MVP 阶段无论 pass/fail 都停止等待人工确认，这是安全边界，不是长期限制。
+- 不要在下一步直接实现真实调用。从 safety shell + parser 到真实执行之间，需要先设计首次执行验收协议。
+- 不要把 T090 小结的 REAL_CALL_RUN_ONCE_MVP_STATUS=done 误解为真实执行已完成。done 代表 safety shell + parser MVP 完成，不代表真实调用。

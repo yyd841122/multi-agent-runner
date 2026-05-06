@@ -2586,7 +2586,46 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T090 实现真实调用
+## T090 real-call run-once MVP 小结与提交确认 ✅
+
+状态：done ✅
+角色：Stage Summary Agent + Real-call Run-once MVP Release Check Architect
+目标：生成 real-call run-once MVP 小结报告，更新 memory 和 tasks.md。
+
+### 验收标准
+
+- ✅ 生成 reports/stage-6-real-call-run-once-mvp-summary.md
+- ✅ 生成 reports/dev/T090-dev-report.md
+- ✅ 更新 memory/lessons.md（real-call run-once MVP 经验）
+- ✅ 更新 memory/pitfalls.md（real-call run-once MVP 避坑）
+- ✅ 更新 docs/tasks.md（T090 状态更新）
+- ✅ 复核命令验证通过（safety shell + parser pass/fail）
+- ✅ 未实现新功能，未修改代码文件
+
+<!-- NEXT_PENDING=T091 -->
+<!-- NEXT_STAGE=Stage 7 -->
+
+---
+
+## T091 设计首次真实调用 run-project-task-full 的验收协议
+
+状态：pending
+角色：Architect
+目标：设计从 safety shell + parser dry-run 升级到首次真实调用 run_project_task_full 的验收协议，确认环境、任务选择、预期结果和回退策略。
+
+### 验收标准
+
+- 定义首次真实调用的前置条件
+- 定义候选任务选择规则
+- 定义预期结果和回退策略
+- 定义安全边界和人工介入条件
+- 不实现代码
+- 不修改 runner.py
+- 不执行真实任务
+
+---
+
+## T092 实现真实调用
 
 状态：pending
 角色：Developer
@@ -2604,7 +2643,7 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T091 验证真实执行
+## T093 验证真实执行
 
 状态：pending
 角色：Tester
@@ -2620,7 +2659,7 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T092 提交并推送 real-call run-once MVP
+## T094 提交并推送 real-call run-once MVP
 
 状态：pending
 角色：Reporter

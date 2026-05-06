@@ -620,3 +620,14 @@ G006 已完成完整闭环：
 - git status --short 输出行有前缀（如 `A  `、`M  `），分类变更时必须先剥离前 3 字符再检查文件路径。
 - workspace 分类应区分 dirty_business_code（有 .html/.css/.js/.py 等变更）和 dirty_unexpected（有未知变更）和 dirty_expected（只有 reports/ docs/ 变更）。
 - parser dry-run CLI 内置样例字符串是低风险、高效率的验证方式，适合在 dirty workspace 下验证解析逻辑。
+
+## T090 Real-call Run-once MVP 小结经验
+
+### 核心经验
+
+- run-once safety shell 不等于真实执行。safety shell 只构造 command/function_call 字符串，RUN_PROJECT_TASK_FULL_CALLED 始终为 no。真实调用需要单独设计验收协议。
+- child parser 只解决输出解析问题，不解决执行问题。parse_child_command_output() 可以正确解析 CHECK_RESULT=pass/fail，但 parser 本身不会触发任何执行。
+- pass 后也必须停止。AUTO_CONTINUE_TO_NEXT_TASK 和 AUTO_GIT_BACKUP 在 continuous_task_planner.py 中硬编码为 false，这是 MVP 安全边界。
+- fail 后也必须停止。四种 fail 类型（REQUEST_CHANGES/BLOCKED/FAILED/异常）都设计为停止并等待人工处理。
+- 从 safety shell + parser dry-run 到真实执行之间，仍需要单独设计首次执行验收协议，确认环境、任务选择、预期结果和回退策略。
+- 分步推进策略在 Stage 6 继续有效：设计 → safety shell → parser → 拒绝验证 → pass 模拟 → fail 模拟 → 小结，每步独立提交。
