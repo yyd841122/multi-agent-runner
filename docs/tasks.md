@@ -2178,7 +2178,7 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T068 验证 max_tasks=1 execute stub
 
-状态：pending
+状态：done
 角色：Tester
 目标：验证 max_tasks=1 execute stub 的执行和停止行为。
 
