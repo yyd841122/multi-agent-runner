@@ -2164,7 +2164,7 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T067 验证 execute confirm 拒绝场景
 
-状态：pending
+状态：done
 角色：Tester
 目标：验证所有确认拒绝场景（不带 execute、缺 confirm、模糊确认、max_tasks 非法、dirty 工作区等）。
 
