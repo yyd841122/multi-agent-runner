@@ -705,3 +705,146 @@ def validate_execute_loop_safety(
             f"TASK_EXECUTION_PERFORMED=false（safety gate 不执行任务）。"
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# T066: Execute Stub（max_tasks=1）
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ExecuteLoopStubResult:
+    """Execute stub 结果（max_tasks=1 stub only）。
+
+    safety gate 通过后，只模拟识别第一个 planned task，
+    不调用 run-project-task-full，不调用 Claude Code，不修改业务代码。
+    """
+
+    project: str
+    run_id: str
+    execute_mode: str                       # "execute"
+    execute_allowed: bool                   # safety gate 是否通过
+    execute_stub_started: bool              # stub 是否启动
+    max_tasks: int
+    planned_tasks: list[str]                # safety gate 通过时的 planned task ID 列表
+    stub_task: str | None                   # 第一个 planned task（stub 模拟目标）
+    completed_tasks: list[str]              # stub 模拟完成的任务（不等于真实完成）
+    failed_tasks: list[str]                 # 始终空
+    skipped_tasks: list[str]               # 始终空
+    task_execution_performed: bool          # 始终 False
+    claude_code_called: bool                # 始终 False
+    business_code_changed: bool             # 始终 False
+    loop_status: str                        # execute_stub_completed / safety_gate_failed / max_tasks_gt_1_not_supported
+    stop_reason: str | None                 # 停止原因
+    human_review_required: bool             # 始终 False
+    next_action: str                        # 建议下一步
+    message: str                            # 详细消息
+
+
+def run_project_loop_execute_stub(
+    project_root: str | Path,
+    max_tasks: int = 1,
+    confirm: str | None = None,
+) -> ExecuteLoopStubResult:
+    """Execute stub：safety gate 通过后模拟 max_tasks=1 的 execute。
+
+    只识别 planned_tasks 中的第一个任务作为 stub_task，
+    不调用 run-project-task-full，不调用 Claude Code，不修改业务代码。
+
+    Args:
+        project_root: 项目根目录
+        max_tasks: 用户请求的 max_tasks（stub 只支持 1）
+        confirm: 用户传入的 --confirm 值
+
+    Returns:
+        ExecuteLoopStubResult
+    """
+    project_root = Path(project_root)
+    run_id = _generate_run_id()
+
+    # 1. 调用 safety gate
+    safety = validate_execute_loop_safety(
+        project_root=project_root,
+        max_tasks=max_tasks,
+        confirm=confirm,
+    )
+
+    # 2. safety gate 不通过 → 返回 stub 结果，标记未启动
+    if not safety.execute_allowed:
+        return ExecuteLoopStubResult(
+            project=str(project_root),
+            run_id=run_id,
+            execute_mode="execute",
+            execute_allowed=False,
+            execute_stub_started=False,
+            max_tasks=max_tasks,
+            planned_tasks=[],
+            stub_task=None,
+            completed_tasks=[],
+            failed_tasks=[],
+            skipped_tasks=[],
+            task_execution_performed=False,
+            claude_code_called=False,
+            business_code_changed=False,
+            loop_status="safety_gate_failed",
+            stop_reason=safety.stop_reason,
+            human_review_required=False,
+            next_action=safety.next_action,
+            message=f"execute stub 未启动：safety gate 拒绝（{safety.stop_reason}）。",
+        )
+
+    # 3. safety gate 通过但 max_tasks != 1 → 拒绝（T066 只支持 max_tasks=1）
+    if max_tasks != 1:
+        return ExecuteLoopStubResult(
+            project=str(project_root),
+            run_id=run_id,
+            execute_mode="execute",
+            execute_allowed=True,
+            execute_stub_started=False,
+            max_tasks=max_tasks,
+            planned_tasks=safety.planned_tasks,
+            stub_task=None,
+            completed_tasks=[],
+            failed_tasks=[],
+            skipped_tasks=[],
+            task_execution_performed=False,
+            claude_code_called=False,
+            business_code_changed=False,
+            loop_status="max_tasks_gt_1_not_supported",
+            stop_reason="max_tasks_gt_1_not_supported_in_stub",
+            human_review_required=False,
+            next_action="use_max_tasks_1_for_stub",
+            message=(
+                f"execute stub 当前只支持 max_tasks=1，"
+                f"请求的 max_tasks={max_tasks}。"
+                f"请使用 --max-tasks 1。"
+            ),
+        )
+
+    # 4. safety gate 通过且 max_tasks=1 → 启动 stub
+    stub_task = safety.planned_tasks[0] if safety.planned_tasks else None
+
+    return ExecuteLoopStubResult(
+        project=str(project_root),
+        run_id=run_id,
+        execute_mode="execute",
+        execute_allowed=True,
+        execute_stub_started=True,
+        max_tasks=1,
+        planned_tasks=safety.planned_tasks,
+        stub_task=stub_task,
+        completed_tasks=[stub_task] if stub_task else [],  # 模拟完成
+        failed_tasks=[],
+        skipped_tasks=[],
+        task_execution_performed=False,        # 不执行真实任务
+        claude_code_called=False,              # 不调用 Claude Code
+        business_code_changed=False,           # 不修改业务代码
+        loop_status="execute_stub_completed",
+        stop_reason="execute_stub_only",
+        human_review_required=False,
+        next_action="ready_for_T067_validation",
+        message=(
+            f"execute stub 完成：模拟执行 {stub_task}，"
+            f"未调用 run-project-task-full，未调用 Claude Code，未修改业务代码。"
+            f"TASK_EXECUTION_PERFORMED=false。"
+        ),
+    )

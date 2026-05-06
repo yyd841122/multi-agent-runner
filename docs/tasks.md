@@ -2148,7 +2148,7 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T066 实现 max_tasks=1 execute stub
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 execute mode 下 max_tasks=1 的最小 stub 执行，只走一个任务闭环。
 

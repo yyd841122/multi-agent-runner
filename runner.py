@@ -41,7 +41,7 @@ from tools.rework_manager import generate_rework_prompt_for_game_task, MAX_REWOR
 from tools.full_task_runner import run_project_task_full
 from tools.continuous_task_planner import build_continuous_task_plan
 from tools.continuous_task_planner import run_project_loop_dry_run
-from tools.continuous_task_planner import validate_execute_loop_safety
+from tools.continuous_task_planner import validate_execute_loop_safety, run_project_loop_execute_stub
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -1231,32 +1231,35 @@ def main():
             return
 
         if execute_mode:
-            # T065: execute mode safety gate
-            safety = validate_execute_loop_safety(
+            # T066: execute mode → safety gate + execute stub
+            stub = run_project_loop_execute_stub(
                 project_root=PROJECT_ROOT,
                 max_tasks=max_tasks_val,
                 confirm=confirm_text,
             )
 
             print()
-            print(f"EXECUTE_MODE_REQUESTED={safety.execute_requested}")
-            print(f"CONFIRM_STATUS={safety.confirm_status}")
-            print(f"RUN_ID={safety.run_id}")
-            print(f"MAX_TASKS={safety.max_tasks}")
-            print(f"EXECUTE_HARD_LIMIT={safety.execute_hard_limit}")
-            planned_str = ",".join(safety.planned_tasks)
+            print(f"EXECUTE_MODE_REQUESTED=true")
+            print(f"EXECUTE_ALLOWED={stub.execute_allowed}")
+            print(f"EXECUTE_STUB_STARTED={stub.execute_stub_started}")
+            print(f"RUN_ID={stub.run_id}")
+            print(f"MAX_TASKS={stub.max_tasks}")
+            planned_str = ",".join(stub.planned_tasks)
             print(f"PLANNED_TASKS={planned_str or 'NONE'}")
-            print(f"WORKSPACE_STATUS={safety.workspace_status}")
-            print(f"PREFLIGHT_STATUS={safety.preflight_status}")
-            print(f"EXECUTE_ALLOWED={safety.execute_allowed}")
-            print(f"TASK_EXECUTION_PERFORMED={safety.task_execution_performed}")
-            print(f"CLAUDE_CODE_CALLED={safety.claude_code_called}")
-            print(f"BUSINESS_CODE_CHANGED={safety.business_code_changed}")
-            print(f"HUMAN_REVIEW_REQUIRED={safety.human_review_required}")
-            print(f"STOP_REASON={safety.stop_reason or 'NONE'}")
-            print(f"NEXT_ACTION={safety.next_action}")
+            if stub.stub_task:
+                print(f"STUB_TASK={stub.stub_task}")
+            print(f"COMPLETED_TASKS={','.join(stub.completed_tasks) or 'NONE'}")
+            print(f"FAILED_TASKS={','.join(stub.failed_tasks) or 'NONE'}")
+            print(f"TASK_EXECUTION_PERFORMED={stub.task_execution_performed}")
+            print(f"CLAUDE_CODE_CALLED={stub.claude_code_called}")
+            print(f"BUSINESS_CODE_CHANGED={stub.business_code_changed}")
+            print(f"LOOP_STATUS={stub.loop_status}")
+            print(f"STOP_REASON={stub.stop_reason or 'NONE'}")
+            print(f"HUMAN_REVIEW_REQUIRED={stub.human_review_required}")
+            print(f"NEXT_ACTION={stub.next_action}")
+            print(f"CHECK_RESULT={'pass' if stub.execute_stub_started else 'fail'}")
             print()
-            print(f"Message：{safety.message}")
+            print(f"Message：{stub.message}")
         else:
             # T060: dry-run（保持原有行为）
             result = run_project_loop_dry_run(
