@@ -2475,28 +2475,30 @@ T054 原始目标已经由以下任务前置完成：
 - ✅ 推荐 Python 函数调用（非 subprocess）
 - ✅ 新增 --real-call-run-once 参数
 
-<!-- NEXT_PENDING=T085 -->
+<!-- NEXT_PENDING=T086 -->
 <!-- NEXT_STAGE=Stage 6 -->
-
 ---
 
-## T085 实现 real-call run-once safety shell
+## T085 实现 real-call run-once safety shell ✅
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 RealCallRunOnceResult 数据结构和 `run_project_loop_real_call_run_once()` 函数骨架，包含 preflight checks 和拒绝场景全覆盖。
 
 ### 验收标准
 
-- 新增 RealCallRunOnceResult 数据结构（26+ 字段）
-- 新增 run_project_loop_real_call_run_once() 函数
-- 复用 validate_real_call_safety() 做前置检查
-- 额外 preflight（--real-call-dry-run 互斥等）
-- runner.py 新增 --real-call-run-once 参数
-- 拒绝场景全覆盖
-- 不真实调用 run_project_task_full
-- 不调用 Claude Code
-- 不修改业务代码
+- ✅ 新增 RealCallRunOnceResult 数据结构（26 字段）
+- ✅ 新增 run_project_loop_real_call_run_once_safety_shell() 函数
+- ✅ 复用 validate_real_call_safety() 做前置检查
+- ✅ 额外 preflight（--real-call-dry-run / --adapter-dry-run / --real-call-stub / --dry-run 互斥）
+- ✅ runner.py 新增 --real-call-run-once 参数
+- ✅ 拒绝场景全覆盖（12 个验证场景全部 PASS）
+- ✅ 不真实调用 run_project_task_full
+- ✅ 不调用 Claude Code
+- ✅ 不修改业务代码
+
+<!-- NEXT_PENDING=T086 -->
+<!-- NEXT_STAGE=Stage 6 -->
 
 ---
 

@@ -394,3 +394,11 @@
 - 不要在第一次真实调用 pass 后自动进入下一任务。MVP 硬约束：无论 pass/fail 都停止。
 - 不要用 subprocess 调用 `run_project_task_full()`。Python 函数调用更简单，避免编码和环境问题。
 - 不要假设 `FullTaskLoopResult` 一定有 final_status。必须处理 None 和异常值。
+
+## T085 Real-Call Run-Once Safety Shell 避坑
+
+- 不要把 run-once safety shell 的 CHECK_RESULT=pass 误认为真实执行成功。safety shell 只构造 command/function_call，不执行任何真实操作。
+- 不要跳过 CLI 层互斥检查直接依赖函数层。CLI 层提供更清晰的错误提示（ERROR: ...），函数层在函数被其他入口调用时仍然有效。
+- 不要在 dirty workspace 下期望能验证 pass 路径。dirty workspace 会被 safety gate 先拦截，函数级验证是 dirty 状态下的补充手段。
+- 不要把 --real-call-run-once 和 --real-call-dry-run 设计为可以同时使用。run-once 是 T079 dry-run executor 的升级路径，两者互斥。
+- 不要在 run-once safety shell 中调用 run_project_task_full。safety shell 的职责是"检查通过 + 构造调用信息"，真实调用是 T090。

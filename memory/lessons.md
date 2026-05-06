@@ -599,3 +599,13 @@ G006 已完成完整闭环：
 - 真实调用推荐 Python 函数调用而非 subprocess：已有稳定函数入口 `run_project_task_full()`，避免编码/路径/环境问题。
 - 真实调用实现应分步推进：safety shell（拒绝场景）→ parser（解析逻辑）→ 拒绝验证 → pass 模拟 → fail 模拟 → 真实调用 → 真实验证 → 小结。
 - workspace 变化检测应使用执行前后快照比较，不是执行后单次检查。
+
+## T085 Real-Call Run-Once Safety Shell 实现经验
+
+### 核心经验
+
+- run-once safety shell 是真实调用前的最后一层安全外壳，只构造 command/function_call 但不执行，确保安全后才进入 T086 parser 和 T090 真实调用。
+- RealCallRunOnceResult 字段应统一使用字符串类型（"no"/"false"/"true"），与 T079 RealCallDryRunExecutorResult 的布尔字段形成对比改进，便于后续统一输出。
+- 模式互斥检查应在 CLI 层和函数层双重覆盖：CLI 层更早、更清晰，函数层在函数被其他入口调用时仍然有效。
+- 复用 validate_real_call_safety() 可避免重复实现双重确认、max_tasks 检查和 workspace 检查。run-once safety shell 只需额外添加与其他模式的互斥检查。
+- dirty workspace 下无法实测 pass 路径，可通过函数级验证确认数据结构和字段值。clean workspace 下的完整 E2E 验证留给 T087。

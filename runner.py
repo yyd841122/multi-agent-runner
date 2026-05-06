@@ -46,6 +46,7 @@ from tools.continuous_task_planner import run_project_loop_task_execution_adapte
 from tools.continuous_task_planner import run_project_loop_real_call_stub
 from tools.continuous_task_planner import validate_real_call_safety
 from tools.continuous_task_planner import run_project_loop_real_call_dry_run_executor
+from tools.continuous_task_planner import run_project_loop_real_call_run_once_safety_shell
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -1213,6 +1214,7 @@ def main():
         real_call_stub = False
         real_call = False
         real_call_dry_run = False
+        real_call_run_once = False
         real_confirm_text = None
         confirm_text = None
         i = 1
@@ -1237,6 +1239,9 @@ def main():
                 i += 1
             elif args[i] == "--real-call-dry-run":
                 real_call_dry_run = True
+                i += 1
+            elif args[i] == "--real-call-run-once":
+                real_call_run_once = True
                 i += 1
             elif args[i] == "--real-confirm" and i + 1 < len(args):
                 real_confirm_text = args[i + 1]
@@ -1320,7 +1325,84 @@ def main():
             print("ERROR：--real-call-dry-run 和 --real-call-stub 互斥，不能同时使用。")
             return
 
-        if execute_mode and real_call and real_call_dry_run:
+        # --real-call-run-once 必须配合 --real-call
+        if real_call_run_once and not real_call:
+            print()
+            print("ERROR：--real-call-run-once 必须配合 --real-call 使用。")
+            return
+
+        # --real-call-run-once 必须配合 --execute
+        if real_call_run_once and not execute_mode:
+            print()
+            print("ERROR：--real-call-run-once 必须配合 --execute 使用。")
+            return
+
+        # --real-call-run-once 和 --real-call-dry-run 互斥
+        if real_call_run_once and real_call_dry_run:
+            print()
+            print("ERROR：--real-call-run-once 和 --real-call-dry-run 互斥，不能同时使用。")
+            return
+
+        # --real-call-run-once 和 --adapter-dry-run 互斥
+        if real_call_run_once and adapter_dry_run:
+            print()
+            print("ERROR：--real-call-run-once 和 --adapter-dry-run 互斥，不能同时使用。")
+            return
+
+        # --real-call-run-once 和 --real-call-stub 互斥
+        if real_call_run_once and real_call_stub:
+            print()
+            print("ERROR：--real-call-run-once 和 --real-call-stub 互斥，不能同时使用。")
+            return
+
+        # --real-call-run-once 和 --dry-run 互斥
+        if real_call_run_once and dry_run_flag:
+            print()
+            print("ERROR：--real-call-run-once 和 --dry-run 互斥，不能同时使用。")
+            return
+
+        if real_call_run_once and execute_mode and real_call:
+            # T085: real-call run-once safety shell
+            result = run_project_loop_real_call_run_once_safety_shell(
+                project_root=PROJECT_ROOT,
+                max_tasks=max_tasks_val,
+                confirm=confirm_text,
+                real_confirm=real_confirm_text,
+                real_call_dry_run=real_call_dry_run,
+                adapter_dry_run=adapter_dry_run,
+                real_call_stub=real_call_stub,
+                dry_run_flag=dry_run_flag,
+            )
+
+            print()
+            print(f"EXECUTION_MODE={result.execution_mode}")
+            print(f"REAL_CALL_ALLOWED={result.real_call_allowed}")
+            print(f"RUN_ONCE_REQUESTED={result.run_once_requested}")
+            print(f"RUN_ONCE_SAFETY_SHELL_STARTED={result.run_once_safety_shell_started}")
+            print(f"RUN_ID={result.run_id}")
+            if result.task_id:
+                print(f"TASK_ID={result.task_id}")
+            if result.command:
+                print(f"COMMAND={result.command}")
+            if result.function_call:
+                print(f"FUNCTION_CALL={result.function_call}")
+            print(f"PREFLIGHT_STATUS={result.preflight_status}")
+            print(f"REAL_TASK_EXECUTION={result.real_task_execution}")
+            print(f"RUN_PROJECT_TASK_FULL_CALLED={result.run_project_task_full_called}")
+            print(f"CLAUDE_CODE_CALLED={result.claude_code_called}")
+            print(f"BUSINESS_CODE_CHANGED={result.business_code_changed}")
+            print(f"CHILD_EXIT_CODE={result.child_exit_code}")
+            print(f"CHILD_CHECK_RESULT={result.child_check_result}")
+            print(f"CHILD_TASK_STATUS={result.child_task_status}")
+            print(f"AUTO_CONTINUE_TO_NEXT_TASK={result.auto_continue_to_next_task}")
+            print(f"AUTO_GIT_BACKUP={result.auto_git_backup}")
+            print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required}")
+            print(f"CHECK_RESULT={result.check_result}")
+            print(f"STOP_REASON={result.stop_reason or 'NONE'}")
+            print(f"NEXT_ACTION={result.next_action}")
+            print()
+            print(f"Message：{result.message}")
+        elif execute_mode and real_call and real_call_dry_run:
             # T079: real-call dry-run executor
             result = run_project_loop_real_call_dry_run_executor(
                 project_root=PROJECT_ROOT,
