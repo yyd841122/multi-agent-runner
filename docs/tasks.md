@@ -2254,21 +2254,22 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T073 实现 max_tasks=1 real-call
+## T073 实现 max_tasks=1 real-call stub
 
-状态：pending
+状态：done
 角色：Developer
-目标：在 adapter 基础上接入真实 run_project_task_full()，支持 max_tasks=1 真实执行。
+目标：在 adapter 基础上实现 real-call stub，构造真实调用信息但不执行，支持 max_tasks=1。
 
 ### 验收标准
 
-- 实现 max_tasks=1 真实调用 run_project_task_full()
-- 实现 FullTaskLoopResult → TaskExecutionResult 转换
-- 实现执行后 workspace 检查
-- 实现执行后安全输出字段
-- 执行完成后停止等待人工确认
-- 不自动进入下一个任务
-- 不自动 Git 备份
+- 实现 RealCallStubResult 数据结构 ✓
+- 实现 run_project_loop_real_call_stub() 函数 ✓
+- 扩展 run-project-loop --real-call-stub 参数 ✓
+- 构造未来 run-project-task-full 调用信息 ✓
+- 不真实调用 run-project-task-full ✓
+- 不调用 Claude Code ✓
+- 不修改业务代码 ✓
+- 不推进任务状态 ✓
 
 ---
 

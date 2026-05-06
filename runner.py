@@ -43,6 +43,7 @@ from tools.continuous_task_planner import build_continuous_task_plan
 from tools.continuous_task_planner import run_project_loop_dry_run
 from tools.continuous_task_planner import validate_execute_loop_safety, run_project_loop_execute_stub
 from tools.continuous_task_planner import run_project_loop_task_execution_adapter_dry_run
+from tools.continuous_task_planner import run_project_loop_real_call_stub
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -1202,11 +1203,12 @@ def main():
         print(f"Message：{plan.message}")
         print(f"NEXT_ACTION={plan.next_action}")
     elif args[0] == "run-project-loop":
-        # T060 run-project-loop dry-run + T065 execute mode safety gate + T071 adapter dry-run
+        # T060 run-project-loop dry-run + T065 execute mode safety gate + T071 adapter dry-run + T073 real-call stub
         max_tasks_val = 3
         execute_mode = False
         dry_run_flag = False
         adapter_dry_run = False
+        real_call_stub = False
         confirm_text = None
         i = 1
         while i < len(args):
@@ -1221,6 +1223,9 @@ def main():
                 i += 1
             elif args[i] == "--adapter-dry-run":
                 adapter_dry_run = True
+                i += 1
+            elif args[i] == "--real-call-stub":
+                real_call_stub = True
                 i += 1
             elif args[i] == "--confirm" and i + 1 < len(args):
                 confirm_text = args[i + 1]
@@ -1241,7 +1246,50 @@ def main():
             print("ERROR：--adapter-dry-run 必须配合 --execute 使用。")
             return
 
-        if execute_mode and adapter_dry_run:
+        # --real-call-stub 必须配合 --execute
+        if real_call_stub and not execute_mode:
+            print()
+            print("ERROR：--real-call-stub 必须配合 --execute 使用。")
+            return
+
+        # --adapter-dry-run 和 --real-call-stub 互斥
+        if adapter_dry_run and real_call_stub:
+            print()
+            print("ERROR：--adapter-dry-run 和 --real-call-stub 互斥，不能同时使用。")
+            return
+
+        if execute_mode and real_call_stub:
+            # T073: real-call stub
+            stub = run_project_loop_real_call_stub(
+                project_root=PROJECT_ROOT,
+                max_tasks=max_tasks_val,
+                confirm=confirm_text,
+            )
+
+            print()
+            print(f"EXECUTION_MODE={stub.execution_mode}")
+            print(f"REAL_CALL_REQUESTED={stub.real_call_requested}")
+            print(f"REAL_CALL_STUB_STARTED={stub.real_call_stub_started}")
+            print(f"RUN_ID={stub.run_id}")
+            print(f"MAX_TASKS={stub.max_tasks}")
+            if stub.task_id:
+                print(f"TASK_ID={stub.task_id}")
+            if stub.command:
+                print(f"COMMAND={stub.command}")
+            print(f"PREFLIGHT_STATUS={stub.preflight_status}")
+            print(f"TASK_EXECUTION_PERFORMED={stub.task_execution_performed}")
+            print(f"RUN_PROJECT_TASK_FULL_CALLED={stub.run_project_task_full_called}")
+            print(f"CLAUDE_CODE_CALLED={stub.claude_code_called}")
+            print(f"BUSINESS_CODE_CHANGED={stub.business_code_changed}")
+            print(f"EXIT_CODE={stub.exit_code}")
+            print(f"CHECK_RESULT={stub.check_result}")
+            print(f"LOOP_STATUS={stub.loop_status}")
+            print(f"STOP_REASON={stub.stop_reason or 'NONE'}")
+            print(f"HUMAN_REVIEW_REQUIRED={stub.human_review_required}")
+            print(f"NEXT_ACTION={stub.next_action}")
+            print()
+            print(f"Message：{stub.message}")
+        elif execute_mode and adapter_dry_run:
             # T071: task execution adapter dry-run
             adapter = run_project_loop_task_execution_adapter_dry_run(
                 project_root=PROJECT_ROOT,

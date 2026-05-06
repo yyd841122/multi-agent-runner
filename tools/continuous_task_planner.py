@@ -1113,6 +1113,186 @@ def run_project_loop_task_execution_adapter_dry_run(
     )
 
 
+# ---------------------------------------------------------------------------
+# T073: Real-Call Stub（max_tasks=1）
+# ---------------------------------------------------------------------------
+
+@dataclass
+class RealCallStubResult:
+    """Real-call stub 结果（max_tasks=1 stub only）。
+
+    通过 execute safety gate，解析 planned first task，
+    构造 run-project-task-full 调用信息，但不真实执行。
+    不调用 run-project-task-full，不调用 Claude Code，不修改业务代码。
+    """
+
+    project: str
+    run_id: str
+    execution_mode: str                       # "real_call_stub"
+    real_call_requested: bool                 # 始终 True（--real-call-stub 触发）
+    real_call_stub_started: bool              # stub 是否启动
+    max_tasks: int
+    planned_tasks: list[str]                  # safety gate 通过时的 planned task ID 列表
+    task_id: str | None                       # 第一个 planned task（stub 目标）
+    command: str                              # 未来要执行的命令描述
+    preflight_status: str                     # "passed" / "failed"
+    task_execution_performed: bool            # 始终 False
+    run_project_task_full_called: bool        # 始终 False
+    claude_code_called: str                   # "no"
+    business_code_changed: str                # "no"
+    exit_code: str                            # "not_executed"
+    check_result: str                         # "pass" / "fail"
+    task_status: str                          # "real_call_stub_ready" 等
+    loop_status: str                          # real_call_stub_completed / safety_gate_failed / ...
+    stop_reason: str | None                   # 停止原因
+    human_review_required: bool               # 始终 True
+    next_action: str                          # 建议下一步
+    message: str                              # 详细消息
+
+
+def run_project_loop_real_call_stub(
+    project_root: str | Path,
+    max_tasks: int = 1,
+    confirm: str | None = None,
+) -> RealCallStubResult:
+    """Real-call stub：safety gate 通过后构造真实调用信息，但不执行。
+
+    复用 safety gate 验证确认和前置条件，
+    只允许 max_tasks=1，
+    解析 planned first task，
+    构造 run-project-task-full 调用信息。
+    不执行该调用，不调用 Claude Code，不修改业务代码。
+
+    Args:
+        project_root: 项目根目录
+        max_tasks: 用户请求的 max_tasks（stub 只支持 1）
+        confirm: 用户传入的 --confirm 值
+
+    Returns:
+        RealCallStubResult
+    """
+    project_root = Path(project_root)
+    run_id = _generate_run_id()
+
+    # 默认失败结果
+    def _fail_result(
+        preflight: str = "failed",
+        loop_status: str = "safety_gate_failed",
+        stop_reason: str | None = None,
+        next_action: str = "fix_real_call_preconditions",
+        message: str = "",
+    ) -> RealCallStubResult:
+        return RealCallStubResult(
+            project=str(project_root),
+            run_id=run_id,
+            execution_mode="real_call_stub",
+            real_call_requested=True,
+            real_call_stub_started=False,
+            max_tasks=max_tasks,
+            planned_tasks=[],
+            task_id=None,
+            command="",
+            preflight_status=preflight,
+            task_execution_performed=False,
+            run_project_task_full_called=False,
+            claude_code_called="no",
+            business_code_changed="no",
+            exit_code="not_executed",
+            check_result="fail",
+            task_status="real_call_stub_not_started",
+            loop_status=loop_status,
+            stop_reason=stop_reason,
+            human_review_required=True,
+            next_action=next_action,
+            message=message,
+        )
+
+    # 1. 调用 safety gate
+    safety = validate_execute_loop_safety(
+        project_root=project_root,
+        max_tasks=max_tasks,
+        confirm=confirm,
+    )
+
+    # 2. safety gate 不通过 → 返回失败结果
+    if not safety.execute_allowed:
+        return _fail_result(
+            loop_status="safety_gate_failed",
+            stop_reason=safety.stop_reason,
+            next_action="fix_real_call_preconditions",
+            message=(
+                f"real-call stub 未启动：safety gate 拒绝（{safety.stop_reason}）。"
+                f"TASK_EXECUTION_PERFORMED=false。"
+            ),
+        )
+
+    # 3. safety gate 通过但 max_tasks != 1 → 拒绝
+    if max_tasks != 1:
+        return _fail_result(
+            preflight="passed",
+            loop_status="max_tasks_gt_1_not_supported",
+            stop_reason="max_tasks_gt_1_not_supported_in_real_call_stub",
+            next_action="use_max_tasks_1_for_real_call_stub",
+            message=(
+                f"real-call stub 当前只支持 max_tasks=1，"
+                f"请求的 max_tasks={max_tasks}。"
+                f"请使用 --max-tasks 1。"
+            ),
+        )
+
+    # 4. safety gate 通过且 max_tasks=1 → 构造 real-call stub
+    task_id = safety.planned_tasks[0] if safety.planned_tasks else None
+
+    if task_id is None:
+        return _fail_result(
+            preflight="passed",
+            loop_status="safety_gate_failed",
+            stop_reason="no_planned_task",
+            next_action="check_tasks_or_add_new",
+            message="real-call stub：safety gate 通过但 planned_tasks 为空。",
+        )
+
+    # 5. 确定 subproject path
+    subproject_path = _resolve_subproject_path(project_root, task_id)
+
+    # 6. 构造未来调用命令
+    command = (
+        f"run_project_task_full("
+        f"project_path='{subproject_path}', "
+        f"task_id='{task_id}')"
+    )
+
+    return RealCallStubResult(
+        project=str(project_root),
+        run_id=run_id,
+        execution_mode="real_call_stub",
+        real_call_requested=True,
+        real_call_stub_started=True,
+        max_tasks=1,
+        planned_tasks=safety.planned_tasks,
+        task_id=task_id,
+        command=command,
+        preflight_status="passed",
+        task_execution_performed=False,
+        run_project_task_full_called=False,
+        claude_code_called="no",
+        business_code_changed="no",
+        exit_code="not_executed",
+        check_result="pass",
+        task_status="real_call_stub_ready",
+        loop_status="real_call_stub_completed",
+        stop_reason="real_call_stub_only",
+        human_review_required=True,
+        next_action="ready_for_T074_check_result_pass_validation",
+        message=(
+            f"real-call stub 完成：已构造未来调用 run-project-task-full "
+            f"执行 {task_id}，command={command}。"
+            f"TASK_EXECUTION_PERFORMED=false，"
+            f"RUN_PROJECT_TASK_FULL_CALLED=false。"
+        ),
+    )
+
+
 def _resolve_subproject_path(project_root: Path, task_id: str) -> Path:
     """根据任务 ID 前缀解析子项目路径。
 
