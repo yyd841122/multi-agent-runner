@@ -2,12 +2,14 @@
 
 严格遵循 docs/continuous-task-auto-advance-design.md 协议。
 T059 实现 dry-run 计划生成，T060 实现 loop dry-run 模拟推进。
+T065 实现 execute mode safety gate（确认协议、前置检查、execute 硬限制）。
 不执行任务，不调用 Claude Code。
 """
 
 from __future__ import annotations
 
 import re
+import subprocess
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -22,6 +24,9 @@ from tools.task_manager import load_tasks_file, parse_tasks
 
 MAX_TASKS_DEFAULT = 3
 MAX_TASKS_HARD_LIMIT = 10
+
+EXECUTE_HARD_LIMIT = 3
+EXECUTE_CONFIRM_PHRASE = "EXECUTE_PROJECT_LOOP"
 
 
 # ---------------------------------------------------------------------------
@@ -379,5 +384,324 @@ def run_project_loop_dry_run(
         message=(
             f"[dry-run] 模拟推进 {len(completed_ids)} 个任务，"
             f"未执行任何真实任务。"
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# T065: Execute Mode Safety Gate
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ExecuteLoopSafetyResult:
+    """Execute mode safety gate 检查结果。
+
+    不执行任何真实任务，只做前置校验。
+    """
+
+    project: str
+    run_id: str
+    execute_requested: bool
+    confirm_status: str               # "accepted" / "missing" / "rejected"
+    confirm_phrase: str | None        # 用户传入的 confirm 值
+    max_tasks: int
+    execute_hard_limit: int           # EXECUTE_HARD_LIMIT = 3
+    planned_tasks: list[str]          # 计划执行的任务 ID 列表
+    workspace_status: str             # "clean" / "dirty"
+    preflight_status: str             # "passed" / "failed"
+    execute_allowed: bool             # 全部检查通过才为 True
+    task_execution_performed: bool    # 始终 False（safety gate 不执行任务）
+    claude_code_called: bool          # 始终 False
+    business_code_changed: bool       # 始终 False
+    human_review_required: bool       # safety gate 不修改此值
+    stop_reason: str | None           # 拒绝原因
+    next_action: str                  # 建议下一步
+    message: str                      # 详细消息
+
+
+def _check_workspace_clean(project_root: Path) -> bool:
+    """检查工作区是否 clean。"""
+    try:
+        result = subprocess.run(
+            ["git", "status", "--short"],
+            capture_output=True,
+            text=True,
+            cwd=str(project_root),
+        )
+        return result.stdout.strip() == ""
+    except Exception:
+        return False
+
+
+def _check_no_in_progress_tasks(project_root: Path) -> bool:
+    """检查是否有 in_progress 任务。"""
+    tasks_file = project_root / "docs" / "tasks.md"
+    if not tasks_file.exists():
+        return True
+    content = load_tasks_file(tasks_file)
+    tasks = parse_tasks(content)
+    return all(t["status"] != "in_progress" for t in tasks)
+
+
+def _check_no_pending_rework(project_root: Path) -> bool:
+    """检查是否有待处理的 rework prompt。"""
+    reports_dir = project_root / "reports"
+    if not reports_dir.exists():
+        return True
+    for f in reports_dir.rglob("*rework*prompt*"):
+        return False
+    return True
+
+
+def validate_execute_loop_safety(
+    project_root: str | Path,
+    max_tasks: int,
+    confirm: str | None,
+) -> ExecuteLoopSafetyResult:
+    """Execute mode safety gate 校验。
+
+    检查确认短语、max_tasks、工作区、planned_tasks 等。
+    不执行任何任务，不调用 Claude Code，不修改业务代码。
+
+    Args:
+        project_root: 项目根目录
+        max_tasks: 用户请求的 max_tasks
+        confirm: 用户传入的 --confirm 值
+
+    Returns:
+        ExecuteLoopSafetyResult
+    """
+    project_root = Path(project_root)
+    run_id = _generate_run_id()
+
+    # --- 1. 确认短语检查 ---
+    if confirm is None:
+        return ExecuteLoopSafetyResult(
+            project=str(project_root),
+            run_id=run_id,
+            execute_requested=True,
+            confirm_status="missing",
+            confirm_phrase=None,
+            max_tasks=max_tasks,
+            execute_hard_limit=EXECUTE_HARD_LIMIT,
+            planned_tasks=[],
+            workspace_status="unknown",
+            preflight_status="failed",
+            execute_allowed=False,
+            task_execution_performed=False,
+            claude_code_called=False,
+            business_code_changed=False,
+            human_review_required=False,
+            stop_reason="confirm_missing",
+            next_action="provide_confirm_phrase",
+            message=(
+                "错误：缺少 --confirm 参数。"
+                f"必须使用 --confirm {EXECUTE_CONFIRM_PHRASE}"
+            ),
+        )
+
+    if confirm != EXECUTE_CONFIRM_PHRASE:
+        return ExecuteLoopSafetyResult(
+            project=str(project_root),
+            run_id=run_id,
+            execute_requested=True,
+            confirm_status="rejected",
+            confirm_phrase=confirm,
+            max_tasks=max_tasks,
+            execute_hard_limit=EXECUTE_HARD_LIMIT,
+            planned_tasks=[],
+            workspace_status="unknown",
+            preflight_status="failed",
+            execute_allowed=False,
+            task_execution_performed=False,
+            claude_code_called=False,
+            business_code_changed=False,
+            human_review_required=False,
+            stop_reason="confirm_rejected",
+            next_action="provide_correct_confirm_phrase",
+            message=(
+                f"错误：确认短语 '{confirm}' 不合法。"
+                f"必须精确使用 --confirm {EXECUTE_CONFIRM_PHRASE}"
+            ),
+        )
+
+    # --- 2. max_tasks 检查（execute mode 独立限制） ---
+    if max_tasks < 1:
+        return ExecuteLoopSafetyResult(
+            project=str(project_root),
+            run_id=run_id,
+            execute_requested=True,
+            confirm_status="accepted",
+            confirm_phrase=confirm,
+            max_tasks=max_tasks,
+            execute_hard_limit=EXECUTE_HARD_LIMIT,
+            planned_tasks=[],
+            workspace_status="unknown",
+            preflight_status="failed",
+            execute_allowed=False,
+            task_execution_performed=False,
+            claude_code_called=False,
+            business_code_changed=False,
+            human_review_required=False,
+            stop_reason="invalid_max_tasks",
+            next_action="fix_max_tasks",
+            message=(
+                f"错误：max_tasks={max_tasks} 无效，execute mode 要求 1 <= max_tasks <= {EXECUTE_HARD_LIMIT}。"
+            ),
+        )
+
+    if max_tasks > EXECUTE_HARD_LIMIT:
+        return ExecuteLoopSafetyResult(
+            project=str(project_root),
+            run_id=run_id,
+            execute_requested=True,
+            confirm_status="accepted",
+            confirm_phrase=confirm,
+            max_tasks=max_tasks,
+            execute_hard_limit=EXECUTE_HARD_LIMIT,
+            planned_tasks=[],
+            workspace_status="unknown",
+            preflight_status="failed",
+            execute_allowed=False,
+            task_execution_performed=False,
+            claude_code_called=False,
+            business_code_changed=False,
+            human_review_required=False,
+            stop_reason="execute_max_tasks_exceeded",
+            next_action="reduce_max_tasks",
+            message=(
+                f"错误：max_tasks={max_tasks} 超过 execute mode 硬限制 {EXECUTE_HARD_LIMIT}。"
+                f"execute mode 最大允许 {EXECUTE_HARD_LIMIT} 个任务。"
+            ),
+        )
+
+    # --- 3. 工作区检查 ---
+    workspace_clean = _check_workspace_clean(project_root)
+    workspace_status = "clean" if workspace_clean else "dirty"
+
+    if not workspace_clean:
+        return ExecuteLoopSafetyResult(
+            project=str(project_root),
+            run_id=run_id,
+            execute_requested=True,
+            confirm_status="accepted",
+            confirm_phrase=confirm,
+            max_tasks=max_tasks,
+            execute_hard_limit=EXECUTE_HARD_LIMIT,
+            planned_tasks=[],
+            workspace_status="dirty",
+            preflight_status="failed",
+            execute_allowed=False,
+            task_execution_performed=False,
+            claude_code_called=False,
+            business_code_changed=False,
+            human_review_required=False,
+            stop_reason="initial_worktree_dirty",
+            next_action="commit_or_stash_changes",
+            message="错误：工作区不 clean，请先提交或 stash 变更。",
+        )
+
+    # --- 4. 检查无 in_progress 任务 ---
+    no_in_progress = _check_no_in_progress_tasks(project_root)
+    if not no_in_progress:
+        return ExecuteLoopSafetyResult(
+            project=str(project_root),
+            run_id=run_id,
+            execute_requested=True,
+            confirm_status="accepted",
+            confirm_phrase=confirm,
+            max_tasks=max_tasks,
+            execute_hard_limit=EXECUTE_HARD_LIMIT,
+            planned_tasks=[],
+            workspace_status="clean",
+            preflight_status="failed",
+            execute_allowed=False,
+            task_execution_performed=False,
+            claude_code_called=False,
+            business_code_changed=False,
+            human_review_required=False,
+            stop_reason="existing_in_progress",
+            next_action="resolve_in_progress_task",
+            message="错误：存在 in_progress 任务，请先处理后再执行 execute mode。",
+        )
+
+    # --- 5. 检查无 pending rework ---
+    no_rework = _check_no_pending_rework(project_root)
+    if not no_rework:
+        return ExecuteLoopSafetyResult(
+            project=str(project_root),
+            run_id=run_id,
+            execute_requested=True,
+            confirm_status="accepted",
+            confirm_phrase=confirm,
+            max_tasks=max_tasks,
+            execute_hard_limit=EXECUTE_HARD_LIMIT,
+            planned_tasks=[],
+            workspace_status="clean",
+            preflight_status="failed",
+            execute_allowed=False,
+            task_execution_performed=False,
+            claude_code_called=False,
+            business_code_changed=False,
+            human_review_required=False,
+            stop_reason="pending_rework_exists",
+            next_action="resolve_rework_first",
+            message="错误：存在待处理的 rework prompt，请先处理返工。",
+        )
+
+    # --- 6. 生成计划并检查 planned_tasks ---
+    plan = build_continuous_task_plan(
+        project_root=project_root,
+        max_tasks=max_tasks,
+        dry_run=True,
+    )
+
+    if plan.plan_status != "planned" or not plan.planned_tasks:
+        return ExecuteLoopSafetyResult(
+            project=str(project_root),
+            run_id=run_id,
+            execute_requested=True,
+            confirm_status="accepted",
+            confirm_phrase=confirm,
+            max_tasks=max_tasks,
+            execute_hard_limit=EXECUTE_HARD_LIMIT,
+            planned_tasks=[],
+            workspace_status="clean",
+            preflight_status="failed",
+            execute_allowed=False,
+            task_execution_performed=False,
+            claude_code_called=False,
+            business_code_changed=False,
+            human_review_required=False,
+            stop_reason="no_pending_tasks",
+            next_action="check_tasks_or_add_new",
+            message="错误：没有可执行的 pending 任务。",
+        )
+
+    planned_ids = [t.task_id for t in plan.planned_tasks]
+
+    # --- 全部检查通过 ---
+    return ExecuteLoopSafetyResult(
+        project=str(project_root),
+        run_id=run_id,
+        execute_requested=True,
+        confirm_status="accepted",
+        confirm_phrase=confirm,
+        max_tasks=max_tasks,
+        execute_hard_limit=EXECUTE_HARD_LIMIT,
+        planned_tasks=planned_ids,
+        workspace_status="clean",
+        preflight_status="passed",
+        execute_allowed=True,
+        task_execution_performed=False,
+        claude_code_called=False,
+        business_code_changed=False,
+        human_review_required=False,
+        stop_reason=None,
+        next_action="ready_for_T066_execute_stub",
+        message=(
+            f"safety gate 通过：确认短语正确，max_tasks={max_tasks}，"
+            f"工作区 clean，{len(planned_ids)} 个 pending 任务可执行。"
+            f"TASK_EXECUTION_PERFORMED=false（safety gate 不执行任务）。"
         ),
     )

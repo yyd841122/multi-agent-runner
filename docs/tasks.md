@@ -2132,17 +2132,17 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T065 实现 execute mode safety gate
 
-状态：pending
+状态：done
 角色：Developer
 目标：在 runner.py 和 continuous_task_planner.py 中实现 execute mode 的前置检查、确认协议和 execute 硬限制。
 
 ### 验收标准
 
-- 实现 preflight 检查（9 项）
-- 实现确认短语校验（精确匹配 EXECUTE_PROJECT_LOOP）
-- 实现 execute mode max_tasks 硬限制（3）
-- 实现 --execute 和 --dry-run 互斥检查
-- 不实现真实任务执行（只做 safety gate）
+- 实现 preflight 检查（9 项）✓
+- 实现确认短语校验（精确匹配 EXECUTE_PROJECT_LOOP）✓
+- 实现 execute mode max_tasks 硬限制（3）✓
+- 实现 --execute 和 --dry-run 互斥检查 ✓
+- 不实现真实任务执行（只做 safety gate）✓
 
 ---
 

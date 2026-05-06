@@ -41,6 +41,7 @@ from tools.rework_manager import generate_rework_prompt_for_game_task, MAX_REWOR
 from tools.full_task_runner import run_project_task_full
 from tools.continuous_task_planner import build_continuous_task_plan
 from tools.continuous_task_planner import run_project_loop_dry_run
+from tools.continuous_task_planner import validate_execute_loop_safety
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -1200,9 +1201,11 @@ def main():
         print(f"Message：{plan.message}")
         print(f"NEXT_ACTION={plan.next_action}")
     elif args[0] == "run-project-loop":
-        # T060 run-project-loop dry-run
+        # T060 run-project-loop dry-run + T065 execute mode safety gate
         max_tasks_val = 3
         execute_mode = False
+        dry_run_flag = False
+        confirm_text = None
         i = 1
         while i < len(args):
             if args[i] == "--max-tasks" and i + 1 < len(args):
@@ -1212,53 +1215,85 @@ def main():
                 execute_mode = True
                 i += 1
             elif args[i] == "--dry-run":
+                dry_run_flag = True
                 i += 1
+            elif args[i] == "--confirm" and i + 1 < len(args):
+                confirm_text = args[i + 1]
+                i += 2
             else:
                 i += 1
 
-        # T060: 不支持 --execute
-        if execute_mode:
+        # --execute 和 --dry-run 互斥
+        if execute_mode and dry_run_flag:
             print()
-            print("ERROR：--execute 当前不支持")
-            print("T060 只实现 dry-run 模式，真实执行将在后续任务实现。")
-            print("请去掉 --execute 参数后重试。")
+            print("ERROR：--execute 和 --dry-run 互斥，不能同时使用。")
+            print("请去掉其中一个参数后重试。")
             return
 
-        result = run_project_loop_dry_run(
-            project_root=PROJECT_ROOT,
-            max_tasks=max_tasks_val,
-        )
+        if execute_mode:
+            # T065: execute mode safety gate
+            safety = validate_execute_loop_safety(
+                project_root=PROJECT_ROOT,
+                max_tasks=max_tasks_val,
+                confirm=confirm_text,
+            )
 
-        print()
-        print(f"LOOP_STATUS={result.loop_status}")
-        print(f"RUN_ID={result.run_id}")
-        print(f"DRY_RUN={result.dry_run}")
-        print(f"MAX_TASKS={result.max_tasks}")
-        planned_str = ",".join(result.planned_tasks)
-        completed_str = ",".join(result.completed_tasks)
-        failed_str = ",".join(result.failed_tasks)
-        print(f"PLANNED_TASKS={planned_str or 'NONE'}")
-        print(f"COMPLETED_TASKS={completed_str or 'NONE'}")
-        print(f"FAILED_TASKS={failed_str or 'NONE'}")
-        print(f"CURRENT_TASK={result.current_task or 'NONE'}")
-        print(f"NEXT_TASK={result.next_task or 'NONE'}")
-        print(f"STOP_REASON={result.stop_reason or 'NONE'}")
-        print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required}")
-        print(f"TASK_EXECUTION_PERFORMED=false")
-        print(f"CLAUDE_CODE_CALLED=false")
-        print(f"BUSINESS_CODE_CHANGED=false")
-        print(f"NEXT_ACTION={result.next_action}")
-        print()
-        # 每个任务的详细结果
-        if result.task_results:
-            print("--- Task Results ---")
-            for tr in result.task_results:
-                print(f"  {tr.task_id}: status={tr.task_status}, "
-                      f"execution_performed={tr.execution_performed}, "
-                      f"stop_reason={tr.stop_reason or 'NONE'}, "
-                      f"next_action={tr.next_action}")
             print()
-        print(f"Message：{result.message}")
+            print(f"EXECUTE_MODE_REQUESTED={safety.execute_requested}")
+            print(f"CONFIRM_STATUS={safety.confirm_status}")
+            print(f"RUN_ID={safety.run_id}")
+            print(f"MAX_TASKS={safety.max_tasks}")
+            print(f"EXECUTE_HARD_LIMIT={safety.execute_hard_limit}")
+            planned_str = ",".join(safety.planned_tasks)
+            print(f"PLANNED_TASKS={planned_str or 'NONE'}")
+            print(f"WORKSPACE_STATUS={safety.workspace_status}")
+            print(f"PREFLIGHT_STATUS={safety.preflight_status}")
+            print(f"EXECUTE_ALLOWED={safety.execute_allowed}")
+            print(f"TASK_EXECUTION_PERFORMED={safety.task_execution_performed}")
+            print(f"CLAUDE_CODE_CALLED={safety.claude_code_called}")
+            print(f"BUSINESS_CODE_CHANGED={safety.business_code_changed}")
+            print(f"HUMAN_REVIEW_REQUIRED={safety.human_review_required}")
+            print(f"STOP_REASON={safety.stop_reason or 'NONE'}")
+            print(f"NEXT_ACTION={safety.next_action}")
+            print()
+            print(f"Message：{safety.message}")
+        else:
+            # T060: dry-run（保持原有行为）
+            result = run_project_loop_dry_run(
+                project_root=PROJECT_ROOT,
+                max_tasks=max_tasks_val,
+            )
+
+            print()
+            print(f"LOOP_STATUS={result.loop_status}")
+            print(f"RUN_ID={result.run_id}")
+            print(f"DRY_RUN={result.dry_run}")
+            print(f"MAX_TASKS={result.max_tasks}")
+            planned_str = ",".join(result.planned_tasks)
+            completed_str = ",".join(result.completed_tasks)
+            failed_str = ",".join(result.failed_tasks)
+            print(f"PLANNED_TASKS={planned_str or 'NONE'}")
+            print(f"COMPLETED_TASKS={completed_str or 'NONE'}")
+            print(f"FAILED_TASKS={failed_str or 'NONE'}")
+            print(f"CURRENT_TASK={result.current_task or 'NONE'}")
+            print(f"NEXT_TASK={result.next_task or 'NONE'}")
+            print(f"STOP_REASON={result.stop_reason or 'NONE'}")
+            print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required}")
+            print(f"TASK_EXECUTION_PERFORMED=false")
+            print(f"CLAUDE_CODE_CALLED=false")
+            print(f"BUSINESS_CODE_CHANGED=false")
+            print(f"NEXT_ACTION={result.next_action}")
+            print()
+            # 每个任务的详细结果
+            if result.task_results:
+                print("--- Task Results ---")
+                for tr in result.task_results:
+                    print(f"  {tr.task_id}: status={tr.task_status}, "
+                          f"execution_performed={tr.execution_performed}, "
+                          f"stop_reason={tr.stop_reason or 'NONE'}, "
+                          f"next_action={tr.next_action}")
+                print()
+            print(f"Message：{result.message}")
     else:
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")
