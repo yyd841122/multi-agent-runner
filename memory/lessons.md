@@ -565,3 +565,14 @@ G006 已完成完整闭环：
 - 第一次真实调用 pass 后也必须停止等待人工验收。AUTO_CONTINUE_TO_NEXT_TASK=no 是 MVP 硬约束。
 - workspace 变化检测应使用执行前后快照比较（git status --short），不是执行后单次检查。
 - 验证应分两阶段：拒绝场景（不真实执行）先验证，真实执行场景后验证。
+
+## T078 Real-Call Double-Confirm Safety Gate 实现经验
+
+### 核心经验
+
+- 双重确认安全门分层检查有效：execute safety gate → real_confirm 短语 → max_tasks → 模式互斥 → workspace → 全部通过。每一层独立拒绝，不跳过。
+- RealCallSafetyResult 使用 20 个字段覆盖所有安全输出需求，与 RealCallStubResult 字段命名保持一致性。
+- validate_real_call_safety() 复用 validate_execute_loop_safety() 作为第一重检查，避免重复实现。第二重检查（real_confirm + max_tasks + 模式互斥）是新增逻辑。
+- CLI 层互斥检查和函数层互斥检查双重覆盖：CLI 先做参数互斥，函数再验证语义互斥。
+- workspace dirty 时函数级验证可以覆盖大部分拒绝路径。clean workspace 下的完整 E2E 验证需要提交后做（T080）。
+- 拒绝路径必须全部验证到 stop_reason，不能只看 check_result。不同拒绝原因对应不同 next_action。

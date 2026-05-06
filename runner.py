@@ -44,6 +44,7 @@ from tools.continuous_task_planner import run_project_loop_dry_run
 from tools.continuous_task_planner import validate_execute_loop_safety, run_project_loop_execute_stub
 from tools.continuous_task_planner import run_project_loop_task_execution_adapter_dry_run
 from tools.continuous_task_planner import run_project_loop_real_call_stub
+from tools.continuous_task_planner import validate_real_call_safety
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -1203,12 +1204,14 @@ def main():
         print(f"Message：{plan.message}")
         print(f"NEXT_ACTION={plan.next_action}")
     elif args[0] == "run-project-loop":
-        # T060 run-project-loop dry-run + T065 execute mode safety gate + T071 adapter dry-run + T073 real-call stub
+        # T060 run-project-loop dry-run + T065 execute mode safety gate + T071 adapter dry-run + T073 real-call stub + T078 real-call safety gate
         max_tasks_val = 3
         execute_mode = False
         dry_run_flag = False
         adapter_dry_run = False
         real_call_stub = False
+        real_call = False
+        real_confirm_text = None
         confirm_text = None
         i = 1
         while i < len(args):
@@ -1227,6 +1230,12 @@ def main():
             elif args[i] == "--real-call-stub":
                 real_call_stub = True
                 i += 1
+            elif args[i] == "--real-call":
+                real_call = True
+                i += 1
+            elif args[i] == "--real-confirm" and i + 1 < len(args):
+                real_confirm_text = args[i + 1]
+                i += 2
             elif args[i] == "--confirm" and i + 1 < len(args):
                 confirm_text = args[i + 1]
                 i += 2
@@ -1258,7 +1267,63 @@ def main():
             print("ERROR：--adapter-dry-run 和 --real-call-stub 互斥，不能同时使用。")
             return
 
-        if execute_mode and real_call_stub:
+        # --real-call 必须配合 --execute
+        if real_call and not execute_mode:
+            print()
+            print("ERROR：--real-call 必须配合 --execute 使用。")
+            return
+
+        # --real-call 和 --adapter-dry-run 互斥
+        if real_call and adapter_dry_run:
+            print()
+            print("ERROR：--real-call 和 --adapter-dry-run 互斥，不能同时使用。")
+            return
+
+        # --real-call 和 --real-call-stub 互斥
+        if real_call and real_call_stub:
+            print()
+            print("ERROR：--real-call 和 --real-call-stub 互斥，不能同时使用。")
+            return
+
+        if execute_mode and real_call:
+            # T078: real-call double-confirm safety gate
+            safety = validate_real_call_safety(
+                project_root=PROJECT_ROOT,
+                max_tasks=max_tasks_val,
+                execute_requested=execute_mode,
+                confirm=confirm_text,
+                real_call_requested=real_call,
+                real_confirm=real_confirm_text,
+                adapter_dry_run=adapter_dry_run,
+                real_call_stub=real_call_stub,
+            )
+
+            print()
+            print(f"EXECUTION_MODE=real_call_safety_gate")
+            print(f"REAL_CALL_REQUESTED={safety.real_call_requested}")
+            print(f"REAL_CONFIRM_STATUS={safety.real_confirm_status}")
+            print(f"EXECUTE_ALLOWED={safety.execute_allowed}")
+            print(f"REAL_CALL_ALLOWED={safety.real_call_allowed}")
+            print(f"RUN_ID={safety.run_id}")
+            print(f"MAX_TASKS={safety.max_tasks}")
+            if safety.planned_tasks:
+                planned_str = ",".join(safety.planned_tasks)
+                print(f"PLANNED_TASKS={planned_str}")
+            if safety.task_id:
+                print(f"TASK_ID={safety.task_id}")
+            print(f"WORKSPACE_STATUS={safety.workspace_status}")
+            print(f"PREFLIGHT_STATUS={safety.preflight_status}")
+            print(f"REAL_TASK_EXECUTION={'yes' if safety.real_task_execution else 'no'}")
+            print(f"RUN_PROJECT_TASK_FULL_CALLED={'yes' if safety.run_project_task_full_called else 'no'}")
+            print(f"CLAUDE_CODE_CALLED={safety.claude_code_called}")
+            print(f"BUSINESS_CODE_CHANGED={safety.business_code_changed}")
+            print(f"CHECK_RESULT={safety.check_result}")
+            print(f"HUMAN_REVIEW_REQUIRED={safety.human_review_required}")
+            print(f"STOP_REASON={safety.stop_reason or 'NONE'}")
+            print(f"NEXT_ACTION={safety.next_action}")
+            print()
+            print(f"Message：{safety.message}")
+        elif execute_mode and real_call_stub:
             # T073: real-call stub
             stub = run_project_loop_real_call_stub(
                 project_root=PROJECT_ROOT,

@@ -2349,19 +2349,22 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T078 实现 real-call double-confirm safety gate
 
-状态：pending
+状态：done
 角色：Developer
-目标：实现真实调用的双重确认安全门，包含 RealCallExecuteResult 数据结构和 13 项 preflight 检查。
+目标：实现真实调用的双重确认安全门，包含 RealCallSafetyResult 数据结构和 preflight 检查。
 
 ### 验收标准
 
-- 新增 RealCallExecuteResult 数据结构
-- 新增 validate_real_call_confirm() 第二重确认校验
-- 实现 13 项 preflight 检查
-- runner.py 新增 --real-call 和 --real-confirm 参数
-- 模式互斥检查（--adapter-dry-run / --real-call-stub / --real-call）
-- 拒绝场景全覆盖
-- 不真实调用 run_project_task_full
+- ✓ 新增 RealCallSafetyResult 数据结构（20 字段）
+- ✓ 新增 validate_real_call_safety() 双重确认校验
+- ✓ 实现 preflight 检查（9 层级）
+- ✓ runner.py 新增 --real-call 和 --real-confirm 参数
+- ✓ 模式互斥检查（--adapter-dry-run / --real-call-stub / --real-call）
+- ✓ 拒绝场景全覆盖（12 场景验证）
+- ✓ 不真实调用 run_project_task_full
+
+<!-- NEXT_PENDING=T079 -->
+<!-- NEXT_STAGE=Stage 6 -->
 
 ---
 

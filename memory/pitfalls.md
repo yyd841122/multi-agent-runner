@@ -370,3 +370,10 @@
 - 不要在第一次真实调用 pass 后自动进入下一任务。必须人工验收。
 - 不要把验证场景 11-18（真实执行）和场景 1-10（拒绝）混在一起。拒绝场景不需要真实调用，可以安全先做。
 - 不要新增独立命令（如 run-project-loop-real-once），应复用已有 run-project-loop 加参数。独立命令会绕过 planner / safety gate / max_tasks 限制。
+
+## T078 Real-Call Double-Confirm Safety Gate 避坑
+
+- 不要把 RealCallSafetyResult 和 RealCallExecuteResult 混为一谈。Safety gate 只做前置检查，不执行任何真实操作。Execute result 才是 T079 的内容。
+- 不要在 validate_real_call_safety() 中跳过 execute safety gate 直接检查 real_confirm。两层检查是分层设计，第一层不通过就不应进入第二层。
+- 不要在 workspace dirty 时期望能验证 real_confirm 拒绝路径。dirty workspace 会被 execute safety gate 先拦截，需要在 clean workspace 下验证（T080）。
+- 不要把 CLI 层互斥检查和函数层互斥检查当作重复逻辑。CLI 层做参数级互斥（更早、更清晰的错误提示），函数层做语义级互斥（函数被其他入口调用时仍然有效）。
