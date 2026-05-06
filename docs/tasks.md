@@ -2386,7 +2386,7 @@ T054 原始目标已经由以下任务前置完成：
 - ✓ 不修改业务代码
 - ✓ 11 个验证场景覆盖
 
-<!-- NEXT_PENDING=T083 -->
+<!-- NEXT_PENDING=T084 -->
 <!-- NEXT_STAGE=Stage 6 -->
 
 ---
@@ -2440,16 +2440,35 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T083 提交并推送 real-call safety MVP
+## T083 real-call safety MVP 小结与提交确认 ✅
 
-状态：pending
-角色：Developer
-目标：提交并推送 real-call safety MVP 成果。
+状态：done
+角色：Stage Summary Agent + Real Call Safety MVP Release Check Architect
+目标：生成 real-call safety MVP 小结报告，更新 memory 和 tasks.md。
 
 ### 验收标准
 
-- git status 已检查
-- 当前改动已提交
-- commit message 清晰
-- 已成功 push 到远程仓库
-- push 后工作区 clean
+- ✅ 生成 reports/stage-6-real-call-safety-mvp-summary.md
+- ✅ 生成 reports/dev/T083-dev-report.md
+- ✅ 更新 memory/lessons.md（real-call safety MVP 经验）
+- ✅ 更新 memory/pitfalls.md（real-call safety MVP 避坑）
+- ✅ 更新 docs/tasks.md（T083 状态更新）
+- ✅ 复核命令验证通过（错误拒绝 + 正确双确认）
+- ✅ 未实现新功能，未修改代码文件
+
+---
+
+## T084 设计真实调用 run-project-task-full 的最小实现协议
+
+状态：pending
+角色：Designer
+目标：设计从 real-call dry-run executor 升级到真实调用 run-project-task-full 的最小实现协议。
+
+### 验收标准
+
+- 设计 RealCallExecuteResult 数据结构
+- 设计 workspace 变化检测机制
+- 设计 CLAUDE_CODE_CALLED 和 BUSINESS_CODE_CHANGED 推断逻辑
+- 设计真实执行后的验证方案
+- 保持 max_tasks=1 限制
+- 保持双重确认要求

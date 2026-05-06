@@ -576,3 +576,14 @@ G006 已完成完整闭环：
 - CLI 层互斥检查和函数层互斥检查双重覆盖：CLI 先做参数互斥，函数再验证语义互斥。
 - workspace dirty 时函数级验证可以覆盖大部分拒绝路径。clean workspace 下的完整 E2E 验证需要提交后做（T080）。
 - 拒绝路径必须全部验证到 stop_reason，不能只看 check_result。不同拒绝原因对应不同 next_action。
+
+## T077-T082 Real-call Safety MVP 经验
+
+### 核心经验
+
+- 双重确认是进入真实调用前的必要边界：EXECUTE_PROJECT_LOOP（execute mode）+ EXECUTE_REAL_TASK_ONCE（real-call），一层不够。
+- real-call dry-run executor 不等于真实执行。它只构造 command/function_call 字符串，TASK_EXECUTION_PERFORMED 始终 False。
+- pass 后必须停止，fail 后也必须停止。MVP 阶段无论结果如何都不自动进入下一任务。
+- fail-stop 设计约束验证可以通过证据链推导：代码逻辑（return 终止）+ 设计规则（所有 fail 路径停止）+ pass-stop 推导（pass 已停止，fail 更不可能继续）。
+- 从 execute stub 到真实调用应分步推进：safety gate → dry-run executor → 拒绝验证 → pass 验证 → fail 验证 → 小结，每步独立提交。
+- 下一步真实调用前仍然需要单独设计实现协议（T084），不能直接跳到真实执行。

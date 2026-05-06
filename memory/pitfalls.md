@@ -377,3 +377,10 @@
 - 不要在 validate_real_call_safety() 中跳过 execute safety gate 直接检查 real_confirm。两层检查是分层设计，第一层不通过就不应进入第二层。
 - 不要在 workspace dirty 时期望能验证 real_confirm 拒绝路径。dirty workspace 会被 execute safety gate 先拦截，需要在 clean workspace 下验证（T080）。
 - 不要把 CLI 层互斥检查和函数层互斥检查当作重复逻辑。CLI 层做参数级互斥（更早、更清晰的错误提示），函数层做语义级互斥（函数被其他入口调用时仍然有效）。
+
+## T077-T082 Real-call Safety MVP 避坑
+
+- 不要把 real-call dry-run executor 的 CHECK_RESULT=pass 误认为真实执行成功。dry-run executor 不执行任务，pass 只代表 safety gate 通过和 command 构造成功。
+- 不要跳过 fail-stop 设计约束验证。即使当前 dry-run executor 不产生真实 fail，也要通过代码逻辑和设计规则验证所有 fail 路径都正确停止。
+- 不要在下一步直接实现真实调用。从 dry-run executor 到真实执行之间需要单独设计实现协议（RealCallExecuteResult、workspace 变化检测、CLAUDE_CODE_CALLED 推断等）。
+- 不要把 dry-run executor 的 CLAUDE_CODE_CALLED=no 和真实执行后的推断混为一谈。真实执行后应输出 unknown（无法确认），不是 no。
