@@ -48,6 +48,7 @@ from tools.continuous_task_planner import validate_real_call_safety
 from tools.continuous_task_planner import run_project_loop_real_call_dry_run_executor
 from tools.continuous_task_planner import run_project_loop_real_call_run_once_safety_shell
 from tools.continuous_task_planner import parse_child_command_output
+from tools.continuous_task_planner import evaluate_first_real_run_acceptance
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -1292,6 +1293,142 @@ def main():
         print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required}")
         print()
         print(f"Message：{result.message}")
+    elif args[0] == "first-real-run-acceptance-dry-run":
+        # T092: first real-run acceptance dry-run
+        sample_type = "pass"
+        if len(args) >= 3 and args[1] == "--sample":
+            sample_type = args[2]
+        elif len(args) >= 2 and not args[1].startswith("-"):
+            sample_type = args[1]
+
+        # 内置样例
+        _ACCEPTANCE_SAMPLES = {
+            "pass": {
+                "stdout": (
+                    "TASK_ID=T092\n"
+                    "CHECK_RESULT=pass\n"
+                    "TASK_STATUS=done\n"
+                    "REAL_TASK_EXECUTION=yes\n"
+                    "CLAUDE_CODE_CALLED=yes\n"
+                    "BUSINESS_CODE_CHANGED=no\n"
+                    "WORKTREE_STATUS=clean\n"
+                    "REPORT_PATHS=reports/dev/T092-dev-report.md,reports/checks/T092-first-real-run-acceptance-model-check.md\n"
+                ),
+                "workspace_after": "clean",
+                "workspace_classification": "clean",
+                "claude_code_called": "yes",
+                "business_code_changed": "no",
+            },
+            "pass-dirty-reports": {
+                "stdout": (
+                    "TASK_ID=T092\n"
+                    "CHECK_RESULT=pass\n"
+                    "TASK_STATUS=done\n"
+                    "REAL_TASK_EXECUTION=yes\n"
+                    "CLAUDE_CODE_CALLED=yes\n"
+                    "BUSINESS_CODE_CHANGED=no\n"
+                    "WORKTREE_STATUS=dirty_reports_only\n"
+                    "REPORT_PATHS=reports/dev/T092-dev-report.md\n"
+                ),
+                "workspace_after": "dirty_reports_only",
+                "workspace_classification": "dirty_reports_only",
+                "claude_code_called": "yes",
+                "business_code_changed": "no",
+            },
+            "fail": {
+                "stdout": (
+                    "TASK_ID=T092\n"
+                    "CHECK_RESULT=fail\n"
+                    "TASK_STATUS=failed\n"
+                    "REAL_TASK_EXECUTION=yes\n"
+                    "CLAUDE_CODE_CALLED=unknown\n"
+                    "BUSINESS_CODE_CHANGED=unknown\n"
+                    "WORKTREE_STATUS=dirty_unknown\n"
+                    "REPORT_PATHS=reports/dev/T092-dev-report.md\n"
+                ),
+                "workspace_after": "dirty_unknown",
+                "workspace_classification": "dirty_unknown",
+                "claude_code_called": "unknown",
+                "business_code_changed": "unknown",
+            },
+            "missing-check-result": {
+                "stdout": (
+                    "TASK_ID=T092\n"
+                    "TASK_STATUS=done\n"
+                    "REAL_TASK_EXECUTION=yes\n"
+                    "CLAUDE_CODE_CALLED=yes\n"
+                    "WORKTREE_STATUS=clean\n"
+                ),
+                "workspace_after": "clean",
+                "workspace_classification": "clean",
+                "claude_code_called": "yes",
+                "business_code_changed": "no",
+            },
+            "unsafe-unknown": {
+                "stdout": (
+                    "TASK_ID=T092\n"
+                    "CHECK_RESULT=pass\n"
+                    "TASK_STATUS=done\n"
+                    "REAL_TASK_EXECUTION=yes\n"
+                    "CLAUDE_CODE_CALLED=unknown\n"
+                    "BUSINESS_CODE_CHANGED=unknown\n"
+                    "WORKTREE_STATUS=dirty_unknown\n"
+                    "REPORT_PATHS=reports/dev/T092-dev-report.md\n"
+                ),
+                "workspace_after": "dirty_unknown",
+                "workspace_classification": "dirty_unknown",
+                "claude_code_called": "unknown",
+                "business_code_changed": "unknown",
+            },
+        }
+
+        sample = _ACCEPTANCE_SAMPLES.get(sample_type, _ACCEPTANCE_SAMPLES["pass"])
+
+        # 先解析 child output
+        child_result = parse_child_command_output(
+            stdout_text=sample["stdout"],
+            stderr_text="",
+            exit_code=0,
+        )
+
+        # 再评估 acceptance
+        acceptance = evaluate_first_real_run_acceptance(
+            project_path=PROJECT_ROOT,
+            task_id="T092",
+            child_parse_result=child_result,
+            workspace_status_before="clean",
+            workspace_status_after=sample["workspace_after"],
+            workspace_change_classification=sample["workspace_classification"],
+            run_project_task_full_called="yes",
+            claude_code_called=sample["claude_code_called"],
+            business_code_changed=sample["business_code_changed"],
+        )
+
+        print()
+        print(f"EXECUTION_MODE={acceptance.execution_mode}")
+        print(f"RUN_ID={acceptance.run_id}")
+        print(f"TASK_ID={acceptance.task_id}")
+        print(f"REAL_TASK_EXECUTION={acceptance.real_task_execution}")
+        print(f"RUN_PROJECT_TASK_FULL_CALLED={acceptance.run_project_task_full_called}")
+        print(f"CHILD_EXIT_CODE={acceptance.child_exit_code}")
+        print(f"CHILD_CHECK_RESULT={acceptance.child_check_result}")
+        print(f"CHILD_TASK_STATUS={acceptance.child_task_status}")
+        print(f"CLAUDE_CODE_CALLED={acceptance.claude_code_called}")
+        print(f"BUSINESS_CODE_CHANGED={acceptance.business_code_changed}")
+        print(f"WORKSPACE_STATUS_BEFORE={acceptance.workspace_status_before}")
+        print(f"WORKSPACE_STATUS_AFTER={acceptance.workspace_status_after}")
+        print(f"WORKSPACE_CHANGE_CLASSIFICATION={acceptance.workspace_change_classification}")
+        report_str = ",".join(acceptance.report_paths) if acceptance.report_paths else "NONE"
+        print(f"REPORT_PATHS={report_str}")
+        print(f"AUTO_CONTINUE_TO_NEXT_TASK={acceptance.auto_continue_to_next_task}")
+        print(f"AUTO_GIT_BACKUP={acceptance.auto_git_backup}")
+        print(f"HUMAN_REVIEW_REQUIRED={acceptance.human_review_required}")
+        print(f"ACCEPTANCE_STATUS={acceptance.acceptance_status}")
+        print(f"STOP_REASON={acceptance.stop_reason}")
+        print(f"NEXT_ACTION={acceptance.next_action}")
+        print(f"CHECK_RESULT={acceptance.check_result}")
+        print()
+        print(f"Message：{acceptance.message}")
     elif args[0] == "plan-project-loop":
         # T059 continuous task planner dry-run
         max_tasks_val = 3

@@ -2316,3 +2316,279 @@ def validate_real_call_safety(
             f"REAL_TASK_EXECUTION=no（safety gate 不执行任务）。"
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# T092: First Real-Run Acceptance Result Model
+# ---------------------------------------------------------------------------
+
+_VALID_ACCEPTANCE_STATUSES = frozenset({
+    "ready_for_human_review",
+    "blocked",
+    "failed_to_parse",
+    "unsafe_to_continue",
+})
+
+_VALID_WORKSPACE_CLASSIFICATIONS = frozenset({
+    "clean",
+    "dirty_reports_only",
+    "dirty_business_code",
+    "dirty_expected",
+    "dirty_unexpected",
+    "dirty_unknown",
+})
+
+
+@dataclass
+class FirstRealRunAcceptanceResult:
+    """首次真实调用 run-project-task-full 后的验收结果。
+
+    接收 ChildCommandParseResult，根据 T091 协议判断验收状态。
+    不执行任何命令，不修改任何文件。
+    """
+
+    # 标识
+    run_id: str                              # loop-YYYYMMDD-HHMMSS-<6hex>
+    project: str                             # 项目路径
+    task_id: str | None                      # 执行的任务编号
+    execution_mode: str                      # "first_real_run_acceptance"
+
+    # 执行状态
+    real_task_execution: str                 # "yes"
+    run_project_task_full_called: str        # "yes" / "attempted" / "no"
+
+    # 子调用结果
+    child_exit_code: str                     # "not_applicable"
+    child_check_result: str                  # "pass" / "fail" / "missing"
+    child_task_status: str                   # "done" / "failed" / "unknown"
+
+    # 解析状态
+    parsed_stdout_status: str                # "not_applicable"
+    parsed_stderr_status: str                # "not_applicable"
+
+    # 推断字段
+    claude_code_called: str                  # "yes" / "no" / "unknown"
+    business_code_changed: str               # "yes" / "no" / "unknown"
+
+    # Workspace
+    workspace_status_before: str             # "clean"
+    workspace_status_after: str
+    workspace_change_classification: str
+
+    # 报告
+    report_paths: list[str]
+
+    # 验收决策
+    human_review_required: bool              # 始终 True
+    auto_continue_to_next_task: bool         # 始终 False
+    auto_git_backup: bool                    # 始终 False
+    acceptance_status: str                   # ready_for_human_review / blocked / failed_to_parse / unsafe_to_continue
+    acceptance_required_reason: str          # "first_real_execution_requires_review"
+    stop_reason: str
+    next_action: str
+    check_result: str                        # "pass" / "fail"
+
+    # 消息
+    message: str
+
+
+def evaluate_first_real_run_acceptance(
+    project_path: str | Path,
+    task_id: str | None,
+    child_parse_result: ChildCommandParseResult,
+    workspace_status_before: str = "clean",
+    workspace_status_after: str = "unknown",
+    workspace_change_classification: str = "dirty_unknown",
+    run_project_task_full_called: str = "attempted",
+    claude_code_called: str = "unknown",
+    business_code_changed: str = "unknown",
+) -> FirstRealRunAcceptanceResult:
+    """基于 child parse result 构造首次真实调用验收结果。
+
+    根据 T091 协议判断验收状态：
+    - failed_to_parse：parse 失败或缺少 CHECK_RESULT
+    - blocked：check_result=fail / task_status=failed / dirty_unexpected / report_paths 缺失
+    - unsafe_to_continue：dirty_unknown / business_code_changed=unknown / claude_code_called=unknown
+    - ready_for_human_review：所有条件满足
+
+    优先级：failed_to_parse > blocked > unsafe_to_continue > ready_for_human_review
+
+    不执行任何命令，不修改任何文件。
+
+    Args:
+        project_path: 项目路径
+        task_id: 任务 ID
+        child_parse_result: 子命令输出解析结果
+        workspace_status_before: 执行前 workspace 状态（应 clean）
+        workspace_status_after: 执行后 workspace 状态
+        workspace_change_classification: workspace 变更分类
+        run_project_task_full_called: 是否真实调用
+        claude_code_called: Claude Code 调用推断结果
+        business_code_changed: 业务代码变更推断结果
+
+    Returns:
+        FirstRealRunAcceptanceResult
+    """
+    project_path = Path(project_path)
+    run_id = _generate_run_id()
+
+    report_paths = list(child_parse_result.report_paths)
+    child_check_result = child_parse_result.check_result
+    child_task_status = child_parse_result.task_status
+
+    # --- 优先级 1：failed_to_parse ---
+    if child_parse_result.parse_check_result == "fail":
+        # 解析失败时，child_check_result 可能是空或 "unknown"（parser 降级值）
+        effective_check = child_check_result if child_check_result and child_check_result not in ("unknown", "") else "missing"
+        return FirstRealRunAcceptanceResult(
+            run_id=run_id,
+            project=str(project_path),
+            task_id=task_id,
+            execution_mode="first_real_run_acceptance",
+            real_task_execution="yes",
+            run_project_task_full_called=run_project_task_full_called,
+            child_exit_code="not_applicable",
+            child_check_result=effective_check,
+            child_task_status=child_task_status,
+            parsed_stdout_status="not_applicable",
+            parsed_stderr_status="not_applicable",
+            claude_code_called=claude_code_called,
+            business_code_changed=business_code_changed,
+            workspace_status_before=workspace_status_before,
+            workspace_status_after=workspace_status_after,
+            workspace_change_classification=workspace_change_classification,
+            report_paths=report_paths,
+            human_review_required=True,
+            auto_continue_to_next_task=False,
+            auto_git_backup=False,
+            acceptance_status="failed_to_parse",
+            acceptance_required_reason="first_real_execution_requires_review",
+            stop_reason=child_parse_result.stop_reason or "parse_failed",
+            next_action="review_parse_failure",
+            check_result="fail",
+            message=(
+                f"验收失败：子命令输出解析失败"
+                f"（{child_parse_result.stop_reason or 'parse_failed'}），"
+                f"无法确认执行结果。"
+            ),
+        )
+
+    # --- 优先级 2：blocked ---
+    blocked_reason = None
+    if child_check_result == "fail":
+        blocked_reason = "child_check_result_failed"
+    elif child_task_status == "failed":
+        blocked_reason = "child_task_status_failed"
+    elif workspace_change_classification == "dirty_unexpected":
+        blocked_reason = "dirty_unexpected"
+    elif not report_paths:
+        blocked_reason = "missing_report_paths"
+
+    if blocked_reason:
+        next_action = "review_failure_before_continue"
+        if blocked_reason == "dirty_unexpected":
+            next_action = "review_unexpected_changes"
+        elif blocked_reason == "missing_report_paths":
+            next_action = "check_report_generation"
+
+        return FirstRealRunAcceptanceResult(
+            run_id=run_id,
+            project=str(project_path),
+            task_id=task_id,
+            execution_mode="first_real_run_acceptance",
+            real_task_execution="yes",
+            run_project_task_full_called=run_project_task_full_called,
+            child_exit_code="not_applicable",
+            child_check_result=child_check_result,
+            child_task_status=child_task_status,
+            parsed_stdout_status="not_applicable",
+            parsed_stderr_status="not_applicable",
+            claude_code_called=claude_code_called,
+            business_code_changed=business_code_changed,
+            workspace_status_before=workspace_status_before,
+            workspace_status_after=workspace_status_after,
+            workspace_change_classification=workspace_change_classification,
+            report_paths=report_paths,
+            human_review_required=True,
+            auto_continue_to_next_task=False,
+            auto_git_backup=False,
+            acceptance_status="blocked",
+            acceptance_required_reason="first_real_execution_requires_review",
+            stop_reason=blocked_reason,
+            next_action=next_action,
+            check_result="fail",
+            message=(
+                f"验收阻塞：{blocked_reason}。"
+                f"需要人工审查并处理后再继续。"
+            ),
+        )
+
+    # --- 优先级 3：unsafe_to_continue ---
+    if workspace_change_classification == "dirty_unknown":
+        return FirstRealRunAcceptanceResult(
+            run_id=run_id,
+            project=str(project_path),
+            task_id=task_id,
+            execution_mode="first_real_run_acceptance",
+            real_task_execution="yes",
+            run_project_task_full_called=run_project_task_full_called,
+            child_exit_code="not_applicable",
+            child_check_result=child_check_result,
+            child_task_status=child_task_status,
+            parsed_stdout_status="not_applicable",
+            parsed_stderr_status="not_applicable",
+            claude_code_called=claude_code_called,
+            business_code_changed=business_code_changed,
+            workspace_status_before=workspace_status_before,
+            workspace_status_after=workspace_status_after,
+            workspace_change_classification=workspace_change_classification,
+            report_paths=report_paths,
+            human_review_required=True,
+            auto_continue_to_next_task=False,
+            auto_git_backup=False,
+            acceptance_status="unsafe_to_continue",
+            acceptance_required_reason="first_real_execution_requires_review",
+            stop_reason="dirty_unknown",
+            next_action="manual_review_required",
+            check_result="fail",
+            message=(
+                "验收不安全：workspace 变更无法分类（dirty_unknown），"
+                "需要人工审查所有变更后再决定是否继续。"
+            ),
+        )
+
+    # --- 优先级 4：ready_for_human_review ---
+    # child_check_result=pass + task_status=done + workspace 可识别 + report_paths 非空
+    return FirstRealRunAcceptanceResult(
+        run_id=run_id,
+        project=str(project_path),
+        task_id=task_id,
+        execution_mode="first_real_run_acceptance",
+        real_task_execution="yes",
+        run_project_task_full_called=run_project_task_full_called,
+        child_exit_code="not_applicable",
+        child_check_result=child_check_result,
+        child_task_status=child_task_status,
+        parsed_stdout_status="not_applicable",
+        parsed_stderr_status="not_applicable",
+        claude_code_called=claude_code_called,
+        business_code_changed=business_code_changed,
+        workspace_status_before=workspace_status_before,
+        workspace_status_after=workspace_status_after,
+        workspace_change_classification=workspace_change_classification,
+        report_paths=report_paths,
+        human_review_required=True,
+        auto_continue_to_next_task=False,
+        auto_git_backup=False,
+        acceptance_status="ready_for_human_review",
+        acceptance_required_reason="first_real_execution_requires_review",
+        stop_reason="first_real_execution_requires_review",
+        next_action="review_real_task_execution_result",
+        check_result="pass",
+        message=(
+            f"首次真实执行完成：{task_id or 'unknown'}，"
+            f"CHECK_RESULT=pass，等待人工验收。"
+            f"HUMAN_REVIEW_REQUIRED=true，"
+            f"AUTO_CONTINUE_TO_NEXT_TASK=false。"
+        ),
+    )

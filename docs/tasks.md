@@ -2636,21 +2636,25 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T092 实现 first real-run acceptance result model
+## T092 实现 first real-run acceptance result model ✅
 
-状态：pending
+状态：done ✅
 角色：Developer
 目标：实现 FirstRealRunAcceptanceResult 数据结构和验收状态判定函数。
 
 ### 验收标准
 
-- 新增 FirstRealRunAcceptanceResult 数据结构
-- 新增 classify_acceptance_status() 函数
-- 新增 build_first_real_run_result() 函数
-- 复用 workspace 辅助函数和推断函数
-- 不真实调用 run_project_task_full
-- 不调用 Claude Code
-- 不修改业务代码
+- ✅ 新增 FirstRealRunAcceptanceResult 数据结构（26 字段）
+- ✅ 新增 evaluate_first_real_run_acceptance() 函数
+- ✅ 新增 first-real-run-acceptance-dry-run CLI（5 个样例）
+- ✅ 复用 parse_child_command_output + workspace 辅助函数
+- ✅ 49/49 函数级断言全部 PASS
+- ✅ 不真实调用 run_project_task_full
+- ✅ 不调用 Claude Code
+- ✅ 不修改业务代码
+
+<!-- NEXT_PENDING=T093 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ---
 
