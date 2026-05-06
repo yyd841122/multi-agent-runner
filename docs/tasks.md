@@ -2241,16 +2241,16 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T072 验证 adapter 不真实执行
 
-状态：pending
+状态：done
 角色：Tester
 目标：验证 adapter dry-run 所有路径都不调用真实执行。
 
 ### 验收标准
 
-- 验证 adapter dry-run 不调用 run-project-task-full
-- 验证 adapter dry-run 不调用 Claude Code
-- 验证 adapter dry-run 不修改业务代码
-- 验证所有拒绝路径正确返回
+- 验证 adapter dry-run 不调用 run-project-task-full ✓
+- 验证 adapter dry-run 不调用 Claude Code ✓
+- 验证 adapter dry-run 不修改业务代码 ✓
+- 验证所有拒绝路径正确返回 ✓
 
 ---
 
