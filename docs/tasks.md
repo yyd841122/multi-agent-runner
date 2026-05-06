@@ -2568,18 +2568,21 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T089 验证 simulated child CHECK_RESULT=fail
 
-状态：pending
+状态：done ✅
 角色：Tester
 目标：验证使用模拟 FullTaskLoopResult 数据时，final_status=FAILED/BLOCKED/REQUEST_CHANGES 的解析和输出。
 
 ### 验收标准
 
-- 验证 CHECK_RESULT=fail 映射正确
-- 验证 fail 后不自动继续
-- 验证 fail 后不自动 Git 备份
-- 验证 fail 后不自动返工
-- 验证异常处理
-- 不真实调用 run_project_task_full
+- ✅ 验证 CHECK_RESULT=fail 映射正确
+- ✅ 验证 fail 后不自动继续
+- ✅ 验证 fail 后不自动 Git 备份
+- ✅ 验证 fail 后不自动返工
+- ✅ 验证异常处理
+- ✅ 不真实调用 run_project_task_full
+
+<!-- NEXT_PENDING=T090 -->
+<!-- NEXT_STAGE=Stage 6 -->
 
 ---
 
