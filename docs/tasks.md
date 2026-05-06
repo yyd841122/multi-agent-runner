@@ -2293,16 +2293,19 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T075 验证 CHECK_RESULT=fail 后停止
 
-状态：pending
+状态：done
 角色：Tester
 目标：验证任务失败后系统正确停止并报告失败原因。
 
 ### 验收标准
 
-- 验证 CHECK_RESULT=fail 后 loop 停止
-- 验证 rework_required 正确标记
-- 验证 human_review_required 正确标记
-- 验证安全输出字段完整
+- ✓ 验证 CHECK_RESULT=fail 后 loop 停止（设计约束 + 代码逻辑 + CLI 实测）
+- ✓ 验证 fail 后不自动进入下一任务
+- ✓ 验证 human_review_required 正确标记（True）
+- ✓ 验证安全输出字段完整
+
+<!-- NEXT_PENDING=T076 -->
+<!-- NEXT_STAGE=Stage 6 -->
 
 ---
 
