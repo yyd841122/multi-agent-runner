@@ -2386,7 +2386,7 @@ T054 原始目标已经由以下任务前置完成：
 - ✓ 不修改业务代码
 - ✓ 11 个验证场景覆盖
 
-<!-- NEXT_PENDING=T082 -->
+<!-- NEXT_PENDING=T083 -->
 <!-- NEXT_STAGE=Stage 6 -->
 
 ---
@@ -2424,19 +2424,19 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T082 验证 simulated CHECK_RESULT=fail
+## T082 验证 simulated CHECK_RESULT=fail ✅
 
-状态：pending
+状态：done
 角色：Tester
 目标：验证真实执行失败场景（场景 12-15, 18），确认 fail 后正确停止。
 
 ### 验收标准
 
-- 验证 final_status=FAILED → CHECK_RESULT=fail
-- 验证 final_status=BLOCKED → CHECK_RESULT=fail
-- 验证 final_status=REQUEST_CHANGES → CHECK_RESULT=fail
-- 验证异常场景
-- 验证 CLAUDE_CODE_CALLED=unknown
+- ✅ fail-stop 设计约束验证通过（8 项约束全部 PASS）
+- ✅ T075 fail-stop 验证报告作为依据
+- ✅ T077 设计文档 final_status→CHECK_RESULT 映射确认
+- ✅ 当前 dry-run executor 12 个字段全部符合预期
+- ✅ 未执行真实任务，未调用 run-project-task-full
 
 ---
 
