@@ -2330,14 +2330,121 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T077 设计 max_tasks=1 真实调用 run-project-task-full 安全协议
 
-状态：pending
+状态：done
 角色：Architect
 目标：设计从 real-call stub 到真实调用 run_project_task_full 的安全协议。
 
 ### 验收标准
 
-- 设计 real-call bridge 安全协议
-- 设计真实执行后的 workspace 检查规则
-- 设计真实执行后的结果验证规则
-- 设计真实执行的安全边界和人工确认机制
-- 不直接实现代码
+- 设计 real-call bridge 安全协议 ✓
+- 设计真实执行后的 workspace 检查规则 ✓
+- 设计真实执行后的结果验证规则 ✓
+- 设计真实执行的安全边界和人工确认机制 ✓
+- 不直接实现代码 ✓
+
+<!-- NEXT_PENDING=T078 -->
+<!-- NEXT_STAGE=Stage 6 -->
+
+---
+
+## T078 实现 real-call double-confirm safety gate
+
+状态：pending
+角色：Developer
+目标：实现真实调用的双重确认安全门，包含 RealCallExecuteResult 数据结构和 13 项 preflight 检查。
+
+### 验收标准
+
+- 新增 RealCallExecuteResult 数据结构
+- 新增 validate_real_call_confirm() 第二重确认校验
+- 实现 13 项 preflight 检查
+- runner.py 新增 --real-call 和 --real-confirm 参数
+- 模式互斥检查（--adapter-dry-run / --real-call-stub / --real-call）
+- 拒绝场景全覆盖
+- 不真实调用 run_project_task_full
+
+---
+
+## T079 实现 max_tasks=1 real-call dry-run executor
+
+状态：pending
+角色：Developer
+目标：实现 max_tasks=1 真实调用 run_project_task_full 的执行器，捕获 FullTaskLoopResult 并输出 RealCallExecuteResult。
+
+### 验收标准
+
+- 实现 run_project_loop_real_call_execute() 函数
+- 真实调用 run_project_task_full()
+- 捕获 FullTaskLoopResult
+- workspace 前后快照比较
+- CLAUDE_CODE_CALLED 推断
+- BUSINESS_CODE_CHANGED 推断
+- RealCallExecuteResult 组装
+- 安全输出字段完整
+- 不支持 max_tasks>1
+- 不自动继续下一任务
+- 不自动 Git 备份
+
+---
+
+## T080 验证 real confirm 拒绝场景
+
+状态：pending
+角色：Tester
+目标：验证真实调用拒绝场景（场景 1-10），确认不涉及真实调用。
+
+### 验收标准
+
+- 验证场景 1-10 全部拒绝
+- 每个场景记录输入、预期和实际输出
+- REAL_TASK_EXECUTION=no
+- RUN_PROJECT_TASK_FULL_CALLED=no
+- 不真实调用 run_project_task_full
+
+---
+
+## T081 验证 simulated CHECK_RESULT=pass
+
+状态：pending
+角色：Tester
+目标：验证真实执行成功场景（场景 11, 16-17），确认 pass 后停止等待人工确认。
+
+### 验收标准
+
+- 验证 final_status=COMPLETE → CHECK_RESULT=pass
+- 验证 pass 后不自动进入下一任务
+- 验证 pass 后不自动 Git 备份
+- 验证 HUMAN_REVIEW_REQUIRED=true
+- 需要选择安全的子项目任务
+
+---
+
+## T082 验证 simulated CHECK_RESULT=fail
+
+状态：pending
+角色：Tester
+目标：验证真实执行失败场景（场景 12-15, 18），确认 fail 后正确停止。
+
+### 验收标准
+
+- 验证 final_status=FAILED → CHECK_RESULT=fail
+- 验证 final_status=BLOCKED → CHECK_RESULT=fail
+- 验证 final_status=REQUEST_CHANGES → CHECK_RESULT=fail
+- 验证异常场景
+- 验证 CLAUDE_CODE_CALLED=unknown
+
+---
+
+## T083 提交并推送 real-call safety MVP
+
+状态：pending
+角色：Developer
+目标：提交并推送 real-call safety MVP 成果。
+
+### 验收标准
+
+- git status 已检查
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean

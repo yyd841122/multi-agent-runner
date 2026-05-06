@@ -552,3 +552,16 @@ G006 已完成完整闭环：
 - CLAUDE_CODE_CALLED 使用字符串类型（"no"/"unknown"/"yes"），不是布尔。task_execution_performed=true 时必须标记 unknown。
 - TaskExecutionResult（14 字段）、ProjectLoopExecutionResult（19 字段）、RealCallStubResult（19 字段）是三层抽象，各层职责不同。
 - 分阶段验证策略有效：设计 → adapter dry-run → adapter 验证 → real-call stub → pass 验证 → fail 验证 → 小结。
+
+## T077 Real Task Execution Safety Design 经验
+
+### 核心经验
+
+- 真实调用必须使用双重确认：EXECUTE_PROJECT_LOOP（进入 execute mode）+ EXECUTE_REAL_TASK_ONCE（允许真实调用），一层确认不够。
+- 真实调用推荐复用已有 `run-project-loop` 命令加 `--real-call --real-confirm`，不新增独立命令。复用 planner / safety gate / max_tasks 限制。
+- 真实调用推荐 Python 函数调用 `run_project_task_full()`，不是 subprocess。同进程直接获得 `FullTaskLoopResult`，无编码和环境问题。
+- 无法确认 Claude Code 是否被调用时必须输出 unknown，不能写 no。unknown 代表信息不足，不是确认。
+- 无法确认业务代码是否变化时也必须输出 unknown。
+- 第一次真实调用 pass 后也必须停止等待人工验收。AUTO_CONTINUE_TO_NEXT_TASK=no 是 MVP 硬约束。
+- workspace 变化检测应使用执行前后快照比较（git status --short），不是执行后单次检查。
+- 验证应分两阶段：拒绝场景（不真实执行）先验证，真实执行场景后验证。

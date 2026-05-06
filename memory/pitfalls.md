@@ -360,3 +360,13 @@
 - 不要把 NEXT_ACTION=ready_for_T07x_validation 误认为系统建议重做该任务。这是实现时的遗留命名。
 - 不要跳过 adapter dry-run 阶段直接实现 real-call stub。中间缺少验证会导致问题难以定位。
 - 不要在验证任务中修改代码文件。验证只运行命令和记录结果。
+
+## T077 Real Task Execution Safety Design 避坑
+
+- 不要只用 EXECUTE_PROJECT_LOOP 一层确认就允许真实调用。stub 也需要这个确认，无法区分 stub 和真实执行。
+- 不要在 CLAUDE_CODE_CALLED 无法确认时输出 no。no 代表确认未调用，unknown 代表无法确认，两者含义不同。
+- 不要在 BUSINESS_CODE_CHANGED 无法分类时输出 no。同上。
+- 不要用 subprocess 调用 run_project_task_full。已有稳定函数入口，subprocess 增加编码/环境/路径问题。
+- 不要在第一次真实调用 pass 后自动进入下一任务。必须人工验收。
+- 不要把验证场景 11-18（真实执行）和场景 1-10（拒绝）混在一起。拒绝场景不需要真实调用，可以安全先做。
+- 不要新增独立命令（如 run-project-loop-real-once），应复用已有 run-project-loop 加参数。独立命令会绕过 planner / safety gate / max_tasks 限制。
