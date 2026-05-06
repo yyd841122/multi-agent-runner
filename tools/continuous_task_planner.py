@@ -1295,6 +1295,185 @@ def run_project_loop_real_call_stub(
     )
 
 
+# ---------------------------------------------------------------------------
+# T079: Real-Call Dry-Run Executor（max_tasks=1）
+# ---------------------------------------------------------------------------
+
+@dataclass
+class RealCallDryRunExecutorResult:
+    """Real-call dry-run executor 结果（max_tasks=1）。
+
+    通过 execute safety gate + real-call double-confirm safety gate 后，
+    解析当前 planned task，构造未来真实调用 run-project-task-full 的
+    execution plan，但不执行。
+    不调用 run-project-task-full，不调用 Claude Code，不修改业务代码。
+    """
+
+    project: str
+    run_id: str
+    execution_mode: str                       # "real_call_dry_run_executor"
+    real_call_allowed: bool                   # real-call safety gate 是否通过
+    dry_run_executor_started: bool            # executor 是否启动
+    max_tasks: int
+    task_id: str | None                       # 当前 NEXT_PENDING
+    command: str                              # 未来要执行的 CLI 命令
+    function_call: str                        # 未来要执行的函数调用描述
+    child_result_mode: str                    # "not_executed"
+    simulated_exit_code: str                  # "not_executed"
+    simulated_check_result: str               # "not_executed"
+    simulated_task_status: str                # "dry_run_only"
+    task_execution_performed: bool            # 始终 False
+    run_project_task_full_called: bool        # 始终 False
+    claude_code_called: str                   # "no"
+    business_code_changed: str                # "no"（注意是 str 不是 bool）
+    auto_continue_to_next_task: bool          # 始终 False
+    auto_git_backup: bool                     # 始终 False
+    human_review_required: bool               # 始终 True
+    check_result: str                         # "pass" / "fail"
+    stop_reason: str | None                   # 停止原因
+    next_action: str                          # 建议下一步
+    message: str                              # 详细消息
+
+
+def run_project_loop_real_call_dry_run_executor(
+    project_root: str | Path,
+    max_tasks: int = 1,
+    confirm: str | None = None,
+    real_confirm: str | None = None,
+) -> RealCallDryRunExecutorResult:
+    """Real-call dry-run executor：safety gate 通过后构造 execution plan，但不执行。
+
+    调用 validate_real_call_safety() 做双重确认校验。
+    如果通过，解析 planned task，构造未来调用的 command 和 function_call，
+    但不执行 command，不调用函数，不调用 Claude Code，不修改业务代码。
+
+    Args:
+        project_root: 项目根目录
+        max_tasks: 用户请求的 max_tasks（dry-run executor 只支持 1）
+        confirm: 第一重确认短语
+        real_confirm: 第二重确认短语
+
+    Returns:
+        RealCallDryRunExecutorResult
+    """
+    project_root = Path(project_root)
+    run_id = _generate_run_id()
+
+    # --- 默认失败结果 ---
+    def _fail(
+        stop_reason: str | None = None,
+        next_action: str = "fix_real_call_dry_run_preconditions",
+        message: str = "",
+    ) -> RealCallDryRunExecutorResult:
+        return RealCallDryRunExecutorResult(
+            project=str(project_root),
+            run_id=run_id,
+            execution_mode="real_call_dry_run_executor",
+            real_call_allowed=False,
+            dry_run_executor_started=False,
+            max_tasks=max_tasks,
+            task_id=None,
+            command="",
+            function_call="",
+            child_result_mode="not_executed",
+            simulated_exit_code="not_executed",
+            simulated_check_result="not_executed",
+            simulated_task_status="dry_run_not_started",
+            task_execution_performed=False,
+            run_project_task_full_called=False,
+            claude_code_called="no",
+            business_code_changed="no",
+            auto_continue_to_next_task=False,
+            auto_git_backup=False,
+            human_review_required=True,
+            check_result="fail",
+            stop_reason=stop_reason,
+            next_action=next_action,
+            message=message,
+        )
+
+    # 1. 调用 real-call double-confirm safety gate
+    safety = validate_real_call_safety(
+        project_root=project_root,
+        max_tasks=max_tasks,
+        execute_requested=True,
+        confirm=confirm,
+        real_call_requested=True,
+        real_confirm=real_confirm,
+        adapter_dry_run=False,
+        real_call_stub=False,
+    )
+
+    # 2. safety gate 不通过 → 返回失败结果
+    if not safety.real_call_allowed:
+        return _fail(
+            stop_reason=safety.stop_reason,
+            next_action=safety.next_action,
+            message=(
+                f"real-call dry-run executor 未启动：safety gate 拒绝"
+                f"（{safety.stop_reason}）。"
+                f"TASK_EXECUTION_PERFORMED=false。"
+            ),
+        )
+
+    # 3. safety gate 通过 → 解析 planned task
+    task_id = safety.task_id
+    if task_id is None:
+        return _fail(
+            stop_reason="no_task_id",
+            next_action="check_tasks_or_add_new",
+            message="real-call dry-run executor：safety gate 通过但 task_id 为空。",
+        )
+
+    # 4. 解析 subproject path
+    subproject_path = _resolve_subproject_path(project_root, task_id)
+
+    # 5. 构造未来调用的 command 和 function_call（不执行）
+    command = (
+        f"python runner.py run-project-task-full "
+        f"--project {subproject_path} --task {task_id}"
+    )
+    function_call = (
+        f"run_project_task_full("
+        f"project_path='{subproject_path}', "
+        f"task_id='{task_id}')"
+    )
+
+    # 6. 返回 dry-run executor 结果
+    return RealCallDryRunExecutorResult(
+        project=str(project_root),
+        run_id=run_id,
+        execution_mode="real_call_dry_run_executor",
+        real_call_allowed=True,
+        dry_run_executor_started=True,
+        max_tasks=1,
+        task_id=task_id,
+        command=command,
+        function_call=function_call,
+        child_result_mode="not_executed",
+        simulated_exit_code="not_executed",
+        simulated_check_result="not_executed",
+        simulated_task_status="dry_run_only",
+        task_execution_performed=False,
+        run_project_task_full_called=False,
+        claude_code_called="no",
+        business_code_changed="no",
+        auto_continue_to_next_task=False,
+        auto_git_backup=False,
+        human_review_required=True,
+        check_result="pass",
+        stop_reason="real_call_dry_run_only",
+        next_action="ready_for_T080_real_confirm_rejection_validation",
+        message=(
+            f"real-call dry-run executor 完成：已构造未来调用 "
+            f"run-project-task-full 执行 {task_id}，"
+            f"command={command}。"
+            f"TASK_EXECUTION_PERFORMED=false，"
+            f"RUN_PROJECT_TASK_FULL_CALLED=false。"
+        ),
+    )
+
+
 def _resolve_subproject_path(project_root: Path, task_id: str) -> Path:
     """根据任务 ID 前缀解析子项目路径。
 

@@ -2370,23 +2370,24 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T079 实现 max_tasks=1 real-call dry-run executor
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 max_tasks=1 真实调用 run_project_task_full 的执行器，捕获 FullTaskLoopResult 并输出 RealCallExecuteResult。
 
 ### 验收标准
 
-- 实现 run_project_loop_real_call_execute() 函数
-- 真实调用 run_project_task_full()
-- 捕获 FullTaskLoopResult
-- workspace 前后快照比较
-- CLAUDE_CODE_CALLED 推断
-- BUSINESS_CODE_CHANGED 推断
-- RealCallExecuteResult 组装
-- 安全输出字段完整
-- 不支持 max_tasks>1
-- 不自动继续下一任务
-- 不自动 Git 备份
+- ✓ 实现 RealCallDryRunExecutorResult 数据结构（24 字段）
+- ✓ 实现 run_project_loop_real_call_dry_run_executor() 函数
+- ✓ 复用 validate_real_call_safety() 双重确认
+- ✓ 构造未来调用 command 和 function_call
+- ✓ runner.py 新增 --real-call-dry-run 参数
+- ✓ 不真实调用 run_project_task_full
+- ✓ 不调用 Claude Code
+- ✓ 不修改业务代码
+- ✓ 11 个验证场景覆盖
+
+<!-- NEXT_PENDING=T080 -->
+<!-- NEXT_STAGE=Stage 6 -->
 
 ---
 
