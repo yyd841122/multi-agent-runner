@@ -2548,18 +2548,21 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T088 验证 simulated child CHECK_RESULT=pass
 
-状态：pending
+状态：done ✅
 角色：Tester
 目标：验证使用模拟 FullTaskLoopResult 数据时，final_status=COMPLETE 的解析和输出。
 
 ### 验收标准
 
-- 验证 CHECK_RESULT=pass 映射正确
-- 验证 AUTO_CONTINUE_TO_NEXT_TASK=no
-- 验证 AUTO_GIT_BACKUP=no
-- 验证 HUMAN_REVIEW_REQUIRED=true
-- 验证 workspace 检测和推断逻辑
-- 不真实调用 run_project_task_full
+- ✅ 验证 CHECK_RESULT=pass 映射正确
+- ✅ 验证 AUTO_CONTINUE_TO_NEXT_TASK=no
+- ✅ 验证 AUTO_GIT_BACKUP=no
+- ✅ 验证 HUMAN_REVIEW_REQUIRED=true
+- ✅ 验证 workspace 检测和推断逻辑
+- ✅ 不真实调用 run_project_task_full
+
+<!-- NEXT_PENDING=T089 -->
+<!-- NEXT_STAGE=Stage 6 -->
 
 ---
 
