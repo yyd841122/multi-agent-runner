@@ -331,3 +331,12 @@
 - 不要在 execute mode 中自动 git push，push 需要人工确认。
 - 不要在 execute mode MVP 中允许 max_tasks > 1，MVP 先验证单任务执行。
 - 不要让 --execute 和 --dry-run 同时传入，两者互斥。
+
+## T065-T069 Execute Safety MVP 避坑
+
+- 不要把 EXECUTE_STUB_STARTED=true 误认为真实执行已发生。stub 只是模拟，TASK_EXECUTION_PERFORMED 始终为 false。
+- 不要把 safety gate 通过（EXECUTE_ALLOWED=true）等同于可以执行。safety gate 通过后还有 stub 层的 max_tasks 检查。
+- 不要在 dirty workspace 下验证 max_tasks=1 stub 启动场景。dirty workspace 会先被 safety gate 拒绝，无法触达 stub 逻辑。
+- 不要跳过 confirm 拒绝场景的单独验证。代码审查不能替代运行时验证，尤其是 confirm 值的边界。
+- 不要把 NEXT_ACTION=ready_for_T067_validation 误认为系统建议重做 T067。这是 T066 实现时的遗留命名。
+- 不要在 execute mode 验证中修改代码文件。验证任务只运行命令和记录结果。

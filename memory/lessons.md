@@ -514,3 +514,15 @@ G006 已完成完整闭环：
 - Git backup 应停止并提醒，不自动 push，push 需要人工确认。
 - CLI 方案推荐复用 run-project-loop 加 --execute，而非新增独立命令，最小化改动和用户学习成本。
 - execute mode MVP 只允许 max_tasks=1，逐步放开到 2、3，经验积累后再提高上限。
+
+## T064-T069 Execute Safety MVP 经验
+
+### 核心经验
+
+- safety gate 和 execute stub 必须分开实现：safety gate 只做前置检查，stub 只做模拟执行，两者职责不同。
+- confirm 拒绝场景必须单独验证（T067），不能只依赖代码逻辑审查。7 个拒绝场景 + 1 个互斥场景全覆盖。
+- max_tasks=1 stub 验证必须在 clean workspace 下做（T068），dirty workspace 下只能做代码逻辑验证。
+- 不能把 execute stub 误认为真实执行。EXECUTE_STUB_STARTED=true 不代表 TASK_EXECUTION_PERFORMED=true。
+- execute mode 的三层检查结构有效：safety gate → stub max_tasks check → stub execution（模拟）。
+- CHECK_RESULT 字段对自动化判断非常有用：pass = stub started，fail = stub 未启动。
+- 验证任务和实现任务应保持独立提交粒度（T066→T067→T068），便于追溯和回退。

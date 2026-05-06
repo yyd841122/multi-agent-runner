@@ -2192,12 +2192,28 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T069 提交并推送 execute mode safety MVP
 
-状态：pending
-角色：Git Backup
-目标：提交并推送 T064-T068 所有工作成果。
+状态：done
+角色：Stage Summary
+目标：execute mode safety MVP 小结与提交确认。
 
 ### 验收标准
 
-- 所有修改已提交
-- 已推送到远程
-- 工作区 clean
+- execute safety MVP 小结已生成
+- 复核验证全部通过
+- 安全边界确认有效
+
+---
+
+## T070 设计 run-project-loop 调用 run-project-task-full 的安全协议
+
+状态：pending
+角色：Designer
+目标：设计从 execute stub 到真实调用 run-project-task-full 的安全协议。
+
+### 验收标准
+
+- 设计单任务真实执行的安全边界
+- 设计执行结果检查协议
+- 设计继续/停止条件
+- 设计失败/返工/dirty 恢复策略
+- 设计 max_tasks 逐步放开策略（1→2→3）
