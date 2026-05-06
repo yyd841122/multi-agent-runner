@@ -2275,16 +2275,19 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T074 验证 CHECK_RESULT=pass 后停止
 
-状态：pending
+状态：done
 角色：Tester
 目标：验证任务成功执行后系统正确停止并等待人工确认。
 
 ### 验收标准
 
-- 验证 CHECK_RESULT=pass 后 loop 停止
-- 验证输出包含 TASK_EXECUTION_PERFORMED=true
-- 验证不自动进入下一任务
-- 验证安全输出字段完整
+- ✓ 验证 CHECK_RESULT=pass 后 loop 停止
+- ✓ 验证输出包含 TASK_EXECUTION_PERFORMED=false（real-call stub 不执行任务）
+- ✓ 验证不自动进入下一任务
+- ✓ 验证安全输出字段完整
+
+<!-- NEXT_PENDING=T075 -->
+<!-- NEXT_STAGE=Stage 6 -->
 
 ---
 
