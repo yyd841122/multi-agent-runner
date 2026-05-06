@@ -2222,15 +2222,15 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T071 实现 run-project-task-full adapter dry-run
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 adapter 数据结构和调用链路验证，但不调用真实 run-project-task-full。
 
 ### 验收标准
 
-- 新增 TaskExecutionResult 数据结构
-- 新增 ProjectLoopExecutionResult 数据结构
-- 实现 adapter 函数（FullTaskLoopResult → TaskExecutionResult）
+- 新增 TaskExecutionResult 数据结构 ✓
+- 新增 ProjectLoopExecutionResult 数据结构 ✓
+- 实现 adapter 函数（FullTaskLoopResult → TaskExecutionResult） ✓
 - 实现 workspace 检查函数
 - 实现 CLAUDE_CODE_CALLED 推断函数
 - dry-run 模式不调用真实 run-project-task-full

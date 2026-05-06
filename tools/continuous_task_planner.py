@@ -848,3 +848,277 @@ def run_project_loop_execute_stub(
             f"TASK_EXECUTION_PERFORMED=false。"
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# T071: Task Execution Adapter Dry-Run
+# ---------------------------------------------------------------------------
+
+@dataclass
+class TaskExecutionResult:
+    """单任务执行 adapter 结果（dry-run）。
+
+    构造未来调用 run-project-task-full 的命令信息，
+    不执行命令，不调用 Claude Code，不修改业务代码。
+    """
+
+    task_id: str
+    command: str                           # 未来要执行的命令描述
+    adapter_mode: str                      # "dry_run" / "real"
+    execution_started: bool                # dry-run 下始终 False
+    execution_finished: bool               # dry-run 下始终 False
+    exit_code: str | None                  # dry-run 下为 None
+    check_result: str                      # "pass" / "fail"
+    task_status: str                       # "adapter_dry_run_ready" 等
+    report_paths: list[str]                # dry-run 下为空
+    workspace_status: str                  # "not_checked"
+    business_code_changed: bool            # 始终 False
+    rework_required: bool                  # 始终 False
+    human_review_required: bool            # 始终 True（dry-run 需人工确认）
+    next_action: str                       # 建议下一步
+    message: str                           # 详细消息
+
+
+@dataclass
+class ProjectLoopExecutionResult:
+    """run-project-loop task execution adapter dry-run 总结果。
+
+    不执行任何真实任务，不调用 run-project-task-full，
+    不调用 Claude Code，不修改业务代码。
+    """
+
+    run_id: str
+    project: str
+    execution_mode: str                    # "task_execution_adapter_dry_run"
+    max_tasks: int
+    started_task: str | None               # adapter 锁定的任务 ID
+    completed_tasks: list[str]             # 始终空
+    failed_tasks: list[str]                # 始终空
+    stopped_task: str | None               # 停止的任务
+    task_results: list[TaskExecutionResult]  # adapter dry-run 结果
+    loop_status: str                       # adapter_dry_run_completed / safety_gate_failed / ...
+    stop_reason: str | None                # 停止原因
+    workspace_status: str                  # "not_checked"
+    git_backup_required: bool              # 始终 False
+    human_review_required: bool            # 始终 True
+    task_execution_performed: bool         # 始终 False
+    run_project_task_full_called: bool     # 始终 False
+    claude_code_called: str                # "no"
+    business_code_changed: str             # "no"
+    next_action: str                       # 建议下一步
+    message: str                           # 详细消息
+
+
+def prepare_run_project_task_full_adapter_dry_run(
+    project_path: str | Path,
+    task_id: str,
+) -> TaskExecutionResult:
+    """构造未来调用 run-project-task-full 的 adapter dry-run。
+
+    不执行命令，不调用 Claude Code，不修改业务代码。
+    只构造未来调用信息。
+
+    Args:
+        project_path: 子项目路径
+        task_id: 任务 ID
+
+    Returns:
+        TaskExecutionResult（dry-run）
+    """
+    project_path = Path(project_path)
+
+    command = (
+        f"run_project_task_full("
+        f"project_path='{project_path}', "
+        f"task_id='{task_id}')"
+    )
+    cli_command = (
+        f"python runner.py run-project-task-full "
+        f"--project {project_path} --task {task_id}"
+    )
+
+    return TaskExecutionResult(
+        task_id=task_id,
+        command=command,
+        adapter_mode="dry_run",
+        execution_started=False,
+        execution_finished=False,
+        exit_code=None,
+        check_result="pass",
+        task_status="adapter_dry_run_ready",
+        report_paths=[],
+        workspace_status="not_checked",
+        business_code_changed=False,
+        rework_required=False,
+        human_review_required=True,
+        next_action="ready_for_T072_adapter_validation",
+        message=(
+            f"[adapter dry-run] 已构造未来调用：{cli_command}。"
+            f"未调用 run-project-task-full，未调用 Claude Code，未修改业务代码。"
+            f"TASK_EXECUTION_PERFORMED=false。"
+        ),
+    )
+
+
+def run_project_loop_task_execution_adapter_dry_run(
+    project_root: str | Path,
+    max_tasks: int = 1,
+    confirm: str | None = None,
+) -> ProjectLoopExecutionResult:
+    """Task execution adapter dry-run。
+
+    复用 safety gate 验证确认和前置条件，
+    构造未来调用 run-project-task-full 的 adapter 信息。
+    不执行任何真实任务。
+
+    Args:
+        project_root: 项目根目录
+        max_tasks: 用户请求的 max_tasks（adapter 只支持 1）
+        confirm: 用户传入的 --confirm 值
+
+    Returns:
+        ProjectLoopExecutionResult（adapter dry-run）
+    """
+    project_root = Path(project_root)
+    run_id = _generate_run_id()
+
+    # 1. 调用 safety gate
+    safety = validate_execute_loop_safety(
+        project_root=project_root,
+        max_tasks=max_tasks,
+        confirm=confirm,
+    )
+
+    # 2. safety gate 不通过 → 返回失败结果
+    if not safety.execute_allowed:
+        return ProjectLoopExecutionResult(
+            run_id=run_id,
+            project=str(project_root),
+            execution_mode="task_execution_adapter_dry_run",
+            max_tasks=max_tasks,
+            started_task=None,
+            completed_tasks=[],
+            failed_tasks=[],
+            stopped_task=None,
+            task_results=[],
+            loop_status="safety_gate_failed",
+            stop_reason=safety.stop_reason,
+            workspace_status="not_checked",
+            git_backup_required=False,
+            human_review_required=True,
+            task_execution_performed=False,
+            run_project_task_full_called=False,
+            claude_code_called="no",
+            business_code_changed="no",
+            next_action="fix_adapter_preconditions",
+            message=(
+                f"adapter dry-run 未通过：safety gate 拒绝（{safety.stop_reason}）。"
+                f"TASK_EXECUTION_PERFORMED=false。"
+            ),
+        )
+
+    # 3. safety gate 通过但 max_tasks != 1 → 拒绝
+    if max_tasks != 1:
+        return ProjectLoopExecutionResult(
+            run_id=run_id,
+            project=str(project_root),
+            execution_mode="task_execution_adapter_dry_run",
+            max_tasks=max_tasks,
+            started_task=None,
+            completed_tasks=[],
+            failed_tasks=[],
+            stopped_task=None,
+            task_results=[],
+            loop_status="max_tasks_gt_1_not_supported",
+            stop_reason="max_tasks_gt_1_not_supported_in_adapter",
+            workspace_status="not_checked",
+            git_backup_required=False,
+            human_review_required=True,
+            task_execution_performed=False,
+            run_project_task_full_called=False,
+            claude_code_called="no",
+            business_code_changed="no",
+            next_action="use_max_tasks_1_for_adapter",
+            message=(
+                f"adapter dry-run 当前只支持 max_tasks=1，"
+                f"请求的 max_tasks={max_tasks}。"
+                f"请使用 --max-tasks 1。"
+            ),
+        )
+
+    # 4. safety gate 通过且 max_tasks=1 → 构造 adapter dry-run
+    task_id = safety.planned_tasks[0] if safety.planned_tasks else None
+
+    if task_id is None:
+        return ProjectLoopExecutionResult(
+            run_id=run_id,
+            project=str(project_root),
+            execution_mode="task_execution_adapter_dry_run",
+            max_tasks=max_tasks,
+            started_task=None,
+            completed_tasks=[],
+            failed_tasks=[],
+            stopped_task=None,
+            task_results=[],
+            loop_status="safety_gate_failed",
+            stop_reason="no_planned_task",
+            workspace_status="not_checked",
+            git_backup_required=False,
+            human_review_required=True,
+            task_execution_performed=False,
+            run_project_task_full_called=False,
+            claude_code_called="no",
+            business_code_changed="no",
+            next_action="check_tasks_or_add_new",
+            message="adapter dry-run：safety gate 通过但 planned_tasks 为空。",
+        )
+
+    # 5. 确定 project_path（子项目路径）
+    #    当前项目结构：project_root 下有 projects/<subproject>
+    #    从 tasks.md 的任务 ID 前缀判断子项目
+    subproject_path = _resolve_subproject_path(project_root, task_id)
+
+    # 6. 构造 adapter dry-run
+    task_result = prepare_run_project_task_full_adapter_dry_run(
+        project_path=subproject_path,
+        task_id=task_id,
+    )
+
+    return ProjectLoopExecutionResult(
+        run_id=run_id,
+        project=str(project_root),
+        execution_mode="task_execution_adapter_dry_run",
+        max_tasks=1,
+        started_task=task_id,
+        completed_tasks=[],
+        failed_tasks=[],
+        stopped_task=task_id,
+        task_results=[task_result],
+        loop_status="adapter_dry_run_completed",
+        stop_reason="adapter_dry_run_only",
+        workspace_status="not_checked",
+        git_backup_required=False,
+        human_review_required=True,
+        task_execution_performed=False,
+        run_project_task_full_called=False,
+        claude_code_called="no",
+        business_code_changed="no",
+        next_action="ready_for_T072_adapter_validation",
+        message=(
+            f"adapter dry-run 完成：已构造未来调用 run-project-task-full "
+            f"执行 {task_id}。"
+            f"TASK_EXECUTION_PERFORMED=false，"
+            f"RUN_PROJECT_TASK_FULL_CALLED=false。"
+        ),
+    )
+
+
+def _resolve_subproject_path(project_root: Path, task_id: str) -> Path:
+    """根据任务 ID 前缀解析子项目路径。
+
+    G 前缀 → projects/down-100-floors-game
+    其他 → projects/（默认，后续可扩展）
+    """
+    if task_id.startswith("G"):
+        return project_root / "projects" / "down-100-floors-game"
+    return project_root / "projects"

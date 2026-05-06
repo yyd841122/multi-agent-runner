@@ -42,6 +42,7 @@ from tools.full_task_runner import run_project_task_full
 from tools.continuous_task_planner import build_continuous_task_plan
 from tools.continuous_task_planner import run_project_loop_dry_run
 from tools.continuous_task_planner import validate_execute_loop_safety, run_project_loop_execute_stub
+from tools.continuous_task_planner import run_project_loop_task_execution_adapter_dry_run
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -1201,10 +1202,11 @@ def main():
         print(f"Message：{plan.message}")
         print(f"NEXT_ACTION={plan.next_action}")
     elif args[0] == "run-project-loop":
-        # T060 run-project-loop dry-run + T065 execute mode safety gate
+        # T060 run-project-loop dry-run + T065 execute mode safety gate + T071 adapter dry-run
         max_tasks_val = 3
         execute_mode = False
         dry_run_flag = False
+        adapter_dry_run = False
         confirm_text = None
         i = 1
         while i < len(args):
@@ -1216,6 +1218,9 @@ def main():
                 i += 1
             elif args[i] == "--dry-run":
                 dry_run_flag = True
+                i += 1
+            elif args[i] == "--adapter-dry-run":
+                adapter_dry_run = True
                 i += 1
             elif args[i] == "--confirm" and i + 1 < len(args):
                 confirm_text = args[i + 1]
@@ -1230,7 +1235,42 @@ def main():
             print("请去掉其中一个参数后重试。")
             return
 
-        if execute_mode:
+        # --adapter-dry-run 必须配合 --execute
+        if adapter_dry_run and not execute_mode:
+            print()
+            print("ERROR：--adapter-dry-run 必须配合 --execute 使用。")
+            return
+
+        if execute_mode and adapter_dry_run:
+            # T071: task execution adapter dry-run
+            adapter = run_project_loop_task_execution_adapter_dry_run(
+                project_root=PROJECT_ROOT,
+                max_tasks=max_tasks_val,
+                confirm=confirm_text,
+            )
+
+            print()
+            print(f"EXECUTION_MODE={adapter.execution_mode}")
+            print(f"ADAPTER_DRY_RUN=true")
+            print(f"RUN_ID={adapter.run_id}")
+            print(f"MAX_TASKS={adapter.max_tasks}")
+            if adapter.started_task:
+                print(f"TASK_ID={adapter.started_task}")
+            print(f"TASK_EXECUTION_PERFORMED={adapter.task_execution_performed}")
+            print(f"RUN_PROJECT_TASK_FULL_CALLED={adapter.run_project_task_full_called}")
+            print(f"CLAUDE_CODE_CALLED={adapter.claude_code_called}")
+            print(f"BUSINESS_CODE_CHANGED={adapter.business_code_changed}")
+            print(f"LOOP_STATUS={adapter.loop_status}")
+            print(f"STOP_REASON={adapter.stop_reason or 'NONE'}")
+            print(f"HUMAN_REVIEW_REQUIRED={adapter.human_review_required}")
+            print(f"CHECK_RESULT={'pass' if adapter.loop_status == 'adapter_dry_run_completed' else 'fail'}")
+            print(f"NEXT_ACTION={adapter.next_action}")
+            if adapter.task_results:
+                tr = adapter.task_results[0]
+                print(f"COMMAND={tr.command}")
+            print()
+            print(f"Message：{adapter.message}")
+        elif execute_mode:
             # T066: execute mode → safety gate + execute stub
             stub = run_project_loop_execute_stub(
                 project_root=PROJECT_ROOT,
