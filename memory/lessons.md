@@ -631,3 +631,14 @@ G006 已完成完整闭环：
 - fail 后也必须停止。四种 fail 类型（REQUEST_CHANGES/BLOCKED/FAILED/异常）都设计为停止并等待人工处理。
 - 从 safety shell + parser dry-run 到真实执行之间，仍需要单独设计首次执行验收协议，确认环境、任务选择、预期结果和回退策略。
 - 分步推进策略在 Stage 6 继续有效：设计 → safety shell → parser → 拒绝验证 → pass 模拟 → fail 模拟 → 小结，每步独立提交。
+
+## T091 首次真实调用验收协议设计经验
+
+### 核心经验
+
+- 第一次真实调用 pass 后也必须人工验收。即使 final_status=COMPLETE，也需要通过 10 项验收清单逐项确认，不能自动进入下一任务。
+- unknown 字段不能写成 no。CLAUDE_CODE_CALLED=unknown 代表信息不足，CLAUDE_CODE_CALLED=no 代表确认未调用，两者语义完全不同。unknown 时必须设置 HUMAN_REVIEW_REQUIRED=true 和 AUTO_CONTINUE_TO_NEXT_TASK=false。
+- 首次真实调用后不能自动 Git backup。workspace 变化需要人工分类（reports only vs business code），报告和代码是否一起提交需要人工决定。
+- 验收状态分为 4 种：ready_for_human_review（可验收）、blocked（有问题需处理）、failed_to_parse（结果无法解析）、unsafe_to_continue（不安全）。unknown 字段不阻塞验收，只降级为 ready_for_human_review。
+- 5 小时限额恢复机制是未来需求。checkpoint、run state 持久化、reset time 检测、resume_allowed 判断和恢复后自动继续，等首次真实调用跑通后单独设计。
+- 首次真实调用使用 Python 函数调用（非 subprocess），无 exit_code 和 stdout/stderr，需要用 FullTaskLoopResult.final_status 判断结果。

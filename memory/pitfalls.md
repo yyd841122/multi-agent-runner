@@ -418,3 +418,13 @@
 - 不要把 pass 后停止误认为是 bug。MVP 阶段无论 pass/fail 都停止等待人工确认，这是安全边界，不是长期限制。
 - 不要在下一步直接实现真实调用。从 safety shell + parser 到真实执行之间，需要先设计首次执行验收协议。
 - 不要把 T090 小结的 REAL_CALL_RUN_ONCE_MVP_STATUS=done 误解为真实执行已完成。done 代表 safety shell + parser MVP 完成，不代表真实调用。
+
+## T091 首次真实调用验收协议设计避坑
+
+- 不要把首次真实调用 pass 后的 ready_for_human_review 当成可以自动继续。ready_for_human_review 只代表结果可验收，不代表验收已通过。
+- 不要在 CLAUDE_CODE_CALLED 无法确认时输出 no。no 代表确认未调用，unknown 代表信息不足，两者含义不同。
+- 不要在 BUSINESS_CODE_CHANGED 无法分类时输出 no。同上，unknown 和 no 语义不同。
+- 不要在首次真实调用后自动 Git backup。workspace 变化需要人工分类，报告和代码是否一起提交需要人工决定。
+- 不要把 5 小时限额恢复机制在当前阶段实现。checkpoint / resume 等能力等首次真实调用跑通后单独设计。
+- 不要假设首次真实调用一定成功。需要同时设计成功和失败的验收标准，以及异常处理流程。
+- 不要在 unknown 字段出现时直接阻塞验收。unknown 字段只降级为 ready_for_human_review，不阻塞，但必须设置 HUMAN_REVIEW_REQUIRED=true。

@@ -2607,68 +2607,140 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T091 设计首次真实调用 run-project-task-full 的验收协议
+## T091 设计首次真实调用 run-project-task-full 的验收协议 ✅
 
-状态：pending
+状态：done ✅
 角色：Architect
 目标：设计从 safety shell + parser dry-run 升级到首次真实调用 run_project_task_full 的验收协议，确认环境、任务选择、预期结果和回退策略。
 
 ### 验收标准
 
-- 定义首次真实调用的前置条件
-- 定义候选任务选择规则
-- 定义预期结果和回退策略
-- 定义安全边界和人工介入条件
-- 不实现代码
-- 不修改 runner.py
-- 不执行真实任务
+- ✅ 定义首次真实调用的前置条件
+- ✅ 定义候选任务选择规则
+- ✅ 定义预期结果和回退策略
+- ✅ 定义安全边界和人工介入条件
+- ✅ 定义验收状态模型（FirstRealRunAcceptanceResult）
+- ✅ 定义成功验收标准（10 个条件）
+- ✅ 定义失败/阻塞标准（4 种严重程度）
+- ✅ 定义人工验收清单（10 项）
+- ✅ 定义 workspace 分类规则（6 种分类）
+- ✅ 定义 Claude Code 调用状态规则（yes/no/unknown）
+- ✅ 定义 Git 备份规则（不自动 backup）
+- ✅ 设计验证场景（33 个）
+- ✅ 不实现代码
+- ✅ 不修改 runner.py
+- ✅ 不执行真实任务
+
+<!-- NEXT_PENDING=T092 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ---
 
-## T092 实现真实调用
+## T092 实现 first real-run acceptance result model
 
 状态：pending
 角色：Developer
-目标：解除 simulated，连接真实 run_project_task_full()。
+目标：实现 FirstRealRunAcceptanceResult 数据结构和验收状态判定函数。
+
+### 验收标准
+
+- 新增 FirstRealRunAcceptanceResult 数据结构
+- 新增 classify_acceptance_status() 函数
+- 新增 build_first_real_run_result() 函数
+- 复用 workspace 辅助函数和推断函数
+- 不真实调用 run_project_task_full
+- 不调用 Claude Code
+- 不修改业务代码
+
+---
+
+## T093 实现 simulated first real-run acceptance parser
+
+状态：pending
+角色：Developer
+目标：使用模拟 FullTaskLoopResult 数据验证验收判定逻辑。
+
+### 验收标准
+
+- 模拟 final_status=COMPLETE 的验收判定
+- 模拟 final_status=FAILED 的验收判定
+- 模拟 final_status=BLOCKED 的验收判定
+- 模拟 final_status=REQUEST_CHANGES 的验收判定
+- 模拟异常的验收判定
+- 验证所有 ACCEPTANCE_STATUS 值正确
+- 不真实调用 run_project_task_full
+- 不调用 Claude Code
+
+---
+
+## T094 验证 first real-run acceptance pass/fail 场景
+
+状态：pending
+角色：Tester
+目标：验证验收协议的 pass/fail/blocked/unsafe 场景（阶段 B+C+D 模拟数据）。
+
+### 验收标准
+
+- 验证 pass 后 ready_for_human_review
+- 验证 fail 后 blocked
+- 验证异常后 failed_to_parse
+- 验证 dirty_unexpected 后 unsafe_to_continue
+- 验证 unknown 字段不阻塞验收
+- 验证 pass 后不自动继续
+- 验证 fail 后不自动返工
+- 不真实调用 run_project_task_full
+
+---
+
+## T095 设计首次真实调用 run-project-task-full 执行开关
+
+状态：pending
+角色：Architect
+目标：设计从 safety shell 升级到真实执行的切换机制，保留所有 preflight 检查。
+
+### 验收标准
+
+- 设计执行开关机制
+- 设计异常处理和回退策略
+- 保留所有 preflight 检查
+- 不实现代码
+
+---
+
+## T096 执行第一次真实 run-project-task-full 调用
+
+状态：pending
+角色：Developer
+目标：解除 safety shell，连接真实 run_project_task_full()，执行第一次真实调用。
 
 ### 验收标准
 
 - 真实调用 run_project_task_full(project_path, task_id)
 - 捕获 FullTaskLoopResult
-- 异常处理（try/except）
+- 构建 FirstRealRunAcceptanceResult
 - workspace 前后检查
 - CLAUDE_CODE_CALLED 推断
 - BUSINESS_CODE_CHANGED 推断
-- 安全输出字段完整
+- 输出验收结果
+- 停止等待人工确认
 
 ---
 
-## T093 验证真实执行
+## T097 人工验收第一次真实调用结果
 
 状态：pending
-角色：Tester
-目标：验证真实执行场景（阶段 B），需要 Claude Code 可用和子项目任务。
+角色：Human
+目标：使用 10 项验收清单人工验收第一次真实调用结果。
 
 ### 验收标准
 
-- 选择安全子项目任务真实执行
-- 验证真实执行后 workspace 变化检测
-- 验证真实执行后 CHECK_RESULT 映射
-- 验证 pass 后停止等待人工确认
-- 验证 fail 后停止
-
----
-
-## T094 提交并推送 real-call run-once MVP
-
-状态：pending
-角色：Reporter
-目标：提交并推送 real-call run-once MVP 成果。
-
-### 验收标准
-
-- git status 已检查
-- 当前改动已提交
-- commit message 清晰
-- 已成功 push 到远程仓库
-- push 后工作区 clean
+- 使用验收清单逐项确认
+- 确认 run-project-task-full 只运行一次
+- 确认执行了正确 task_id
+- 确认 CHECK_RESULT 可信
+- 确认报告存在
+- 确认 Claude Code 调用状态
+- 确认业务代码变更范围
+- 确认 git status 可解释
+- 决定是否 Git 提交
+- 决定是否进入下一任务
