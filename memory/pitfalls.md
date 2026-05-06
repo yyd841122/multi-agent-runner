@@ -340,3 +340,13 @@
 - 不要跳过 confirm 拒绝场景的单独验证。代码审查不能替代运行时验证，尤其是 confirm 值的边界。
 - 不要把 NEXT_ACTION=ready_for_T067_validation 误认为系统建议重做 T067。这是 T066 实现时的遗留命名。
 - 不要在 execute mode 验证中修改代码文件。验证任务只运行命令和记录结果。
+
+## T070 Task Execution Bridge 设计避坑
+
+- 不要在 task_execution_performed=true 时标记 CLAUDE_CODE_CALLED=no。外层无法精确判断 Claude Code 是否被调用，必须标记 unknown。
+- 不要假设 run_project_task_full 一定返回 COMPLETE。四种 final_status（COMPLETE/REQUEST_CHANGES/BLOCKED/FAILED）每种都要处理。
+- 不要在 MVP 阶段自动进入下一个任务。max_tasks=1 执行完后必须停止等待人工确认。
+- 不要用 subprocess 调用 run_project_task_full。当前是同进程函数调用，subprocess 会增加不必要的复杂度。
+- 不要跳过 adapter dry-run 阶段。从 stub 直接跳到真实执行，中间缺少 adapter 验证会导致问题难以定位。
+- 不要忽略执行后的 workspace 检查。真实执行可能修改文件，必须检查是否有非预期变更（尤其是框架代码）。
+- 不要在 CLAUDE_CODE_CALLED=unknown 时偷偷改成 no。unknown 就是 unknown，代表信息不足。

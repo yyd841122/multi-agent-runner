@@ -2206,14 +2206,112 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T070 设计 run-project-loop 调用 run-project-task-full 的安全协议
 
-状态：pending
+状态：done
 角色：Designer
 目标：设计从 execute stub 到真实调用 run-project-task-full 的安全协议。
 
 ### 验收标准
 
-- 设计单任务真实执行的安全边界
-- 设计执行结果检查协议
-- 设计继续/停止条件
-- 设计失败/返工/dirty 恢复策略
-- 设计 max_tasks 逐步放开策略（1→2→3）
+- 设计单任务真实执行的安全边界 ✓
+- 设计执行结果检查协议 ✓
+- 设计继续/停止条件 ✓
+- 设计失败/返工/dirty 恢复策略 ✓
+- 设计 max_tasks 逐步放开策略（1→2→3） ✓
+
+---
+
+## T071 实现 run-project-task-full adapter dry-run
+
+状态：pending
+角色：Developer
+目标：实现 adapter 数据结构和调用链路验证，但不调用真实 run-project-task-full。
+
+### 验收标准
+
+- 新增 TaskExecutionResult 数据结构
+- 新增 ProjectLoopExecutionResult 数据结构
+- 实现 adapter 函数（FullTaskLoopResult → TaskExecutionResult）
+- 实现 workspace 检查函数
+- 实现 CLAUDE_CODE_CALLED 推断函数
+- dry-run 模式不调用真实 run-project-task-full
+- 不调用 Claude Code
+- 不修改业务代码
+
+---
+
+## T072 验证 adapter 不真实执行
+
+状态：pending
+角色：Tester
+目标：验证 adapter dry-run 所有路径都不调用真实执行。
+
+### 验收标准
+
+- 验证 adapter dry-run 不调用 run-project-task-full
+- 验证 adapter dry-run 不调用 Claude Code
+- 验证 adapter dry-run 不修改业务代码
+- 验证所有拒绝路径正确返回
+
+---
+
+## T073 实现 max_tasks=1 real-call
+
+状态：pending
+角色：Developer
+目标：在 adapter 基础上接入真实 run_project_task_full()，支持 max_tasks=1 真实执行。
+
+### 验收标准
+
+- 实现 max_tasks=1 真实调用 run_project_task_full()
+- 实现 FullTaskLoopResult → TaskExecutionResult 转换
+- 实现执行后 workspace 检查
+- 实现执行后安全输出字段
+- 执行完成后停止等待人工确认
+- 不自动进入下一个任务
+- 不自动 Git 备份
+
+---
+
+## T074 验证 CHECK_RESULT=pass 后停止
+
+状态：pending
+角色：Tester
+目标：验证任务成功执行后系统正确停止并等待人工确认。
+
+### 验收标准
+
+- 验证 CHECK_RESULT=pass 后 loop 停止
+- 验证输出包含 TASK_EXECUTION_PERFORMED=true
+- 验证不自动进入下一任务
+- 验证安全输出字段完整
+
+---
+
+## T075 验证 CHECK_RESULT=fail 后停止
+
+状态：pending
+角色：Tester
+目标：验证任务失败后系统正确停止并报告失败原因。
+
+### 验收标准
+
+- 验证 CHECK_RESULT=fail 后 loop 停止
+- 验证 rework_required 正确标记
+- 验证 human_review_required 正确标记
+- 验证安全输出字段完整
+
+---
+
+## T076 提交并推送 task execution bridge MVP
+
+状态：pending
+角色：Developer
+目标：提交并推送 task execution bridge MVP 成果。
+
+### 验收标准
+
+- git status 已检查
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean

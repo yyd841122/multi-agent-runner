@@ -526,3 +526,16 @@ G006 已完成完整闭环：
 - execute mode 的三层检查结构有效：safety gate → stub max_tasks check → stub execution（模拟）。
 - CHECK_RESULT 字段对自动化判断非常有用：pass = stub started，fail = stub 未启动。
 - 验证任务和实现任务应保持独立提交粒度（T066→T067→T068），便于追溯和回退。
+
+## T070 Task Execution Bridge 设计经验
+
+### 核心经验
+
+- 从 execute stub 到真实调用必须先设计 adapter。Adapter 负责 FullTaskLoopResult → TaskExecutionResult 的转换和 workspace 检查，不直接调用 run_project_task_full。
+- 外层 loop 不能假设内层一定 pass。必须处理 COMPLETE / REQUEST_CHANGES / BLOCKED / FAILED 四种 final_status。
+- 无法确认 Claude Code 是否调用时必须标记 CLAUDE_CODE_CALLED=unknown。外层不能在 task_execution_performed=true 时标记 CLAUDE_CODE_CALLED=no。
+- 直接函数调用（非 subprocess）更简单，避免进程开销和环境问题。后续如需隔离可再改为 subprocess。
+- MVP 执行完一个任务后必须停止等待人工确认，不自动进入下一任务。
+- TaskExecutionResult 和 ProjectLoopExecutionResult 是两层抽象：前者是外层视角的单任务结果，后者是整个 loop 的总结果。
+- 安全输出字段必须覆盖所有场景：safety gate 拒绝时 / 执行成功时 / 执行失败时 / 执行异常时，每个场景都应明确每个字段的值。
+- adapter 应先 dry-run 验证调用链路，再接入真实执行。先验证不真实执行的路径，再验证真实执行路径。
