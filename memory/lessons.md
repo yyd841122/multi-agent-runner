@@ -587,3 +587,15 @@ G006 已完成完整闭环：
 - fail-stop 设计约束验证可以通过证据链推导：代码逻辑（return 终止）+ 设计规则（所有 fail 路径停止）+ pass-stop 推导（pass 已停止，fail 更不可能继续）。
 - 从 execute stub 到真实调用应分步推进：safety gate → dry-run executor → 拒绝验证 → pass 验证 → fail 验证 → 小结，每步独立提交。
 - 下一步真实调用前仍然需要单独设计实现协议（T084），不能直接跳到真实执行。
+
+## T084 真实调用最小实现设计经验
+
+### 核心经验
+
+- 第一次真实调用必须 run-once：max_tasks=1，执行一次就停止，不自动继续。
+- 子命令输出必须结构化：`FullTaskLoopResult` 已包含 final_status / steps / report_paths，直接函数调用比 subprocess 解析 stdout 更可靠。
+- 无法确认字段必须用 unknown：真实执行后 CLAUDE_CODE_CALLED 和 BUSINESS_CODE_CHANGED 可能无法确认，必须输出 unknown 而不是 no。
+- pass 后也不能自动继续：即使 final_status=COMPLETE，第一次真实调用也必须停止等待人工验收。
+- 真实调用推荐 Python 函数调用而非 subprocess：已有稳定函数入口 `run_project_task_full()`，避免编码/路径/环境问题。
+- 真实调用实现应分步推进：safety shell（拒绝场景）→ parser（解析逻辑）→ 拒绝验证 → pass 模拟 → fail 模拟 → 真实调用 → 真实验证 → 小结。
+- workspace 变化检测应使用执行前后快照比较，不是执行后单次检查。

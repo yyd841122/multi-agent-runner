@@ -384,3 +384,13 @@
 - 不要跳过 fail-stop 设计约束验证。即使当前 dry-run executor 不产生真实 fail，也要通过代码逻辑和设计规则验证所有 fail 路径都正确停止。
 - 不要在下一步直接实现真实调用。从 dry-run executor 到真实执行之间需要单独设计实现协议（RealCallExecuteResult、workspace 变化检测、CLAUDE_CODE_CALLED 推断等）。
 - 不要把 dry-run executor 的 CLAUDE_CODE_CALLED=no 和真实执行后的推断混为一谈。真实执行后应输出 unknown（无法确认），不是 no。
+
+## T084 真实调用最小实现设计避坑
+
+- 不要在真实调用后把 CLAUDE_CODE_CALLED 写成 no。真实执行后无法精确确认，必须输出 unknown。
+- 不要在真实调用后把 BUSINESS_CODE_CHANGED 写成 no。有变更但无法分类时必须输出 unknown。
+- 不要跳过 simulated 阶段直接实现真实调用。应先用模拟数据验证解析和推断逻辑，再连接真实执行。
+- 不要把 `--real-call-run-once` 和 `--real-call-dry-run` 设计为可以同时使用，两者互斥。
+- 不要在第一次真实调用 pass 后自动进入下一任务。MVP 硬约束：无论 pass/fail 都停止。
+- 不要用 subprocess 调用 `run_project_task_full()`。Python 函数调用更简单，避免编码和环境问题。
+- 不要假设 `FullTaskLoopResult` 一定有 final_status。必须处理 None 和异常值。

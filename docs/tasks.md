@@ -2458,17 +2458,161 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T084 设计真实调用 run-project-task-full 的最小实现协议
+## T084 设计真实调用 run-project-task-full 的最小实现协议 ✅
 
-状态：pending
+状态：done
 角色：Designer
 目标：设计从 real-call dry-run executor 升级到真实调用 run-project-task-full 的最小实现协议。
 
 ### 验收标准
 
-- 设计 RealCallExecuteResult 数据结构
-- 设计 workspace 变化检测机制
-- 设计 CLAUDE_CODE_CALLED 和 BUSINESS_CODE_CHANGED 推断逻辑
-- 设计真实执行后的验证方案
-- 保持 max_tasks=1 限制
-- 保持双重确认要求
+- ✅ 设计 RealCallRunOnceResult 数据结构（26+ 字段）
+- ✅ 设计 workspace 变化检测机制（前后快照比较 + 分类）
+- ✅ 设计 CLAUDE_CODE_CALLED 和 BUSINESS_CODE_CHANGED 推断逻辑
+- ✅ 设计真实执行后的验证方案（21 个场景，分阶段 A/B）
+- ✅ 保持 max_tasks=1 限制
+- ✅ 保持双重确认要求
+- ✅ 推荐 Python 函数调用（非 subprocess）
+- ✅ 新增 --real-call-run-once 参数
+
+<!-- NEXT_PENDING=T085 -->
+<!-- NEXT_STAGE=Stage 6 -->
+
+---
+
+## T085 实现 real-call run-once safety shell
+
+状态：pending
+角色：Developer
+目标：实现 RealCallRunOnceResult 数据结构和 `run_project_loop_real_call_run_once()` 函数骨架，包含 preflight checks 和拒绝场景全覆盖。
+
+### 验收标准
+
+- 新增 RealCallRunOnceResult 数据结构（26+ 字段）
+- 新增 run_project_loop_real_call_run_once() 函数
+- 复用 validate_real_call_safety() 做前置检查
+- 额外 preflight（--real-call-dry-run 互斥等）
+- runner.py 新增 --real-call-run-once 参数
+- 拒绝场景全覆盖
+- 不真实调用 run_project_task_full
+- 不调用 Claude Code
+- 不修改业务代码
+
+---
+
+## T086 实现 child command parser
+
+状态：pending
+角色：Developer
+目标：实现 FullTaskLoopResult 解析、workspace 检测、CLAUDE_CODE_CALLED 和 BUSINESS_CODE_CHANGED 推断函数。
+
+### 验收标准
+
+- 实现 _snapshot_workspace() 函数
+- 实现 _classify_workspace_changes() 函数
+- 实现 _infer_claude_code_called() 函数
+- 实现 _infer_business_code_changed() 函数
+- 支持模拟 FullTaskLoopResult 输入解析
+- 不真实调用 run_project_task_full
+- 不调用 Claude Code
+- 不修改业务代码
+
+---
+
+## T087 验证 real-call-run-once 拒绝场景
+
+状态：pending
+角色：Tester
+目标：验证 real-call-run-once 的 11 个拒绝场景（阶段 A）。
+
+### 验收标准
+
+- 验证阶段 A 场景 1-11 全部拒绝
+- 每个场景记录输入、预期和实际输出
+- REAL_TASK_EXECUTION=no
+- RUN_PROJECT_TASK_FULL_CALLED=no
+- 不真实调用 run_project_task_full
+
+---
+
+## T088 验证 simulated child CHECK_RESULT=pass
+
+状态：pending
+角色：Tester
+目标：验证使用模拟 FullTaskLoopResult 数据时，final_status=COMPLETE 的解析和输出。
+
+### 验收标准
+
+- 验证 CHECK_RESULT=pass 映射正确
+- 验证 AUTO_CONTINUE_TO_NEXT_TASK=no
+- 验证 AUTO_GIT_BACKUP=no
+- 验证 HUMAN_REVIEW_REQUIRED=true
+- 验证 workspace 检测和推断逻辑
+- 不真实调用 run_project_task_full
+
+---
+
+## T089 验证 simulated child CHECK_RESULT=fail
+
+状态：pending
+角色：Tester
+目标：验证使用模拟 FullTaskLoopResult 数据时，final_status=FAILED/BLOCKED/REQUEST_CHANGES 的解析和输出。
+
+### 验收标准
+
+- 验证 CHECK_RESULT=fail 映射正确
+- 验证 fail 后不自动继续
+- 验证 fail 后不自动 Git 备份
+- 验证 fail 后不自动返工
+- 验证异常处理
+- 不真实调用 run_project_task_full
+
+---
+
+## T090 实现真实调用
+
+状态：pending
+角色：Developer
+目标：解除 simulated，连接真实 run_project_task_full()。
+
+### 验收标准
+
+- 真实调用 run_project_task_full(project_path, task_id)
+- 捕获 FullTaskLoopResult
+- 异常处理（try/except）
+- workspace 前后检查
+- CLAUDE_CODE_CALLED 推断
+- BUSINESS_CODE_CHANGED 推断
+- 安全输出字段完整
+
+---
+
+## T091 验证真实执行
+
+状态：pending
+角色：Tester
+目标：验证真实执行场景（阶段 B），需要 Claude Code 可用和子项目任务。
+
+### 验收标准
+
+- 选择安全子项目任务真实执行
+- 验证真实执行后 workspace 变化检测
+- 验证真实执行后 CHECK_RESULT 映射
+- 验证 pass 后停止等待人工确认
+- 验证 fail 后停止
+
+---
+
+## T092 提交并推送 real-call run-once MVP
+
+状态：pending
+角色：Reporter
+目标：提交并推送 real-call run-once MVP 成果。
+
+### 验收标准
+
+- git status 已检查
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean
