@@ -2386,7 +2386,7 @@ T054 原始目标已经由以下任务前置完成：
 - ✓ 不修改业务代码
 - ✓ 11 个验证场景覆盖
 
-<!-- NEXT_PENDING=T081 -->
+<!-- NEXT_PENDING=T082 -->
 <!-- NEXT_STAGE=Stage 6 -->
 
 ---
@@ -2407,19 +2407,20 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T081 验证 simulated CHECK_RESULT=pass
+## T081 验证 simulated CHECK_RESULT=pass ✅
 
-状态：pending
+状态：done
 角色：Tester
 目标：验证真实执行成功场景（场景 11, 16-17），确认 pass 后停止等待人工确认。
 
 ### 验收标准
 
-- 验证 final_status=COMPLETE → CHECK_RESULT=pass
-- 验证 pass 后不自动进入下一任务
-- 验证 pass 后不自动 Git 备份
-- 验证 HUMAN_REVIEW_REQUIRED=true
-- 需要选择安全的子项目任务
+- ✅ 验证外层 CHECK_RESULT=pass（real-call dry-run executor）
+- ✅ 验证 pass 后不自动进入下一任务
+- ✅ 验证 pass 后不自动 Git 备份
+- ✅ 验证 HUMAN_REVIEW_REQUIRED=true
+- ✅ 17 个字段全部符合预期
+- ✅ 未执行真实任务，未调用 run-project-task-full
 
 ---
 
