@@ -2311,7 +2311,7 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T076 提交并推送 task execution bridge MVP
 
-状态：pending
+状态：done
 角色：Developer
 目标：提交并推送 task execution bridge MVP 成果。
 
@@ -2322,3 +2322,22 @@ T054 原始目标已经由以下任务前置完成：
 - commit message 清晰
 - 已成功 push 到远程仓库
 - push 后工作区 clean
+
+<!-- NEXT_PENDING=T077 -->
+<!-- NEXT_STAGE=Stage 6 -->
+
+---
+
+## T077 设计 max_tasks=1 真实调用 run-project-task-full 安全协议
+
+状态：pending
+角色：Architect
+目标：设计从 real-call stub 到真实调用 run_project_task_full 的安全协议。
+
+### 验收标准
+
+- 设计 real-call bridge 安全协议
+- 设计真实执行后的 workspace 检查规则
+- 设计真实执行后的结果验证规则
+- 设计真实执行的安全边界和人工确认机制
+- 不直接实现代码

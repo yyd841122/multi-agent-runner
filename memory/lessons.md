@@ -539,3 +539,16 @@ G006 已完成完整闭环：
 - TaskExecutionResult 和 ProjectLoopExecutionResult 是两层抽象：前者是外层视角的单任务结果，后者是整个 loop 的总结果。
 - 安全输出字段必须覆盖所有场景：safety gate 拒绝时 / 执行成功时 / 执行失败时 / 执行异常时，每个场景都应明确每个字段的值。
 - adapter 应先 dry-run 验证调用链路，再接入真实执行。先验证不真实执行的路径，再验证真实执行路径。
+
+## T070-T076 Task Execution Bridge MVP 经验
+
+### 核心经验
+
+- adapter dry-run 和 real-call stub 是两个不同阶段：adapter 只验证数据结构和调用链路，real-call stub 验证完整调用构造（含 preflight_status、exit_code、check_result）。
+- 从 execute stub 到真实调用必须经过 adapter → real-call stub → real-call bridge 三步，不能跳过中间层。
+- CHECK_RESULT=pass 和 CHECK_RESULT=fail 后都必须停止，等待人工确认。MVP 阶段不自动进入下一任务。
+- 真实调用前必须确认 run_project_task_full 的输出契约（FullTaskLoopResult 的 final_status、report_paths 等）。
+- 安全输出字段必须覆盖所有场景：safety gate 拒绝 / adapter dry-run / real-call stub pass / real-call stub fail。
+- CLAUDE_CODE_CALLED 使用字符串类型（"no"/"unknown"/"yes"），不是布尔。task_execution_performed=true 时必须标记 unknown。
+- TaskExecutionResult（14 字段）、ProjectLoopExecutionResult（19 字段）、RealCallStubResult（19 字段）是三层抽象，各层职责不同。
+- 分阶段验证策略有效：设计 → adapter dry-run → adapter 验证 → real-call stub → pass 验证 → fail 验证 → 小结。

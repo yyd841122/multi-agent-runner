@@ -350,3 +350,13 @@
 - 不要跳过 adapter dry-run 阶段。从 stub 直接跳到真实执行，中间缺少 adapter 验证会导致问题难以定位。
 - 不要忽略执行后的 workspace 检查。真实执行可能修改文件，必须检查是否有非预期变更（尤其是框架代码）。
 - 不要在 CLAUDE_CODE_CALLED=unknown 时偷偷改成 no。unknown 就是 unknown，代表信息不足。
+
+## T071-T075 Task Execution Bridge 实现避坑
+
+- 不要把 adapter dry-run 和 real-call stub 混为一谈。adapter 只构造调用信息，real-call stub 进入完整调用占位流程。
+- 不要在 real-call stub 中设置 task_execution_performed=true。stub 只是占位，不执行任何真实操作。
+- 不要假设 CHECK_RESULT 只有 pass。所有 fail 路径也必须验证（safety gate 拒绝、max_tasks 错误、无 planned task）。
+- 不要在 fail 路径中继续执行。所有 fail 路径必须通过 return 终止函数。
+- 不要把 NEXT_ACTION=ready_for_T07x_validation 误认为系统建议重做该任务。这是实现时的遗留命名。
+- 不要跳过 adapter dry-run 阶段直接实现 real-call stub。中间缺少验证会导致问题难以定位。
+- 不要在验证任务中修改代码文件。验证只运行命令和记录结果。
