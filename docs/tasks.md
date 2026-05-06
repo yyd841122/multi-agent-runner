@@ -2527,19 +2527,22 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T087 验证 real-call-run-once 拒绝场景
+## T087 验证 real-call-run-once 拒绝场景 ✅
 
-状态：pending
+状态：done
 角色：Tester
 目标：验证 real-call-run-once 的 11 个拒绝场景（阶段 A）。
 
 ### 验收标准
 
-- 验证阶段 A 场景 1-11 全部拒绝
-- 每个场景记录输入、预期和实际输出
-- REAL_TASK_EXECUTION=no
-- RUN_PROJECT_TASK_FULL_CALLED=no
-- 不真实调用 run_project_task_full
+- ✅ 验证阶段 A 场景 1-10 全部拒绝（10 拒绝 + 1 对照）
+- ✅ 每个场景记录输入、预期和实际输出
+- ✅ REAL_TASK_EXECUTION=no
+- ✅ RUN_PROJECT_TASK_FULL_CALLED=no
+- ✅ 不真实调用 run_project_task_full
+
+<!-- NEXT_PENDING=T088 -->
+<!-- NEXT_STAGE=Stage 6 -->
 
 ---
 
