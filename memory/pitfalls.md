@@ -503,3 +503,11 @@
 - 不要使用 acceptEdits 模式测试写文件。T107 的目标是验证 default mode。
 - 不要运行 run-project-task-full。T107 只做最小文本调用诊断。
 - 不要修改任何代码文件。验证任务只运行命令和记录结果。
+
+## T108 回归验证 acceptEdits + tool-use 避坑
+
+- 不要假设历史诊断结论永远成立。T103 的 acceptEdits + tool-use 超时在 T108 回归时变为 unexpected_pass。
+- 不要在 unexpected_pass 后立即进入真实任务执行。单次测试不足以确信稳定性。
+- 不要在回归验证中删除意外创建的诊断文件。保留为 unexpected artifact，等待人工决定。
+- 不要使用 bypassPermissions 作为 tool-use 测试的替代方案。T108 只验证 acceptEdits。
+- 不要运行 run-project-task-full。T108 只做最小 tool-use 回归诊断。

@@ -736,3 +736,10 @@ G006 已完成完整闭环：
 - **default/none 模式不传 --permission-mode，可作为 acceptEdits tool-use 卡死问题的安全对照。** T103 已确认 acceptEdits + tool-use 超时，而 default mode 文本调用正常，两者对比说明问题在 acceptEdits 的 tool-use 路径上。
 - **只允许做只读文本测试，不允许写文件 tool-use。** T107 只验证最小文本返回，写文件测试留给后续任务。
 - **dry-run 映射验证是调用 Claude Code 前的必要前置检查。** 4/4 dry-run 通过后才执行最小 Claude Code 调用。
+
+### T108 回归验证 acceptEdits + tool-use 经验
+
+- **acceptEdits + tool-use 超时问题已不再复现。** T103 观察到的 timeout 在本次回归验证中变为 unexpected_pass，命令成功返回 "DONE" 并创建了诊断文件。
+- **兼容性状态可能随时间变化。** 智谱代理或 Claude Code CLI 更新可能修复了之前的 tool_use/tool_result 兼容性问题。历史诊断结论需要定期验证。
+- **回归验证只执行一次，不反复重跑。** 避免在不确定环境下多次调用 acceptEdits + tool-use。
+- **unexpected_pass 需要重新评估后续路线。** 原计划 T109 评估兼容性问题 → T110 决策路线，现在方向需调整为验证稳定性和可靠性。
