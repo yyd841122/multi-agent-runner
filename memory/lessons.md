@@ -652,3 +652,25 @@ G006 已完成完整闭环：
 - 三个确认短语不能互相替代：EXECUTE_PROJECT_LOOP 只能用于 --confirm，EXECUTE_REAL_TASK_ONCE 只能用于 --real-confirm，EXECUTE_REAL_RUN_ONCE 只能用于 --real-execute-confirm。
 - API 429 / 5 小时限制当前阶段只 stop and report，不自动恢复。checkpoint / resume 等能力等首次真实调用跑通后单独设计。
 - 首次真实执行后无论 pass/fail 都不自动继续、不自动 Git backup、不自动返工，必须等待人工验收。
+
+## T100 第一次真实 run-project-task-full 调用经验
+
+### 核心经验
+
+- `run_project_task_full()` → `run_developer_step()` → `run_project_next()` → `run_claude_code()` → subprocess 链路已验证可达。第一次真实调用证明端到端链路正确。
+- Claude Code subprocess 超时（600 秒）后系统正确 BLOCKED：returncode=124, Developer 阶段停止，Tester/Reviewer/Decision 未启动。
+- 真实执行后必须人工验收。T100 的 10 项验收清单全部 PASS，但 child execution 超时，整体判定为 review_required。
+- 首次真实执行任务不宜为框架级任务。T100 要求"解除 simulated，连接真实 run_project_task_full()"，属于框架开发任务，不适合作为首次验证。
+- Prompt 存在矛盾会导致超时。T100 的 prompt 要求修改框架代码但禁止修改列表包含 runner.py 和 tools/*.py，Claude Code 因矛盾指令卡住。
+- 600 秒 timeout 对复杂任务不足。`CLAUDE_CODE_TIMEOUT_SECONDS=600` 是硬编码值，复杂框架任务需要更长时间，但不应盲目增加。
+- 下一步应使用更小的 smoke task 验证完整闭环。降低任务复杂度，验证一次可完成的真实调用。
+
+## T101 人工验收第一次真实调用结果经验
+
+### 核心经验
+
+- 人工验收是真实执行后不可跳过的环节。10 项验收清单覆盖了只执行一次、正确 task_id、Claude Code 启动、正确捕获结果、停止后续阶段、不自动继续、不自动 backup、不修改业务代码、变更可解释、策略调整。
+- 验收通过不等于任务 pass。T100 验收清单 10/10 PASS，但 child execution 超时，最终判定 review_required。
+- 变更文件检查是安全验收的核心。必须确认无 runner.py、tools/*.py、projects/**、业务代码变更，所有变更必须在预期路径内。
+- 验收应包含下一步策略建议。比较多个方案并给出推荐，帮助决策者快速行动。
+- 推荐策略：新增更小的 smoke task 验证首次完整闭环，而非增加 timeout 或改进框架。

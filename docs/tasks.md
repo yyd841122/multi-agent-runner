@@ -2828,29 +2828,77 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T100 执行第一次真实 run-project-task-full 调用
 
-状态：pending
+状态：review_required
 角色：Developer
 目标：解除 simulated，连接真实 run_project_task_full()，执行第一次真实调用。
 
 ### 验收标准
 
-- 真实调用 run_project_task_full(project_path, task_id)
-- 捕获 FullTaskLoopResult
-- 构建 FirstRealRunAcceptanceResult
-- workspace 前后检查
-- 输出验收结果
-- 停止等待人工确认
+- [x] 真实调用 run_project_task_full(project_path, task_id)
+- [x] 捕获 FullTaskLoopResult（BLOCKED, exit_code=124）
+- [x] workspace 前后检查（dirty_expected）
+- [x] 输出验收结果（review_required）
+- [x] 停止等待人工确认（HUMAN_REVIEW_REQUIRED=yes）
+- 未完成：构建 FirstRealRunAcceptanceResult（Claude Code 超时，未产生完整结果）
+
+### 执行结果
+
+- EXECUTION_MODE: run-project-task-full（独立命令）
+- REAL_EXECUTION_STATUS: BLOCKED（Claude Code 超时 600 秒）
+- CLAUDE_CODE_CALLED: yes
+- BUSINESS_CODE_CHANGED: no
+- WORKSPACE_CHANGE_CLASSIFICATION: dirty_expected
+- CHECK_RESULT: review_required
+
+### 输出文件
+
+- reports/final/T100-full-loop-report.md（系统自动生成）
+- reports/checks/T100-first-real-run-execution-check.md
+- reports/dev/T100-dev-report.md
+
+<!-- NEXT_PENDING=T101 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ---
 
 ## T101 人工验收第一次真实调用结果
 
-状态：pending
+状态：done
 角色：Human
 目标：使用 10 项验收清单人工验收第一次真实调用结果。
 
 ### 验收标准
 
-- 使用验收清单逐项确认
-- 确认执行结果可信
-- 决定是否继续下一任务
+- [x] 使用验收清单逐项确认（10/10 PASS）
+- [x] 确认执行结果可信（调用链路验证成功）
+- [x] 决定是否继续下一任务（推荐方案 B：新增更小 smoke task）
+
+### 验收结论
+
+- ACCEPTANCE_STATUS=review_required
+- CHECK_RESULT=review_required
+- T100 真实调用链路验证成功，child execution 超时
+- 推荐 T102：设计并执行 first real-run smoke test
+
+### 输出文件
+
+- reports/checks/T101-first-real-run-human-review.md
+- reports/dev/T101-dev-report.md
+
+<!-- NEXT_PENDING=T102 -->
+<!-- NEXT_STAGE=Stage 7 -->
+
+---
+
+## T102 设计并执行 first real-run smoke test
+
+状态：pending
+角色：Developer
+目标：新增更小的真实执行任务，验证 run-project-task-full 完整闭环（Developer → Tester → Reviewer → Decision）。
+
+### 验收标准
+
+- 在子项目中新增一个极简 pending task
+- 通过 run-project-task-full 执行
+- 验证完整闭环（Developer → Tester → Reviewer → Decision）
+- 首次真实调用成功 pass
