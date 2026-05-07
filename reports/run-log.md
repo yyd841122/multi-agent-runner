@@ -121,3 +121,12 @@
 - 开始时间：2026-05-07 13:05:54
 - 耗时：600.11 秒
 - 历史报告：reports\claude\history\20260507-131554-claude-output.md
+
+## G008 - 2026-05-07 17:40:10
+
+- 任务：Smoke Test Marker
+- 状态：失败
+- 退出码：124
+- 开始时间：2026-05-07 17:30:10
+- 耗时：600.1 秒
+- 历史报告：reports\claude\history\20260507-174010-claude-output.md

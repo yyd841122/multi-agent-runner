@@ -453,3 +453,11 @@
 - 不要忽略 prompt 分析。超时的根因往往在 prompt 设计中（任务过大、矛盾指令、范围不清）。
 - 不要只给一个策略选项。应比较多个方案（增加 timeout / 更换任务 / 改进框架），让决策者选择。
 - 不要在验收报告中隐瞒风险。T100 的 prompt 矛盾和 5 小时额度风险必须如实记录。
+
+## T102 first real-run smoke test 避坑
+
+- 不要在 Claude Code 超时问题未诊断前继续重跑真实任务。T100 和 G008 都超时，盲目重跑只会消耗额度。
+- 不要假设"任务越小越不会超时"。G008 是极小任务仍然超时，说明根因不在任务大小。
+- 不要忽略 Claude Code subprocess 调用方式差异。`echo hello | claude --print` 秒级响应，但 subprocess 传递长 prompt 参数可能行为完全不同。
+- Safety gate 在 dirty workspace 下会阻止执行。如果需要临时绕过（如 stash → gate → pop），必须确保 pop 后再执行真实调用。
+- 不要把 T102 标记为 done。smoke task 未成功完成，应标记为 review_required。

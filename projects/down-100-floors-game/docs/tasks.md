@@ -150,3 +150,21 @@
 - Collision Tester：执行碰撞专项测试
 - Reviewer：由 DeepSeek Reviewer 审查实现范围与代码质量
 - Main Agent：基于 Developer / Tester / Reviewer 证据做综合决策
+
+---
+
+## G008 Smoke Test Marker
+
+状态：in_progress
+角色：Developer
+目标：创建一个极简 smoke marker 文件，验证 run-project-task-full 可以执行一个极小真实任务。
+
+### 验收标准
+
+- 创建文件 reports/smoke/G008-smoke-marker.md
+- 文件内容包含标题和验证说明
+- 不修改任何其他文件
+- 不修改游戏源文件（index.html / style.css / script.js）
+- 不重构
+- 不优化
+- 不运行无关任务

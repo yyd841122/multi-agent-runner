@@ -674,3 +674,13 @@ G006 已完成完整闭环：
 - 变更文件检查是安全验收的核心。必须确认无 runner.py、tools/*.py、projects/**、业务代码变更，所有变更必须在预期路径内。
 - 验收应包含下一步策略建议。比较多个方案并给出推荐，帮助决策者快速行动。
 - 推荐策略：新增更小的 smoke task 验证首次完整闭环，而非增加 timeout 或改进框架。
+
+## T102 first real-run smoke test 经验
+
+### 核心经验
+
+- G008 是极小 smoke task（只创建一个 marker 文件），prompt 无歧义，但仍然 600 秒超时。这说明问题不在任务复杂度或 prompt 矛盾。
+- T100（框架级任务，矛盾 prompt）和 G008（极小任务，清晰 prompt）都超时，说明根因在 Claude Code CLI / 模型 API / 网络 / subprocess 执行链路。
+- 后续不要继续盲目重跑真实任务，应先进行 Claude Code 连接诊断（T103）。
+- Claude Code 通过 `echo hello | claude --print` 方式可以秒级响应，但通过 subprocess 传递长 prompt 参数时可能行为不同。需要对比两种调用方式。
+- Safety gate 机制在 dirty workspace 下正确阻止执行。通过 stash → gate → pop 流程可以临时绕过，但需注意执行后恢复。

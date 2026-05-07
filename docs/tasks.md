@@ -2892,7 +2892,7 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T102 设计并执行 first real-run smoke test
 
-状态：pending
+状态：review_required
 角色：Developer
 目标：新增更小的真实执行任务，验证 run-project-task-full 完整闭环（Developer → Tester → Reviewer → Decision）。
 
@@ -2902,3 +2902,47 @@ T054 原始目标已经由以下任务前置完成：
 - 通过 run-project-task-full 执行
 - 验证完整闭环（Developer → Tester → Reviewer → Decision）
 - 首次真实调用成功 pass
+
+### T102 Acceptance Criteria
+
+- 只允许创建 projects/down-100-floors-game/reports/smoke/T102-smoke-marker.md
+- 不允许修改游戏业务代码
+- 不允许修改框架代码
+- 真实执行后必须停止等待人工验收
+- AUTO_CONTINUE_TO_NEXT_TASK=no
+- AUTO_GIT_BACKUP=no
+
+### 执行结果
+
+- G008 smoke task 已尝试执行
+- Claude Code subprocess 已启动
+- 600 秒超时（returncode=124）
+- smoke marker 未创建
+- 业务代码未修改
+- 框架代码未修改
+- CHECK_RESULT=review_required
+
+### 输出文件
+
+- reports/checks/T102-first-real-run-smoke-test-check.md
+- reports/dev/T102-dev-report.md
+
+<!-- NEXT_PENDING=T103 -->
+<!-- NEXT_STAGE=Stage 7 -->
+
+---
+
+## T103 诊断 Claude Code CLI / 模型代理 / API 超时问题
+
+状态：pending
+角色：Developer
+目标：诊断 Claude Code 通过 subprocess 调用时 600 秒超时的根因，并提出修复方案。
+
+### 验收标准
+
+- 确认 Claude Code CLI 在 subprocess 模式下的最小执行能力
+- 检查 API 连接、代理设置、网络状态
+- 测试不同的 Claude Code 调用方式（参数、prompt 传递方式）
+- 提出 timeout 修复或调用方式改进方案
+- 不盲目重跑真实任务
+- 不修改业务代码

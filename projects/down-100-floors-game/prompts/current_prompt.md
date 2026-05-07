@@ -1,4 +1,4 @@
-# G007：实现玩家与平台基础碰撞
+# G008：Smoke Test Marker
 
 你现在是 Developer Agent。
 
@@ -9,40 +9,27 @@
 
 ## 当前任务
 
-G007：实现玩家与平台基础碰撞
+G008：Smoke Test Marker
 
 ## 任务目标
 
-让玩家角色下落到平台上时停止下落，为后续平台滚动和失败条件做准备。
+创建一个极简 smoke marker 文件，验证 run-project-task-full 可以执行一个极小真实任务。
 
 ## 任务原始内容
 
 状态：pending
 角色：Developer
-目标：让玩家角色下落到平台上时停止下落，为后续平台滚动和失败条件做准备。
+目标：创建一个极简 smoke marker 文件，验证 run-project-task-full 可以执行一个极小真实任务。
 
 ### 验收标准
 
-- 玩家下落时可以检测到平台
-- 玩家落到平台上时停止下落
-- 玩家不会穿过平台
-- 玩家站在平台上时垂直速度归零或停止增加
-- 碰撞逻辑集成到 gameLoop 中
-- 平台数据来源于 G005 的固定平台布局
-- 玩家位置更新后页面显示正确
-- 不实现平台滚动
-- 不实现随机平台生成
-- 不实现游戏失败条件
-- 不实现游戏胜利条件
-- 不实现角色技能系统
-
-### 后续协作链路
-
-- Developer：由 Claude Code 实现 G007
-- Basic Tester：执行基础静态检查
-- Collision Tester：执行碰撞专项测试
-- Reviewer：由 DeepSeek Reviewer 审查实现范围与代码质量
-- Main Agent：基于 Developer / Tester / Reviewer 证据做综合决策
+- 创建文件 reports/smoke/G008-smoke-marker.md
+- 文件内容包含标题和验证说明
+- 不修改任何其他文件
+- 不修改游戏源文件（index.html / style.css / script.js）
+- 不重构
+- 不优化
+- 不运行无关任务
 
 ## 允许修改的文件
 
@@ -76,7 +63,7 @@ G007：实现玩家与平台基础碰撞
 ## 完成证据
 
 完成后必须生成开发报告：
-`E:\github_project\multi-agent-runner\projects\down-100-floors-game\reports\dev\G007-dev-report.md`
+`E:\github_project\multi-agent-runner\projects\down-100-floors-game\reports\dev\G008-dev-report.md`
 
 报告内容包含：
 - 任务编号
@@ -87,4 +74,4 @@ G007：实现玩家与平台基础碰撞
 
 请直接修改文件，不要只输出建议代码。
 
-请开始执行 G007。
+请开始执行 G008。
