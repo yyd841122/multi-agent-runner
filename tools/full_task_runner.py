@@ -106,6 +106,7 @@ def maybe_run_specialized_tester(
 
 def run_developer_step(
     project_path: Path, task_id: str,
+    claude_permission_mode: str = "acceptEdits",
 ) -> FullTaskStepResult:
     """执行 Developer 阶段。"""
     # 1. 读取子项目任务
@@ -174,7 +175,7 @@ def run_developer_step(
             )
 
         # 执行 Developer
-        result = run_project_next(str(project_root))
+        result = run_project_next(str(project_root), claude_permission_mode=claude_permission_mode)
 
         # 超时
         if result.get("timed_out"):
@@ -415,15 +416,22 @@ def _stop_and_report(
 def run_project_task_full(
     project_path: str | Path,
     task_id: str,
+    claude_permission_mode: str = "acceptEdits",
 ) -> FullTaskLoopResult:
-    """执行单个子项目任务的完整闭环 MVP。"""
+    """执行单个子项目任务的完整闭环 MVP。
+
+    Args:
+        project_path: 子项目路径。
+        task_id: 任务编号。
+        claude_permission_mode: 传递给 Developer 阶段的权限模式。
+    """
 
     project_path = Path(project_path)
     steps: list[FullTaskStepResult] = []
 
     # ── 阶段 1: Developer ──
     print(f"\n[1/5] Developer 阶段...")
-    dev_result = run_developer_step(project_path, task_id)
+    dev_result = run_developer_step(project_path, task_id, claude_permission_mode=claude_permission_mode)
     steps.append(dev_result)
     print(f"  → {dev_result.status}: {dev_result.message}")
 

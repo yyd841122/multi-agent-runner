@@ -721,3 +721,11 @@ G006 已完成完整闭环：
 - **支持 4 种模式：default / none / acceptEdits / bypassPermissions。** default 和 none 等价（不传 --permission-mode），bypassPermissions 标记为 high-risk。
 - **default mode 下 Claude Code 无法自动写文件。** 工具调用会被权限拒绝，只能输出建议代码。这符合当前诊断需求，但不适合无人值守自动化。
 - **20 个验证场景覆盖默认行为、显式传参、非法值、优先级和安全约束。**
+
+### T106 实现 permission mode 可配置经验
+
+- **默认值必须保持 acceptEdits 以兼容历史行为。** 所有历史调用都不传参，默认 acceptEdits 保证行为不变。`_execute_one_task()`、`run_project_next()`、`run_project_task_full()` 的默认值也必须是 acceptEdits。
+- **default / none 只是不传 --permission-mode，不代表修复 tool-use。** default mode 下 Claude Code 无法自动写文件，工具调用被权限拒绝。真实任务恢复前必须先做最小 Claude Code 调用验证（T107）。
+- **全链路透传需要同步修改 4 个文件：** claude_code_runner.py（底层函数）→ project_runner.py（透传）→ full_task_runner.py（透传）→ runner.py（CLI 解析）。
+- **CLI 参数解析和 mode 校验不能用 lower() 统一小写。** acceptEdits 本身是 mixed-case，`"acceptEdits".lower()` → `"acceptedits"`，与 valid_modes 不匹配。应保持原始值比较。
+- **dry-run 命令是安全验证的最佳方式。** `claude-permission-mode-dry-run` 只输出参数映射，不调用 Claude Code，可以安全验证所有 mode 的正确性。

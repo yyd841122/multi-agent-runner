@@ -382,8 +382,12 @@ def build_project_task_prompt(
 # 主执行函数
 # ---------------------------------------------------------------------------
 
-def run_project_next(project_path: str | Path) -> dict:
+def run_project_next(project_path: str | Path, claude_permission_mode: str = "acceptEdits") -> dict:
     """执行指定子项目中的第一个 pending 任务。
+
+    Args:
+        project_path: 子项目路径。
+        claude_permission_mode: 传递给 run_claude_code() 的权限模式。
 
     Returns:
         {
@@ -463,7 +467,7 @@ def run_project_next(project_path: str | Path) -> dict:
     # 7. 调用 Claude Code
     print("正在调用 Claude Code...")
     print()
-    result = run_claude_code(prompt)
+    result = run_claude_code(prompt, permission_mode=claude_permission_mode)
 
     # 8. 保存执行结果到主项目
     # 保存最新输出（复用 runner.py 的路径约定）

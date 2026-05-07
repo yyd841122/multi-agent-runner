@@ -162,7 +162,7 @@ def get_current_task() -> dict | None:
     return find_next_pending_task(tasks)
 
 
-def run_current():
+def run_current(claude_permission_mode: str = "acceptEdits"):
     """读取 current_prompt.md 并调用 Claude Code 执行。"""
     if not PROMPT_FILE.exists():
         print("提示词文件不存在：prompts/current_prompt.md")
@@ -177,7 +177,7 @@ def run_current():
     task = get_current_task()
 
     # 执行 Claude Code
-    result = run_claude_code(prompt)
+    result = run_claude_code(prompt, permission_mode=claude_permission_mode)
 
     # 保存最新输出
     save_latest_output(result)
@@ -266,7 +266,7 @@ def auto_complete_success():
     print(f"新状态：done")
 
 
-def run_next():
+def run_next(claude_permission_mode: str = "acceptEdits"):
     """单步自动闭环：生成提示词 → 标记 in_progress → 调用 Claude Code → 判断结果 → 成功且有证据则 done。"""
     # 1. 找到下一个 pending 任务
     content = load_tasks_file(TASKS_FILE)
@@ -307,7 +307,7 @@ def run_next():
     # 5. 调用 Claude Code
     print("正在调用 Claude Code...")
     print()
-    result = run_claude_code(prompt)
+    result = run_claude_code(prompt, permission_mode=claude_permission_mode)
 
     # 6. 保存执行结果和历史报告
     save_latest_output(result)
@@ -359,7 +359,7 @@ def run_next():
     print(f"任务状态：done")
 
 
-def retry_current():
+def retry_current(claude_permission_mode: str = "acceptEdits"):
     """重新执行当前 in_progress 任务：重新生成 prompt → 调用 Claude Code → 判断结果 → 有证据则 done。"""
     # 1. 找到当前 in_progress 任务
     content = load_tasks_file(TASKS_FILE)
@@ -382,7 +382,7 @@ def retry_current():
     # 3. 调用 Claude Code
     print("正在调用 Claude Code...")
     print()
-    result = run_claude_code(prompt)
+    result = run_claude_code(prompt, permission_mode=claude_permission_mode)
 
     # 4. 保存执行结果和历史报告
     save_latest_output(result)
@@ -431,11 +431,12 @@ def retry_current():
     print(f"任务状态：done")
 
 
-def _execute_one_task(content: str) -> tuple[str, str]:
+def _execute_one_task(content: str, claude_permission_mode: str = "acceptEdits") -> tuple[str, str]:
     """执行单个 pending 任务的单步闭环。
 
     Args:
         content: 当前 tasks.md 文件内容
+        claude_permission_mode: 传递给 run_claude_code() 的权限模式
 
     Returns:
         (status, message) 元组：
@@ -479,7 +480,7 @@ def _execute_one_task(content: str) -> tuple[str, str]:
 
     # 调用 Claude Code
     print("  正在调用 Claude Code...")
-    result = run_claude_code(prompt)
+    result = run_claude_code(prompt, permission_mode=claude_permission_mode)
 
     # 保存执行结果和历史报告
     save_latest_output(result)
@@ -514,7 +515,7 @@ def _execute_one_task(content: str) -> tuple[str, str]:
     return "done", f"任务 {task_id} 完成"
 
 
-def run_loop(max_rounds: int = 10):
+def run_loop(max_rounds: int = 10, claude_permission_mode: str = "acceptEdits"):
     """多任务自动执行循环：连续执行 pending 任务，直到没有 pending 任务或达到最大轮数。"""
     print(f"开始多任务自动执行循环（最大轮数：{max_rounds}）")
     print()
@@ -526,7 +527,7 @@ def run_loop(max_rounds: int = 10):
         print(f"--- 第 {round_num}/{max_rounds} 轮 ---")
 
         content = load_tasks_file(TASKS_FILE)
-        status, message = _execute_one_task(content)
+        status, message = _execute_one_task(content, claude_permission_mode=claude_permission_mode)
 
         if status == "no_pending":
             stop_reason = "所有 pending 任务已执行完毕"
@@ -601,9 +602,33 @@ def main_decide():
 # 通用 project runner 入口
 # ---------------------------------------------------------------------------
 
-def _handle_run_project_next(project_path: str):
+def _handle_run_project_next(project_path: str, claude_permission_mode: str = "acceptEdits"):
     """处理 run-project-next 命令，格式化输出结果。"""
-    result = run_project_next(project_path)
+    result = run_project_next(project_path, claude_permission_mode=claude_permission_mode)
+
+
+def _parse_claude_permission_mode(args: list[str]) -> tuple[str | None, list[str]]:
+    """从 args 中解析 --claude-permission-mode，返回 (mode, remaining_args)。
+
+    如果未提供则返回 (None, remaining_args)。
+    如果值非法则返回 ("__INVALID__<value>", remaining_args)。
+    """
+    valid_modes = {"acceptEdits", "default", "none", "bypassPermissions"}
+    remaining = []
+    i = 0
+    mode = None
+    while i < len(args):
+        if args[i] == "--claude-permission-mode" and i + 1 < len(args):
+            mode = args[i + 1]
+            i += 2
+        else:
+            remaining.append(args[i])
+            i += 1
+    if mode is not None and mode not in valid_modes:
+        return f"__INVALID__{mode}", remaining
+    if mode is not None:
+        return mode, remaining
+    return None, remaining
 
     print()
 
@@ -802,7 +827,7 @@ projects/down-100-floors-game/reports/dev/{task_id}-dev-report.md
 请开始执行 {task_id}。"""
 
 
-def run_game_next():
+def run_game_next(claude_permission_mode: str = "acceptEdits"):
     """单步自动执行小游戏项目的下一个 pending 任务。"""
     # 1. 读取游戏任务
     content = load_tasks_file(GAME_TASKS_FILE)
@@ -833,7 +858,7 @@ def run_game_next():
     # 4. 调用 Claude Code
     print("正在调用 Claude Code...")
     print()
-    result = run_claude_code(prompt)
+    result = run_claude_code(prompt, permission_mode=claude_permission_mode)
 
     # 5. 保存执行结果到主项目
     save_latest_output(result)
@@ -900,35 +925,66 @@ def main():
     elif args[0] == "generate-prompt":
         generate_prompt()
     elif args[0] == "run-current":
-        run_current()
+        mode, _ = _parse_claude_permission_mode(args[1:])
+        if mode and mode.startswith("__INVALID__"):
+            print(f"非法的 --claude-permission-mode 值：{mode[len('__INVALID__'):]}")
+            print("允许值：acceptEdits, default, none, bypassPermissions")
+            return
+        run_current(claude_permission_mode=mode or "acceptEdits")
     elif args[0] == "check-result":
         check_result()
     elif args[0] == "auto-complete-success":
         auto_complete_success()
     elif args[0] == "run-next":
-        run_next()
+        mode, _ = _parse_claude_permission_mode(args[1:])
+        if mode and mode.startswith("__INVALID__"):
+            print(f"非法的 --claude-permission-mode 值：{mode[len('__INVALID__'):]}")
+            print("允许值：acceptEdits, default, none, bypassPermissions")
+            return
+        run_next(claude_permission_mode=mode or "acceptEdits")
     elif args[0] == "retry-current":
-        retry_current()
+        mode, _ = _parse_claude_permission_mode(args[1:])
+        if mode and mode.startswith("__INVALID__"):
+            print(f"非法的 --claude-permission-mode 值：{mode[len('__INVALID__'):]}")
+            print("允许值：acceptEdits, default, none, bypassPermissions")
+            return
+        retry_current(claude_permission_mode=mode or "acceptEdits")
     elif args[0] == "run-loop":
-        max_rounds = int(args[1]) if len(args) >= 2 else 10
-        run_loop(max_rounds)
+        mode, remaining = _parse_claude_permission_mode(args[1:])
+        if mode and mode.startswith("__INVALID__"):
+            print(f"非法的 --claude-permission-mode 值：{mode[len('__INVALID__'):]}")
+            print("允许值：acceptEdits, default, none, bypassPermissions")
+            return
+        max_rounds = int(remaining[0]) if remaining else 10
+        run_loop(max_rounds, claude_permission_mode=mode or "acceptEdits")
     elif args[0] == "plan-project":
         run_planner(GAME_REQUIREMENT_FILE)
     elif args[0] == "main-decide":
         main_decide()
     elif args[0] == "run-game-next":
-        run_game_next()
+        mode, _ = _parse_claude_permission_mode(args[1:])
+        if mode and mode.startswith("__INVALID__"):
+            print(f"非法的 --claude-permission-mode 值：{mode[len('__INVALID__'):]}")
+            print("允许值：acceptEdits, default, none, bypassPermissions")
+            return
+        run_game_next(claude_permission_mode=mode or "acceptEdits")
     elif args[0] == "run-project-next":
+        # 解析 --claude-permission-mode
+        mode, remaining = _parse_claude_permission_mode(args[1:])
+        if mode and mode.startswith("__INVALID__"):
+            print(f"非法的 --claude-permission-mode 值：{mode[len('__INVALID__'):]}")
+            print("允许值：acceptEdits, default, none, bypassPermissions")
+            return
         # 支持 --project <path> 或直接 <path>
-        if len(args) >= 3 and args[1] == "--project":
-            project_path = args[2]
-        elif len(args) >= 2 and not args[1].startswith("-"):
-            project_path = args[1]
+        if len(remaining) >= 2 and remaining[0] == "--project":
+            project_path = remaining[1]
+        elif len(remaining) >= 1 and not remaining[0].startswith("-"):
+            project_path = remaining[0]
         else:
             print("请提供项目路径：")
             print("  python runner.py run-project-next --project projects/down-100-floors-game")
             return
-        _handle_run_project_next(project_path)
+        _handle_run_project_next(project_path, claude_permission_mode=mode or "acceptEdits")
     elif args[0] == "review-game-task":
         task_id = args[1] if len(args) >= 2 else "G002"
         report_path, parsed = run_reviewer_for_game_task(task_id)
@@ -1004,9 +1060,10 @@ def main():
         print(f"  Reason：{decision.reason}")
         print(f"  Next Action：{decision.next_action}")
     elif args[0] == "run-project-task-full":
-        # 解析 --project 和 --task 参数
+        # 解析 --project, --task 和 --claude-permission-mode 参数
         project_path = None
         task_id = None
+        claude_perm_mode = None
         i = 1
         while i < len(args):
             if args[i] == "--project" and i + 1 < len(args):
@@ -1014,6 +1071,9 @@ def main():
                 i += 2
             elif args[i] == "--task" and i + 1 < len(args):
                 task_id = args[i + 1]
+                i += 2
+            elif args[i] == "--claude-permission-mode" and i + 1 < len(args):
+                claude_perm_mode = args[i + 1]
                 i += 2
             else:
                 i += 1
@@ -1023,7 +1083,18 @@ def main():
             print("用法：python runner.py run-project-task-full --project <project-path> --task <task-id>")
             return
 
-        loop_result = run_project_task_full(project_path, task_id)
+        # 验证 permission mode
+        valid_modes = {"acceptEdits", "default", "none", "bypassPermissions"}
+        if claude_perm_mode is not None:
+            if claude_perm_mode not in valid_modes:
+                print(f"非法的 --claude-permission-mode 值：{claude_perm_mode}")
+                print("允许值：acceptEdits, default, none, bypassPermissions")
+                return
+
+        loop_result = run_project_task_full(
+            project_path, task_id,
+            claude_permission_mode=claude_perm_mode or "acceptEdits",
+        )
 
         print()
         print("run-project-task-full 执行完成：")
@@ -1508,6 +1579,57 @@ def main():
         print(f"STOP_REASON={plan.stop_reason or 'NONE'}")
         print(f"Message：{plan.message}")
         print(f"NEXT_ACTION={plan.next_action}")
+    elif args[0] == "claude-permission-mode-dry-run":
+        # T106: dry-run 验证 permission mode 映射，不调用 Claude Code
+        from tools.claude_code_runner import build_claude_permission_args, VALID_PERMISSION_MODES
+        target_mode = None
+        i = 1
+        while i < len(args):
+            if args[i] == "--mode" and i + 1 < len(args):
+                target_mode = args[i + 1]
+                i += 2
+            else:
+                i += 1
+
+        if target_mode is None:
+            # 默认测试全部合法 mode
+            print("claude-permission-mode-dry-run：测试全部合法模式")
+            print()
+            for m in ["acceptEdits", "default", "none", "bypassPermissions"]:
+                try:
+                    perm_args = build_claude_permission_args(m)
+                    args_passed = "yes" if perm_args else "no"
+                    args_preview = " ".join(perm_args) if perm_args else "(none)"
+                    print(f"MODE={m}")
+                    print(f"  PERMISSION_MODE_VALID=yes")
+                    print(f"  CLAUDE_PERMISSION_ARG_PASSED={args_passed}")
+                    print(f"  CLAUDE_PERMISSION_ARGS={args_preview}")
+                    print()
+                except ValueError as e:
+                    print(f"MODE={m}")
+                    print(f"  PERMISSION_MODE_VALID=no (unexpected)")
+                    print(f"  ERROR={e}")
+                    print()
+            print("CHECK_RESULT=pass")
+        else:
+            print(f"claude-permission-mode-dry-run：测试 --mode {target_mode}")
+            print()
+            try:
+                perm_args = build_claude_permission_args(target_mode)
+                args_passed = "yes" if perm_args else "no"
+                args_preview = " ".join(perm_args) if perm_args else "(none)"
+                print(f"PERMISSION_MODE={target_mode}")
+                print(f"PERMISSION_MODE_VALID=yes")
+                print(f"CLAUDE_PERMISSION_ARG_PASSED={args_passed}")
+                print(f"CLAUDE_PERMISSION_ARGS={args_preview}")
+                print("CHECK_RESULT=pass")
+            except ValueError as e:
+                print(f"PERMISSION_MODE={target_mode}")
+                print(f"PERMISSION_MODE_VALID=no")
+                print(f"CLAUDE_PERMISSION_ARG_PASSED=no")
+                print(f"CLAUDE_PERMISSION_ARGS=(none)")
+                print(f"ERROR={e}")
+                print("CHECK_RESULT=fail")
     elif args[0] == "run-project-loop":
         # T060 run-project-loop dry-run + T065 execute mode safety gate + T071 adapter dry-run + T073 real-call stub + T078 real-call safety gate
         max_tasks_val = 3

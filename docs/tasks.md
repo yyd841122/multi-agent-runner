@@ -3038,7 +3038,7 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T106 实现 configurable Claude permission mode
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 run_claude_code() 的 permission mode 可配置，支持 default / acceptEdits / bypassPermissions。
 
@@ -3049,6 +3049,18 @@ T054 原始目标已经由以下任务前置完成：
 - 默认保持 acceptEdits（不破坏已有逻辑）
 - 可通过 CLI 或配置切换为 default / bypassPermissions
 - 不执行真实任务
+
+### 完成说明
+
+- 新增 build_claude_permission_args() 映射函数（9/9 断言 PASS）
+- run_claude_code() 新增 permission_mode 参数，返回中包含 permission_mode 和 permission_args_passed
+- runner.py 覆盖 7 个命令：run-current, run-next, retry-current, run-loop, run-game-next, run-project-next, run-project-task-full
+- 新增 claude-permission-mode-dry-run 命令（dry-run 验证不调用 Claude Code）
+- 全链路透传：runner → project_runner → full_task_runner → claude_code_runner
+- 36/36 验证场景全部 PASS
+
+<!-- NEXT_PENDING=T107 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ---
 

@@ -488,3 +488,10 @@
 - 不要假设 default mode 能完成需要文件写入的任务。default mode 下工具调用被权限拒绝，Claude Code 只输出建议代码。
 - 不要假设 bypassPermissions 没有同样的问题。bypassPermissions 绕过权限但不影响 tool_result 回传 API 的流程，可能同样卡住。
 - 不要跳过 T107（default mode 验证）直接跑真实任务。需要先确认 default mode 下的最小行为。
+
+### T106 实现避坑
+
+- 不要用 `mode.lower()` 统一小写后再与 `{"acceptEdits", ...}` 比较。`"acceptEdits".lower()` → `"acceptedits"`，与 valid_modes 不匹配导致合法值被误判为非法。
+- 不要只验证合法 mode，必须也验证非法值（如 `invalid`）是否正确拒绝。
+- 不要在验证 CLI 参数时触发真实 Claude Code 调用。使用 `claude-permission-mode-dry-run` 命令做安全验证。
+- 不要修改业务代码（projects/ 下的文件）或框架外文件。T106 只改 claude_code_runner.py、project_runner.py、full_task_runner.py、runner.py。
