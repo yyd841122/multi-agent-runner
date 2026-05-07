@@ -511,3 +511,11 @@
 - 不要在回归验证中删除意外创建的诊断文件。保留为 unexpected artifact，等待人工决定。
 - 不要使用 bypassPermissions 作为 tool-use 测试的替代方案。T108 只验证 acceptEdits。
 - 不要运行 run-project-task-full。T108 只做最小 tool-use 回归诊断。
+
+## T109 智谱代理兼容性评估避坑
+
+- 不要把 T108 单次 unexpected_pass 当作智谱 tool-use 兼容性已修复的证据。单次通过不具备统计意义。
+- 不要跳过分层验证直接恢复 run-project-task-full。Layer 1-4 必须逐层通过。
+- 不要在兼容性评估中调用 Claude Code 或执行真实任务。T109 只做评估和文档。
+- 不要忽略 T103 和 T108 结果不一致的风险。间歇性问题比持续性问题更难定位和复现。
+- 不要假设路线 C（runner 自执行 patch）可以短期内替代路线 A。路线 C 是长期方向，短期应优先路线 A。

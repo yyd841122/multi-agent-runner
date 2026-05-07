@@ -743,3 +743,10 @@ G006 已完成完整闭环：
 - **兼容性状态可能随时间变化。** 智谱代理或 Claude Code CLI 更新可能修复了之前的 tool_use/tool_result 兼容性问题。历史诊断结论需要定期验证。
 - **回归验证只执行一次，不反复重跑。** 避免在不确定环境下多次调用 acceptEdits + tool-use。
 - **unexpected_pass 需要重新评估后续路线。** 原计划 T109 评估兼容性问题 → T110 决策路线，现在方向需调整为验证稳定性和可靠性。
+
+### T109 智谱代理 tool_use/tool_result 兼容性评估经验
+
+- **智谱代理 text-only 链路基本可用。** default 和 acceptEdits 模式下纯文本输出在 T103/T107/T108 三次验证中均秒级返回，兼容性稳定。
+- **tool-use 兼容性表现不稳定。** T103 超时 vs T108 通过，相同测试场景不同结果，单次 unexpected_pass 不代表彻底修复。
+- **恢复 run-project-task-full 前必须先做分层稳定性验证。** 设计了 Layer 1-4（text-only → single-file tool-use → runner-level smoke → full loop smoke），每层通过后才进入下一层。
+- **路线决策需要基于充分证据。** 推荐短期路线 A（分层验证），备用路线 B（官方 Claude 验证闭环），长期路线 C（runner 自执行 patch）。
