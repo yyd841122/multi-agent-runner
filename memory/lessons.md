@@ -729,3 +729,10 @@ G006 已完成完整闭环：
 - **全链路透传需要同步修改 4 个文件：** claude_code_runner.py（底层函数）→ project_runner.py（透传）→ full_task_runner.py（透传）→ runner.py（CLI 解析）。
 - **CLI 参数解析和 mode 校验不能用 lower() 统一小写。** acceptEdits 本身是 mixed-case，`"acceptEdits".lower()` → `"acceptedits"`，与 valid_modes 不匹配。应保持原始值比较。
 - **dry-run 命令是安全验证的最佳方式。** `claude-permission-mode-dry-run` 只输出参数映射，不调用 Claude Code，可以安全验证所有 mode 的正确性。
+
+### T107 验证 default mode 最小文本调用经验
+
+- **default mode 最小文本调用正常返回。** `claude --print "只回复 OK"` 在不传 `--permission-mode` 时秒级返回 "OK"，确认 default mode 文本输出链路正常。
+- **default/none 模式不传 --permission-mode，可作为 acceptEdits tool-use 卡死问题的安全对照。** T103 已确认 acceptEdits + tool-use 超时，而 default mode 文本调用正常，两者对比说明问题在 acceptEdits 的 tool-use 路径上。
+- **只允许做只读文本测试，不允许写文件 tool-use。** T107 只验证最小文本返回，写文件测试留给后续任务。
+- **dry-run 映射验证是调用 Claude Code 前的必要前置检查。** 4/4 dry-run 通过后才执行最小 Claude Code 调用。

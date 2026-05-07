@@ -3066,7 +3066,7 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T107 验证 default mode 最小 Claude Code 调用
 
-状态：pending
+状态：done
 角色：Tester
 目标：验证 default permission mode 下 Claude Code 最小调用行为，确认工具调用被权限拒绝后能正常返回。
 
@@ -3077,6 +3077,16 @@ T054 原始目标已经由以下任务前置完成：
 - 确认不超时
 - 不执行真实大任务
 - 不使用 acceptEdits 模式
+
+### 完成说明
+
+- Dry-run 映射验证：4/4 PASS（default/none/acceptEdits/bypassPermissions）
+- Default mode 最小文本调用：`claude --print "只回复 OK"` 成功返回 "OK"，秒级响应
+- 未传 `--permission-mode`，未触发工具调用，未写文件
+- 确认 default/none 模式不传 --permission-mode，可作为 acceptEdits tool-use 卡死问题的安全对照
+
+<!-- NEXT_PENDING=T108 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ---
 

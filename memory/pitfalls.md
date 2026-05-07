@@ -495,3 +495,11 @@
 - 不要只验证合法 mode，必须也验证非法值（如 `invalid`）是否正确拒绝。
 - 不要在验证 CLI 参数时触发真实 Claude Code 调用。使用 `claude-permission-mode-dry-run` 命令做安全验证。
 - 不要修改业务代码（projects/ 下的文件）或框架外文件。T106 只改 claude_code_runner.py、project_runner.py、full_task_runner.py、runner.py。
+
+## T107 验证 default mode 最小文本调用避坑
+
+- 不要在 dry-run 映射验证未通过前直接调用 Claude Code。dry-run 是安全前置检查。
+- 不要在验证任务中测试写文件 tool-use。T107 只验证最小只读文本返回。
+- 不要使用 acceptEdits 模式测试写文件。T107 的目标是验证 default mode。
+- 不要运行 run-project-task-full。T107 只做最小文本调用诊断。
+- 不要修改任何代码文件。验证任务只运行命令和记录结果。
