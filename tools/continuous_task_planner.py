@@ -3150,3 +3150,371 @@ def validate_first_real_run_execute_once_safety(
             f"RUN_PROJECT_TASK_FULL_CALLED=no（safety gate 不执行任务）。"
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# T098: First Real-Run Executor Simulated Child Call
+# ---------------------------------------------------------------------------
+
+# 支持 6 种内置 child sample
+_SIMULATED_CHILD_SAMPLES: dict[str, dict] = {
+    "pass": {
+        "description": "child CHECK_RESULT=pass, task done, clean workspace",
+        "stdout": (
+            "TASK_ID={task_id}\n"
+            "CHECK_RESULT=pass\n"
+            "TASK_STATUS=done\n"
+            "NEXT_PENDING=\n"
+            "REAL_TASK_EXECUTION=no\n"
+            "CLAUDE_CODE_CALLED=no\n"
+            "BUSINESS_CODE_CHANGED=no\n"
+            "WORKTREE_STATUS=clean\n"
+            "REPORT_PATHS=reports/dev/{task_id}-dev-report.md,reports/checks/{task_id}-check.md\n"
+            "FINAL_STATUS=COMPLETE\n"
+        ),
+        "workspace_after": "clean",
+        "workspace_classification": "clean",
+        "claude_code_called": "no",
+        "business_code_changed": "no",
+        "child_check_result": "pass",
+        "child_task_status": "done",
+        "expected_acceptance_status": "ready_for_human_review",
+    },
+    "fail": {
+        "description": "child CHECK_RESULT=fail, task failed",
+        "stdout": (
+            "TASK_ID={task_id}\n"
+            "CHECK_RESULT=fail\n"
+            "TASK_STATUS=failed\n"
+            "NEXT_PENDING=\n"
+            "REAL_TASK_EXECUTION=no\n"
+            "CLAUDE_CODE_CALLED=no\n"
+            "BUSINESS_CODE_CHANGED=no\n"
+            "WORKTREE_STATUS=clean\n"
+            "REPORT_PATHS=reports/dev/{task_id}-dev-report.md\n"
+            "FINAL_STATUS=FAILED\n"
+        ),
+        "workspace_after": "clean",
+        "workspace_classification": "clean",
+        "claude_code_called": "no",
+        "business_code_changed": "no",
+        "child_check_result": "fail",
+        "child_task_status": "failed",
+        "expected_acceptance_status": "blocked",
+    },
+    "missing-check-result": {
+        "description": "缺少 CHECK_RESULT, 解析失败",
+        "stdout": (
+            "TASK_ID={task_id}\n"
+            "TASK_STATUS=done\n"
+            "REAL_TASK_EXECUTION=no\n"
+            "CLAUDE_CODE_CALLED=no\n"
+            "BUSINESS_CODE_CHANGED=no\n"
+            "WORKTREE_STATUS=clean\n"
+        ),
+        "workspace_after": "clean",
+        "workspace_classification": "clean",
+        "claude_code_called": "no",
+        "business_code_changed": "no",
+        "child_check_result": "unknown",
+        "child_task_status": "done",
+        "expected_acceptance_status": "failed_to_parse",
+    },
+    "dirty-unexpected": {
+        "description": "workspace dirty_unexpected, 非预期变更",
+        "stdout": (
+            "TASK_ID={task_id}\n"
+            "CHECK_RESULT=pass\n"
+            "TASK_STATUS=done\n"
+            "REAL_TASK_EXECUTION=no\n"
+            "CLAUDE_CODE_CALLED=unknown\n"
+            "BUSINESS_CODE_CHANGED=unknown\n"
+            "WORKTREE_STATUS=dirty_unexpected\n"
+            "REPORT_PATHS=reports/dev/{task_id}-dev-report.md\n"
+        ),
+        "workspace_after": "dirty_unexpected",
+        "workspace_classification": "dirty_unexpected",
+        "claude_code_called": "unknown",
+        "business_code_changed": "unknown",
+        "child_check_result": "pass",
+        "child_task_status": "done",
+        "expected_acceptance_status": "blocked",
+    },
+    "unsafe-unknown": {
+        "description": "workspace dirty_unknown, 不安全",
+        "stdout": (
+            "TASK_ID={task_id}\n"
+            "CHECK_RESULT=pass\n"
+            "TASK_STATUS=done\n"
+            "REAL_TASK_EXECUTION=no\n"
+            "CLAUDE_CODE_CALLED=unknown\n"
+            "BUSINESS_CODE_CHANGED=unknown\n"
+            "WORKTREE_STATUS=dirty_unknown\n"
+            "REPORT_PATHS=reports/dev/{task_id}-dev-report.md\n"
+        ),
+        "workspace_after": "dirty_unknown",
+        "workspace_classification": "dirty_unknown",
+        "claude_code_called": "unknown",
+        "business_code_changed": "unknown",
+        "child_check_result": "pass",
+        "child_task_status": "done",
+        "expected_acceptance_status": "unsafe_to_continue",
+    },
+    "missing-report-paths": {
+        "description": "report_paths 缺失, 阻塞",
+        "stdout": (
+            "TASK_ID={task_id}\n"
+            "CHECK_RESULT=pass\n"
+            "TASK_STATUS=done\n"
+            "REAL_TASK_EXECUTION=no\n"
+            "CLAUDE_CODE_CALLED=no\n"
+            "BUSINESS_CODE_CHANGED=no\n"
+            "WORKTREE_STATUS=clean\n"
+        ),
+        "workspace_after": "clean",
+        "workspace_classification": "clean",
+        "claude_code_called": "no",
+        "business_code_changed": "no",
+        "child_check_result": "pass",
+        "child_task_status": "done",
+        "expected_acceptance_status": "blocked",
+    },
+}
+
+
+@dataclass
+class FirstRealRunExecutorSimulatedResult:
+    """首次真实执行器模拟 child call 结果。
+
+    通过三重确认 safety gate 后，构造 simulated child stdout，
+    调用 parse_child_command_output() 和 evaluate_first_real_run_acceptance()，
+    输出完整模拟执行结果。
+    不真实调用 run-project-task-full，不调用 Claude Code，不修改业务代码。
+    """
+
+    project: str
+    run_id: str
+    task_id: str | None                       # 当前 NEXT_PENDING
+    execution_mode: str                       # "first_real_run_executor_simulated_child_call"
+    safety_gate_status: str                   # "passed" / "failed"
+    real_execute_allowed: bool                # safety gate 是否通过
+    simulated_child_call: bool                # 是否执行了 simulated child call
+    child_sample: str                         # 使用的 sample 名称
+    child_stdout_present: bool                # child stdout 是否非空
+    child_stderr_present: bool                # child stderr 是否非空
+    child_exit_code: int                      # child exit code（模拟为 0）
+    child_check_result: str                   # "pass" / "fail" / "missing"
+    child_task_status: str                    # "done" / "failed" / "unknown"
+    parse_check_result: str                   # parser 的 parse_check_result
+    acceptance_status: str                    # ready_for_human_review / blocked / failed_to_parse / unsafe_to_continue
+    workspace_status_before: str              # "clean" / "dirty"
+    workspace_status_after: str               # simulated workspace after
+    workspace_change_classification: str      # simulated workspace classification
+    real_task_execution: str                  # "no"
+    run_project_task_full_called: str         # "no"
+    claude_code_called: str                   # "no"
+    business_code_changed: str                # "no"
+    auto_continue_to_next_task: str           # "false"
+    auto_git_backup: str                      # "false"
+    human_review_required: str                # "true"
+    check_result: str                         # "pass" / "fail"
+    stop_reason: str | None                   # 停止原因
+    next_action: str                          # 建议下一步
+    message: str                              # 详细消息
+
+
+def run_first_real_run_executor_simulated_child_call(
+    project_path: str | Path,
+    max_tasks: int = 1,
+    confirm: str | None = None,
+    real_confirm: str | None = None,
+    real_execute_once: bool = False,
+    real_execute_confirm: str | None = None,
+    sample: str = "pass",
+    real_call_dry_run: bool = False,
+    adapter_dry_run: bool = False,
+    real_call_stub: bool = False,
+    dry_run_flag: bool = False,
+) -> FirstRealRunExecutorSimulatedResult:
+    """首次真实执行器模拟 child call。
+
+    通过三重确认 safety gate 后，根据 sample 构造 child stdout，
+    调用 parse_child_command_output() 和 evaluate_first_real_run_acceptance()。
+    不执行任何真实命令，不调用 run-project-task-full，不调用 Claude Code。
+
+    Args:
+        project_path: 项目根目录
+        max_tasks: max_tasks（必须为 1）
+        confirm: 第一重确认短语
+        real_confirm: 第二重确认短语
+        real_execute_once: 是否传入 --real-execute-once
+        real_execute_confirm: 第三重确认短语
+        sample: child sample 名称
+        real_call_dry_run: 是否同时传入了 --real-call-dry-run
+        adapter_dry_run: 是否同时传入了 --adapter-dry-run
+        real_call_stub: 是否同时传入了 --real-call-stub
+        dry_run_flag: 是否同时传入了 --dry-run
+
+    Returns:
+        FirstRealRunExecutorSimulatedResult
+
+    Raises:
+        ValueError: sample 不存在时
+    """
+    project_path = Path(project_path)
+    run_id = _generate_run_id()
+
+    # --- 默认失败结果 ---
+    def _fail(
+        stop_reason: str | None = None,
+        next_action: str = "fix_simulated_executor_preconditions",
+        message: str = "",
+        safety_gate_status: str = "failed",
+    ) -> FirstRealRunExecutorSimulatedResult:
+        return FirstRealRunExecutorSimulatedResult(
+            project=str(project_path),
+            run_id=run_id,
+            task_id=None,
+            execution_mode="first_real_run_executor_simulated_child_call",
+            safety_gate_status=safety_gate_status,
+            real_execute_allowed=False,
+            simulated_child_call=False,
+            child_sample=sample,
+            child_stdout_present=False,
+            child_stderr_present=False,
+            child_exit_code=0,
+            child_check_result="unknown",
+            child_task_status="unknown",
+            parse_check_result="fail",
+            acceptance_status="blocked",
+            workspace_status_before="unknown",
+            workspace_status_after="unknown",
+            workspace_change_classification="unknown",
+            real_task_execution="no",
+            run_project_task_full_called="no",
+            claude_code_called="no",
+            business_code_changed="no",
+            auto_continue_to_next_task="false",
+            auto_git_backup="false",
+            human_review_required="true",
+            check_result="fail",
+            stop_reason=stop_reason,
+            next_action=next_action,
+            message=message,
+        )
+
+    # --- 1. 调用三重确认 safety gate ---
+    safety = validate_first_real_run_execute_once_safety(
+        project_path=project_path,
+        max_tasks=max_tasks,
+        confirm=confirm,
+        real_confirm=real_confirm,
+        real_execute_once=real_execute_once,
+        real_execute_confirm=real_execute_confirm,
+        real_call_dry_run=real_call_dry_run,
+        adapter_dry_run=adapter_dry_run,
+        real_call_stub=real_call_stub,
+        dry_run_flag=dry_run_flag,
+    )
+
+    # --- 2. safety gate 不通过 → 直接返回失败 ---
+    if not safety.real_execute_allowed:
+        return _fail(
+            stop_reason=safety.stop_reason,
+            next_action=safety.next_action,
+            message=(
+                f"simulated child call 未启动：execute-once safety gate 拒绝"
+                f"（{safety.stop_reason}）。"
+                f"REAL_TASK_EXECUTION=no，RUN_PROJECT_TASK_FULL_CALLED=no。"
+            ),
+        )
+
+    task_id = safety.task_id
+
+    # --- 3. 验证 sample ---
+    if sample not in _SIMULATED_CHILD_SAMPLES:
+        available = ", ".join(sorted(_SIMULATED_CHILD_SAMPLES.keys()))
+        return _fail(
+            stop_reason=f"unknown_child_sample:{sample}",
+            next_action="use_valid_child_sample",
+            message=(
+                f"错误：未知的 child sample '{sample}'。"
+                f"可用样本：{available}。"
+            ),
+            safety_gate_status="passed",
+        )
+
+    sample_data = _SIMULATED_CHILD_SAMPLES[sample]
+
+    # --- 4. 构造 simulated child stdout（不执行任何真实命令） ---
+    child_stdout = sample_data["stdout"].format(task_id=task_id or "UNKNOWN")
+
+    # --- 5. 调用 parse_child_command_output() ---
+    child_parse = parse_child_command_output(
+        stdout_text=child_stdout,
+        stderr_text="",
+        exit_code=0,
+    )
+
+    # --- 6. 调用 evaluate_first_real_run_acceptance() ---
+    acceptance = evaluate_first_real_run_acceptance(
+        project_path=project_path,
+        task_id=task_id,
+        child_parse_result=child_parse,
+        workspace_status_before="clean",
+        workspace_status_after=sample_data["workspace_after"],
+        workspace_change_classification=sample_data["workspace_classification"],
+        run_project_task_full_called="no",
+        claude_code_called="no",
+        business_code_changed="no",
+    )
+
+    # --- 7. 构造完整 simulated executor result ---
+    check_result = "pass" if acceptance.check_result == "pass" else "fail"
+
+    if acceptance.check_result == "pass":
+        next_action = "ready_for_human_review"
+    elif acceptance.acceptance_status == "failed_to_parse":
+        next_action = "review_parse_failure"
+    elif acceptance.acceptance_status == "unsafe_to_continue":
+        next_action = "manual_review_required"
+    else:
+        next_action = "review_failure_before_continue"
+
+    return FirstRealRunExecutorSimulatedResult(
+        project=str(project_path),
+        run_id=run_id,
+        task_id=task_id,
+        execution_mode="first_real_run_executor_simulated_child_call",
+        safety_gate_status="passed",
+        real_execute_allowed=True,
+        simulated_child_call=True,
+        child_sample=sample,
+        child_stdout_present=child_parse.raw_stdout_present,
+        child_stderr_present=child_parse.raw_stderr_present,
+        child_exit_code=child_parse.exit_code,
+        child_check_result=child_parse.check_result,
+        child_task_status=child_parse.task_status,
+        parse_check_result=child_parse.parse_check_result,
+        acceptance_status=acceptance.acceptance_status,
+        workspace_status_before=safety.workspace_status_before,
+        workspace_status_after=sample_data["workspace_after"],
+        workspace_change_classification=sample_data["workspace_classification"],
+        real_task_execution="no",
+        run_project_task_full_called="no",
+        claude_code_called="no",
+        business_code_changed="no",
+        auto_continue_to_next_task="false",
+        auto_git_backup="false",
+        human_review_required="true",
+        check_result=check_result,
+        stop_reason=acceptance.stop_reason,
+        next_action=next_action,
+        message=(
+            f"simulated child call 完成：sample={sample}，task_id={task_id}，"
+            f"CHILD_CHECK_RESULT={child_parse.check_result}，"
+            f"CHILD_TASK_STATUS={child_parse.task_status}，"
+            f"ACCEPTANCE_STATUS={acceptance.acceptance_status}。"
+            f"REAL_TASK_EXECUTION=no，RUN_PROJECT_TASK_FULL_CALLED=no。"
+        ),
+    )

@@ -51,6 +51,7 @@ from tools.continuous_task_planner import parse_child_command_output
 from tools.continuous_task_planner import evaluate_first_real_run_acceptance
 from tools.continuous_task_planner import run_simulated_first_real_run_acceptance_parser
 from tools.continuous_task_planner import validate_first_real_run_execute_once_safety
+from tools.continuous_task_planner import run_first_real_run_executor_simulated_child_call
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -1521,6 +1522,8 @@ def main():
         real_execute_confirm_text = None
         real_confirm_text = None
         confirm_text = None
+        simulate_child = False
+        child_sample = "pass"
         i = 1
         while i < len(args):
             if args[i] == "--max-tasks" and i + 1 < len(args):
@@ -1558,6 +1561,12 @@ def main():
                 i += 2
             elif args[i] == "--confirm" and i + 1 < len(args):
                 confirm_text = args[i + 1]
+                i += 2
+            elif args[i] == "--simulate-child":
+                simulate_child = True
+                i += 1
+            elif args[i] == "--child-sample" and i + 1 < len(args):
+                child_sample = args[i + 1]
                 i += 2
             else:
                 i += 1
@@ -1689,48 +1698,114 @@ def main():
             print("ERROR：--real-execute-once 必须配合 --real-call 使用。")
             return
 
-        if real_execute_once and execute_mode and real_call and real_call_run_once:
-            # T096: first real-run execute-once safety gate
-            result = validate_first_real_run_execute_once_safety(
-                project_path=PROJECT_ROOT,
-                max_tasks=max_tasks_val,
-                confirm=confirm_text,
-                real_confirm=real_confirm_text,
-                real_execute_once=real_execute_once,
-                real_execute_confirm=real_execute_confirm_text,
-                real_call_dry_run=real_call_dry_run,
-                adapter_dry_run=adapter_dry_run,
-                real_call_stub=real_call_stub,
-                dry_run_flag=dry_run_flag,
-            )
+        # --simulate-child 必须配合 --real-execute-once
+        if simulate_child and not real_execute_once:
+            print()
+            print("ERROR：--simulate-child 必须配合 --real-execute-once 使用。")
+            return
 
+        # --simulate-child 必须配合 --real-call-run-once
+        if simulate_child and not real_call_run_once:
             print()
-            print(f"EXECUTION_MODE={result.execution_mode}")
-            print(f"EXECUTE_CONFIRM_STATUS={result.execute_confirm_status}")
-            print(f"REAL_CONFIRM_STATUS={result.real_confirm_status}")
-            print(f"REAL_EXECUTE_CONFIRM_STATUS={result.real_execute_confirm_status}")
-            print(f"REAL_EXECUTE_ONCE_REQUESTED={'true' if result.real_execute_once_requested else 'false'}")
-            print(f"REAL_EXECUTE_ALLOWED={'true' if result.real_execute_allowed else 'false'}")
-            print(f"RUN_ID={result.run_id}")
-            if result.task_id:
-                print(f"TASK_ID={result.task_id}")
-            print(f"PREFLIGHT_STATUS={result.preflight_status}")
-            print(f"MAX_TASKS={result.max_tasks}")
-            if result.planned_tasks:
-                planned_str = ",".join(result.planned_tasks)
-                print(f"PLANNED_TASKS={planned_str}")
-            print(f"REAL_TASK_EXECUTION={result.real_task_execution}")
-            print(f"RUN_PROJECT_TASK_FULL_CALLED={result.run_project_task_full_called}")
-            print(f"CLAUDE_CODE_CALLED={result.claude_code_called}")
-            print(f"BUSINESS_CODE_CHANGED={result.business_code_changed}")
-            print(f"AUTO_CONTINUE_TO_NEXT_TASK={result.auto_continue_to_next_task}")
-            print(f"AUTO_GIT_BACKUP={result.auto_git_backup}")
-            print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required}")
-            print(f"CHECK_RESULT={result.check_result}")
-            print(f"STOP_REASON={result.stop_reason or 'NONE'}")
-            print(f"NEXT_ACTION={result.next_action}")
+            print("ERROR：--simulate-child 必须配合 --real-call-run-once 使用。")
+            return
+
+        # --simulate-child 必须配合 --execute
+        if simulate_child and not execute_mode:
             print()
-            print(f"Message：{result.message}")
+            print("ERROR：--simulate-child 必须配合 --execute 使用。")
+            return
+
+        if real_execute_once and execute_mode and real_call and real_call_run_once:
+            if simulate_child:
+                # T098: first real-run executor simulated child call
+                result = run_first_real_run_executor_simulated_child_call(
+                    project_path=PROJECT_ROOT,
+                    max_tasks=max_tasks_val,
+                    confirm=confirm_text,
+                    real_confirm=real_confirm_text,
+                    real_execute_once=real_execute_once,
+                    real_execute_confirm=real_execute_confirm_text,
+                    sample=child_sample,
+                    real_call_dry_run=real_call_dry_run,
+                    adapter_dry_run=adapter_dry_run,
+                    real_call_stub=real_call_stub,
+                    dry_run_flag=dry_run_flag,
+                )
+
+                print()
+                print(f"EXECUTION_MODE={result.execution_mode}")
+                print(f"SAFETY_GATE_STATUS={result.safety_gate_status}")
+                print(f"REAL_EXECUTE_ALLOWED={'true' if result.real_execute_allowed else 'false'}")
+                print(f"SIMULATED_CHILD_CALL={'true' if result.simulated_child_call else 'false'}")
+                print(f"CHILD_SAMPLE={result.child_sample}")
+                print(f"RUN_ID={result.run_id}")
+                if result.task_id:
+                    print(f"TASK_ID={result.task_id}")
+                print(f"CHILD_STDOUT_PRESENT={'true' if result.child_stdout_present else 'false'}")
+                print(f"CHILD_STDERR_PRESENT={'true' if result.child_stderr_present else 'false'}")
+                print(f"CHILD_EXIT_CODE={result.child_exit_code}")
+                print(f"CHILD_CHECK_RESULT={result.child_check_result}")
+                print(f"CHILD_TASK_STATUS={result.child_task_status}")
+                print(f"PARSE_CHECK_RESULT={result.parse_check_result}")
+                print(f"ACCEPTANCE_STATUS={result.acceptance_status}")
+                print(f"WORKSPACE_STATUS_BEFORE={result.workspace_status_before}")
+                print(f"WORKSPACE_STATUS_AFTER={result.workspace_status_after}")
+                print(f"WORKSPACE_CHANGE_CLASSIFICATION={result.workspace_change_classification}")
+                print(f"REAL_TASK_EXECUTION={result.real_task_execution}")
+                print(f"RUN_PROJECT_TASK_FULL_CALLED={result.run_project_task_full_called}")
+                print(f"CLAUDE_CODE_CALLED={result.claude_code_called}")
+                print(f"BUSINESS_CODE_CHANGED={result.business_code_changed}")
+                print(f"AUTO_CONTINUE_TO_NEXT_TASK={result.auto_continue_to_next_task}")
+                print(f"AUTO_GIT_BACKUP={result.auto_git_backup}")
+                print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required}")
+                print(f"CHECK_RESULT={result.check_result}")
+                print(f"STOP_REASON={result.stop_reason or 'NONE'}")
+                print(f"NEXT_ACTION={result.next_action}")
+                print()
+                print(f"Message：{result.message}")
+            else:
+                # T096: first real-run execute-once safety gate
+                result = validate_first_real_run_execute_once_safety(
+                    project_path=PROJECT_ROOT,
+                    max_tasks=max_tasks_val,
+                    confirm=confirm_text,
+                    real_confirm=real_confirm_text,
+                    real_execute_once=real_execute_once,
+                    real_execute_confirm=real_execute_confirm_text,
+                    real_call_dry_run=real_call_dry_run,
+                    adapter_dry_run=adapter_dry_run,
+                    real_call_stub=real_call_stub,
+                    dry_run_flag=dry_run_flag,
+                )
+
+                print()
+                print(f"EXECUTION_MODE={result.execution_mode}")
+                print(f"EXECUTE_CONFIRM_STATUS={result.execute_confirm_status}")
+                print(f"REAL_CONFIRM_STATUS={result.real_confirm_status}")
+                print(f"REAL_EXECUTE_CONFIRM_STATUS={result.real_execute_confirm_status}")
+                print(f"REAL_EXECUTE_ONCE_REQUESTED={'true' if result.real_execute_once_requested else 'false'}")
+                print(f"REAL_EXECUTE_ALLOWED={'true' if result.real_execute_allowed else 'false'}")
+                print(f"RUN_ID={result.run_id}")
+                if result.task_id:
+                    print(f"TASK_ID={result.task_id}")
+                print(f"PREFLIGHT_STATUS={result.preflight_status}")
+                print(f"MAX_TASKS={result.max_tasks}")
+                if result.planned_tasks:
+                    planned_str = ",".join(result.planned_tasks)
+                    print(f"PLANNED_TASKS={planned_str}")
+                print(f"REAL_TASK_EXECUTION={result.real_task_execution}")
+                print(f"RUN_PROJECT_TASK_FULL_CALLED={result.run_project_task_full_called}")
+                print(f"CLAUDE_CODE_CALLED={result.claude_code_called}")
+                print(f"BUSINESS_CODE_CHANGED={result.business_code_changed}")
+                print(f"AUTO_CONTINUE_TO_NEXT_TASK={result.auto_continue_to_next_task}")
+                print(f"AUTO_GIT_BACKUP={result.auto_git_backup}")
+                print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required}")
+                print(f"CHECK_RESULT={result.check_result}")
+                print(f"STOP_REASON={result.stop_reason or 'NONE'}")
+                print(f"NEXT_ACTION={result.next_action}")
+                print()
+                print(f"Message：{result.message}")
         elif real_call_run_once and execute_mode and real_call:
             # T085: real-call run-once safety shell
             result = run_project_loop_real_call_run_once_safety_shell(

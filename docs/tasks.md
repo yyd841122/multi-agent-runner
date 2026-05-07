@@ -2753,7 +2753,7 @@ T054 原始目标已经由以下任务前置完成：
 - ✅ reports/checks/T096-first-real-run-execute-once-safety-gate-check.md
 - ✅ reports/dev/T096-dev-report.md
 
-<!-- NEXT_PENDING=T098 -->
+<!-- NEXT_PENDING=T099 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ---
@@ -2781,17 +2781,24 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T098 实现 first real-run executor simulated child call
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现模拟 FullTaskLoopResult 输入的执行链路验证，不真实调用 run_project_task_full。
 
 ### 验收标准
 
-- 模拟 FullTaskLoopResult 输入（pass / fail / exception）
-- 模拟 workspace 变化
-- 复用 evaluate_first_real_run_acceptance() 评估验收状态
-- 验证执行流程完整
-- 不真实调用 run_project_task_full
+- [x] 模拟 FullTaskLoopResult 输入（pass / fail / missing-check-result / dirty-unexpected / unsafe-unknown / missing-report-paths）
+- [x] 模拟 workspace 变化
+- [x] 复用 parse_child_command_output() + evaluate_first_real_run_acceptance()
+- [x] 验证执行流程完整（safety gate → simulated stdout → parser → acceptance）
+- [x] 不真实调用 run_project_task_full
+
+### 输出文件
+
+- tools/continuous_task_planner.py（新增 FirstRealRunExecutorSimulatedResult + run_first_real_run_executor_simulated_child_call + _SIMULATED_CHILD_SAMPLES）
+- runner.py（新增 --simulate-child + --child-sample CLI）
+- reports/checks/T098-first-real-run-executor-simulated-child-call-check.md
+- reports/dev/T098-dev-report.md
 
 ---
 
