@@ -2658,22 +2658,25 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T093 实现 simulated first real-run acceptance parser
+## T093 实现 simulated first real-run acceptance parser ✅
 
-状态：pending
+状态：done ✅
 角色：Developer
 目标：使用模拟 FullTaskLoopResult 数据验证验收判定逻辑。
 
 ### 验收标准
 
-- 模拟 final_status=COMPLETE 的验收判定
-- 模拟 final_status=FAILED 的验收判定
-- 模拟 final_status=BLOCKED 的验收判定
-- 模拟 final_status=REQUEST_CHANGES 的验收判定
-- 模拟异常的验收判定
-- 验证所有 ACCEPTANCE_STATUS 值正确
-- 不真实调用 run_project_task_full
-- 不调用 Claude Code
+- ✅ 模拟 final_status=COMPLETE 的验收判定
+- ✅ 模拟 final_status=FAILED 的验收判定
+- ✅ 模拟 final_status=BLOCKED 的验收判定
+- ✅ 模拟 final_status=REQUEST_CHANGES 的验收判定
+- ✅ 模拟异常的验收判定
+- ✅ 验证所有 ACCEPTANCE_STATUS 值正确
+- ✅ 不真实调用 run_project_task_full
+- ✅ 不调用 Claude Code
+
+<!-- NEXT_PENDING=T094 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ---
 

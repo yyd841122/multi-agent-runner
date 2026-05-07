@@ -49,6 +49,7 @@ from tools.continuous_task_planner import run_project_loop_real_call_dry_run_exe
 from tools.continuous_task_planner import run_project_loop_real_call_run_once_safety_shell
 from tools.continuous_task_planner import parse_child_command_output
 from tools.continuous_task_planner import evaluate_first_real_run_acceptance
+from tools.continuous_task_planner import run_simulated_first_real_run_acceptance_parser
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -1429,6 +1430,53 @@ def main():
         print(f"CHECK_RESULT={acceptance.check_result}")
         print()
         print(f"Message：{acceptance.message}")
+    elif args[0] == "simulated-first-real-run-acceptance":
+        # T093: simulated first real-run acceptance parser
+        sample_type = "pass"
+        if len(args) >= 3 and args[1] == "--sample":
+            sample_type = args[2]
+        elif len(args) >= 2 and not args[1].startswith("-"):
+            sample_type = args[1]
+
+        result = run_simulated_first_real_run_acceptance_parser(
+            project_path=PROJECT_ROOT,
+            task_id="T093",
+            sample=sample_type,
+        )
+
+        # 安全覆盖字段：即使 sample 数据中是 yes，CLI 输出必须是 no
+        print()
+        print("=" * 60)
+        print("[SAFETY OVERRIDE] 本命令为模拟验证，不执行真实调用：")
+        print(f"  REAL_TASK_EXECUTION=no（模拟，非真实执行）")
+        print(f"  RUN_PROJECT_TASK_FULL_CALLED=no（模拟，未调用）")
+        print(f"  CLAUDE_CODE_CALLED=no（模拟，未调用 Claude Code）")
+        print(f"  BUSINESS_CODE_CHANGED=no（模拟，未修改业务代码）")
+        print("=" * 60)
+        print()
+        print(f"EXECUTION_MODE={result.execution_mode}")
+        print(f"RUN_ID={result.run_id}")
+        print(f"TASK_ID={result.task_id}")
+        print(f"ACCEPTANCE_STATUS={result.acceptance_status}")
+        print(f"CHECK_RESULT={result.check_result}")
+        print(f"CHILD_EXIT_CODE={result.child_exit_code}")
+        print(f"CHILD_CHECK_RESULT={result.child_check_result}")
+        print(f"CHILD_TASK_STATUS={result.child_task_status}")
+        print(f"PARSED_STDOUT_STATUS={result.parsed_stdout_status}")
+        print(f"PARSED_STDERR_STATUS={result.parsed_stderr_status}")
+        print(f"WORKSPACE_STATUS_BEFORE={result.workspace_status_before}")
+        print(f"WORKSPACE_STATUS_AFTER={result.workspace_status_after}")
+        print(f"WORKSPACE_CHANGE_CLASSIFICATION={result.workspace_change_classification}")
+        report_str = ",".join(result.report_paths) if result.report_paths else "NONE"
+        print(f"REPORT_PATHS={report_str}")
+        print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required}")
+        print(f"AUTO_CONTINUE_TO_NEXT_TASK={result.auto_continue_to_next_task}")
+        print(f"AUTO_GIT_BACKUP={result.auto_git_backup}")
+        print(f"ACCEPTANCE_REQUIRED_REASON={result.acceptance_required_reason}")
+        print(f"STOP_REASON={result.stop_reason}")
+        print(f"NEXT_ACTION={result.next_action}")
+        print()
+        print(f"Message：{result.message}")
     elif args[0] == "plan-project-loop":
         # T059 continuous task planner dry-run
         max_tasks_val = 3

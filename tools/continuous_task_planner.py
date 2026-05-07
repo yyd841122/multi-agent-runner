@@ -2592,3 +2592,217 @@ def evaluate_first_real_run_acceptance(
             f"AUTO_CONTINUE_TO_NEXT_TASK=false。"
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# T093: Simulated First Real-Run Acceptance Parser
+# ---------------------------------------------------------------------------
+
+_SIMULATED_ACCEPTANCE_SAMPLES: dict[str, dict] = {
+    "pass": {
+        "description": "正常成功，workspace clean，有报告",
+        "stdout": (
+            "TASK_ID=T093\n"
+            "CHECK_RESULT=pass\n"
+            "TASK_STATUS=done\n"
+            "NEXT_PENDING=T094\n"
+            "REAL_TASK_EXECUTION=yes\n"
+            "CLAUDE_CODE_CALLED=yes\n"
+            "BUSINESS_CODE_CHANGED=no\n"
+            "WORKTREE_STATUS=clean\n"
+            "REPORT_PATHS=reports/dev/T093-dev-report.md,reports/checks/T093-simulated-acceptance-check.md\n"
+            "FINAL_STATUS=COMPLETE\n"
+            "FULL_LOOP_REPORT=reports/T093-full-loop-report.md\n"
+        ),
+        "workspace_after": "clean",
+        "workspace_classification": "clean",
+        "claude_code_called": "yes",
+        "business_code_changed": "no",
+        "expected_acceptance_status": "ready_for_human_review",
+    },
+    "fail": {
+        "description": "任务失败，check_result=fail",
+        "stdout": (
+            "TASK_ID=T093\n"
+            "CHECK_RESULT=fail\n"
+            "TASK_STATUS=failed\n"
+            "NEXT_PENDING=\n"
+            "REAL_TASK_EXECUTION=yes\n"
+            "CLAUDE_CODE_CALLED=yes\n"
+            "BUSINESS_CODE_CHANGED=no\n"
+            "WORKTREE_STATUS=clean\n"
+            "REPORT_PATHS=reports/dev/T093-dev-report.md\n"
+            "FINAL_STATUS=FAILED\n"
+            "FULL_LOOP_REPORT=reports/T093-full-loop-report.md\n"
+        ),
+        "workspace_after": "clean",
+        "workspace_classification": "clean",
+        "claude_code_called": "yes",
+        "business_code_changed": "no",
+        "expected_acceptance_status": "blocked",
+    },
+    "missing-check-result": {
+        "description": "缺少 CHECK_RESULT，解析失败",
+        "stdout": (
+            "TASK_ID=T093\n"
+            "TASK_STATUS=done\n"
+            "REAL_TASK_EXECUTION=yes\n"
+            "CLAUDE_CODE_CALLED=yes\n"
+            "BUSINESS_CODE_CHANGED=no\n"
+            "WORKTREE_STATUS=clean\n"
+        ),
+        "workspace_after": "clean",
+        "workspace_classification": "clean",
+        "claude_code_called": "yes",
+        "business_code_changed": "no",
+        "expected_acceptance_status": "failed_to_parse",
+    },
+    "unsafe-unknown": {
+        "description": "workspace dirty_unknown，不安全",
+        "stdout": (
+            "TASK_ID=T093\n"
+            "CHECK_RESULT=pass\n"
+            "TASK_STATUS=done\n"
+            "REAL_TASK_EXECUTION=yes\n"
+            "CLAUDE_CODE_CALLED=unknown\n"
+            "BUSINESS_CODE_CHANGED=unknown\n"
+            "WORKTREE_STATUS=dirty_unknown\n"
+            "REPORT_PATHS=reports/dev/T093-dev-report.md\n"
+        ),
+        "workspace_after": "dirty_unknown",
+        "workspace_classification": "dirty_unknown",
+        "claude_code_called": "unknown",
+        "business_code_changed": "unknown",
+        "expected_acceptance_status": "unsafe_to_continue",
+    },
+    "dirty-unexpected": {
+        "description": "workspace dirty_unexpected，非预期变更",
+        "stdout": (
+            "TASK_ID=T093\n"
+            "CHECK_RESULT=pass\n"
+            "TASK_STATUS=done\n"
+            "REAL_TASK_EXECUTION=yes\n"
+            "CLAUDE_CODE_CALLED=yes\n"
+            "BUSINESS_CODE_CHANGED=yes\n"
+            "WORKTREE_STATUS=dirty_unexpected\n"
+            "REPORT_PATHS=reports/dev/T093-dev-report.md\n"
+        ),
+        "workspace_after": "dirty_unexpected",
+        "workspace_classification": "dirty_unexpected",
+        "claude_code_called": "yes",
+        "business_code_changed": "yes",
+        "expected_acceptance_status": "blocked",
+    },
+    "missing-report-paths": {
+        "description": "report_paths 缺失，阻塞",
+        "stdout": (
+            "TASK_ID=T093\n"
+            "CHECK_RESULT=pass\n"
+            "TASK_STATUS=done\n"
+            "REAL_TASK_EXECUTION=yes\n"
+            "CLAUDE_CODE_CALLED=yes\n"
+            "BUSINESS_CODE_CHANGED=no\n"
+            "WORKTREE_STATUS=clean\n"
+        ),
+        "workspace_after": "clean",
+        "workspace_classification": "clean",
+        "claude_code_called": "yes",
+        "business_code_changed": "no",
+        "expected_acceptance_status": "blocked",
+    },
+    "pass-dirty-reports": {
+        "description": "成功，只有报告变更",
+        "stdout": (
+            "TASK_ID=T093\n"
+            "CHECK_RESULT=pass\n"
+            "TASK_STATUS=done\n"
+            "NEXT_PENDING=T094\n"
+            "REAL_TASK_EXECUTION=yes\n"
+            "CLAUDE_CODE_CALLED=yes\n"
+            "BUSINESS_CODE_CHANGED=no\n"
+            "WORKTREE_STATUS=dirty_reports_only\n"
+            "REPORT_PATHS=reports/dev/T093-dev-report.md,reports/checks/T093-simulated-acceptance-check.md\n"
+            "FINAL_STATUS=COMPLETE\n"
+        ),
+        "workspace_after": "dirty_reports_only",
+        "workspace_classification": "dirty_reports_only",
+        "claude_code_called": "yes",
+        "business_code_changed": "no",
+        "expected_acceptance_status": "ready_for_human_review",
+    },
+    "task-status-failed": {
+        "description": "task_status=failed，阻塞",
+        "stdout": (
+            "TASK_ID=T093\n"
+            "CHECK_RESULT=pass\n"
+            "TASK_STATUS=failed\n"
+            "REAL_TASK_EXECUTION=yes\n"
+            "CLAUDE_CODE_CALLED=yes\n"
+            "BUSINESS_CODE_CHANGED=no\n"
+            "WORKTREE_STATUS=clean\n"
+            "REPORT_PATHS=reports/dev/T093-dev-report.md\n"
+        ),
+        "workspace_after": "clean",
+        "workspace_classification": "clean",
+        "claude_code_called": "yes",
+        "business_code_changed": "no",
+        "expected_acceptance_status": "blocked",
+    },
+}
+
+
+def run_simulated_first_real_run_acceptance_parser(
+    project_path: str | Path,
+    task_id: str | None = None,
+    sample: str = "pass",
+) -> FirstRealRunAcceptanceResult:
+    """使用内置 sample stdout 模拟首次真实调用后的验收流程。
+
+    链式调用：
+    1. 从 _SIMULATED_ACCEPTANCE_SAMPLES 获取 sample 数据
+    2. parse_child_command_output() 解析 stdout
+    3. evaluate_first_real_run_acceptance() 评估验收状态
+    4. 返回 FirstRealRunAcceptanceResult
+
+    不执行任何命令，不调用 run_project_task_full，不调用 Claude Code。
+
+    Args:
+        project_path: 项目路径
+        task_id: 任务 ID（覆盖 sample 中的 task_id）
+        sample: sample 名称，默认 "pass"
+
+    Returns:
+        FirstRealRunAcceptanceResult
+
+    Raises:
+        ValueError: sample 不存在时
+    """
+    if sample not in _SIMULATED_ACCEPTANCE_SAMPLES:
+        available = ", ".join(sorted(_SIMULATED_ACCEPTANCE_SAMPLES.keys()))
+        raise ValueError(
+            f"unknown sample: {sample}. Available: {available}"
+        )
+
+    sample_data = _SIMULATED_ACCEPTANCE_SAMPLES[sample]
+
+    # Step 1: parse child command output
+    child_result = parse_child_command_output(
+        stdout_text=sample_data["stdout"],
+        stderr_text="",
+        exit_code=0,
+    )
+
+    # Step 2: evaluate acceptance
+    acceptance = evaluate_first_real_run_acceptance(
+        project_path=project_path,
+        task_id=task_id or child_result.task_id or None,
+        child_parse_result=child_result,
+        workspace_status_before="clean",
+        workspace_status_after=sample_data["workspace_after"],
+        workspace_change_classification=sample_data["workspace_classification"],
+        run_project_task_full_called="yes",
+        claude_code_called=sample_data["claude_code_called"],
+        business_code_changed=sample_data["business_code_changed"],
+    )
+
+    return acceptance
