@@ -2804,17 +2804,25 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T099 验证 simulated real execution pass/fail
 
-状态：pending
+状态：done
 角色：Tester
 目标：验证模拟执行链路在 pass/fail 场景下的行为正确性。
 
 ### 验收标准
 
-- 验证 simulated pass → ready_for_human_review
-- 验证 simulated fail → blocked
-- 验证 simulated exception → blocked
-- 验证所有场景停止等待人工验收
-- 不真实调用 run_project_task_full
+- [x] 验证 simulated pass → ready_for_human_review
+- [x] 验证 simulated fail → blocked
+- [x] 验证 simulated exception → blocked / failed_to_parse / unsafe_to_continue
+- [x] 验证所有场景停止等待人工验收
+- [x] 不真实调用 run_project_task_full
+
+### 输出文件
+
+- reports/checks/T099-simulated-real-execution-pass-fail-check.md
+- reports/dev/T099-dev-report.md
+
+<!-- NEXT_PENDING=T100 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ---
 
