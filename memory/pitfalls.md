@@ -543,3 +543,10 @@
 - 不要在 dry-run 中创建 reports/diagnostics/tool-use 目标文件。文件只在 T114 真实执行时创建。
 - 不要在 runner.py 中将 claude-stability-plan 命令误接入 run_project_task_full。该命令只读不执行。
 - 不要在 StabilityValidationPlanResult 中将 claude_code_called 写成 yes。dry-run 模式下始终为 no。
+
+## T113 Layer 1 text-only stability validation 避坑
+
+- 不要因为 Layer 1 6/6 pass 就认为可以恢复 run-project-task-full。Layer 1 只验证 text-only，不验证 tool-use。
+- 不要合并 6 次调用为一次执行。协议要求逐条执行，以便在任意一次 timeout/failed 时立即停止。
+- 不要忽略 "好的" 等非 "OK" 输出。协议允许 "OK 或等价极简确认"。
+- 不要在 Layer 1 pass 后自动进入 Layer 2。需人工确认后才允许进入下一层。

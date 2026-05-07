@@ -773,3 +773,10 @@ G006 已完成完整闭环：
 - **数据结构应包含完整安全输出字段。** StabilityValidationPlanResult 的 20 个字段覆盖了所有安全检查需求（claude_code_called, bypass_permissions_used, business_code_changed 等）。
 - **报告 skeleton 应预填待执行字段。** "*(待 T11x 执行后填写)*" 占位符让 T113/T114/T115 只需填写实际结果即可。
 - **CLI 命令应支持分层查看和全量查看。** --layer 1|2|3|all 满足不同使用场景，--skeleton 可预览报告结构。
+
+### T113 Layer 1 text-only stability validation 经验
+
+- **6/6 text-only 全部秒级返回确认 text-only 链路稳定。** default 模式 3/3 pass，acceptEdits 模式 3/3 pass，全部 <5s 返回。
+- **text-only pass 只能说明文本输出链路稳定，不能说明 tool-use 或 run-project-task-full 已可恢复。** 需继续 T114 Layer 2 验证 tool-use，T115 Layer 3 验证 runner-level。
+- **"好的" 也是等价确认。** 协议允许 "OK 或等价极简确认"，"好的" 属于等价确认。
+- **先跑 dry-run plan 再执行真实调用是安全的。** dry-run 确认 COMMAND_COUNT=6 和所有安全字段正确后，再逐步执行 6 次真实调用。

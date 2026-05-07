@@ -3229,7 +3229,7 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T113 执行 Layer 1 text-only stability validation
 
-状态：pending
+状态：done
 角色：Tester
 目标：执行 Layer 1 文本输出稳定性验证（连续 3 次 default + 3 次 acceptEdits）。
 
@@ -3239,6 +3239,18 @@ T054 原始目标已经由以下任务前置完成：
 - 全部秒级返回
 - 不执行写文件操作
 - 不使用 run-project-task-full
+
+### 完成说明
+
+- 6/6 text-only 全部 pass（default 3/3 + acceptEdits 3/3）
+- 全部秒级返回（<5s）
+- 无 tool-use 触发
+- 无文件修改
+- workspace 保持 clean
+- LAYER_1_STATUS=pass, TEXT_ONLY_STABILITY=stable
+
+<!-- NEXT_PENDING=T114 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ---
 
