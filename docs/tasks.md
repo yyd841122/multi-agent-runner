@@ -2724,22 +2724,37 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T096 执行第一次真实 run-project-task-full 调用
+## T096 实现 first real-run execute-once safety gate ✅
 
-状态：pending
+状态：done ✅
 角色：Developer
-目标：解除 safety shell，连接真实 run_project_task_full()，执行第一次真实调用。
+目标：实现 first real-run execute-once safety gate（第三重确认 + 新参数 + preflight 扩展），不真实调用 run-project-task-full。
 
 ### 验收标准
 
-- 真实调用 run_project_task_full(project_path, task_id)
-- 捕获 FullTaskLoopResult
-- 构建 FirstRealRunAcceptanceResult
-- workspace 前后检查
-- CLAUDE_CODE_CALLED 推断
-- BUSINESS_CODE_CHANGED 推断
-- 输出验收结果
-- 停止等待人工确认
+- ✅ 新增 FirstRealRunExecuteOnceSafetyResult 数据结构（25 字段）
+- ✅ 新增 REAL_EXECUTE_CONFIRM_PHRASE = "EXECUTE_REAL_RUN_ONCE"
+- ✅ 新增 validate_first_real_run_execute_once_safety() 函数
+- ✅ 复用 validate_real_call_safety() 做双重确认前置检查
+- ✅ 新增第三重确认检查（missing / rejected / accepted）
+- ✅ 新增 max_tasks=1 only 检查
+- ✅ runner.py 新增 --real-execute-once 参数
+- ✅ runner.py 新增 --real-execute-confirm 参数
+- ✅ 不带 --real-execute-once 时保持 T085 行为不变
+- ✅ 16 个验证场景全部 PASS
+- ✅ 不真实调用 run_project_task_full
+- ✅ 不调用 Claude Code
+- ✅ 不修改业务代码
+
+### 产出文件
+
+- ✅ tools/continuous_task_planner.py（新增 FirstRealRunExecuteOnceSafetyResult + validate_first_real_run_execute_once_safety）
+- ✅ runner.py（新增 --real-execute-once + --real-execute-confirm CLI）
+- ✅ reports/checks/T096-first-real-run-execute-once-safety-gate-check.md
+- ✅ reports/dev/T096-dev-report.md
+
+<!-- NEXT_PENDING=T097 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ---
 

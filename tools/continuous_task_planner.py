@@ -30,6 +30,8 @@ EXECUTE_CONFIRM_PHRASE = "EXECUTE_PROJECT_LOOP"
 
 REAL_CALL_CONFIRM_PHRASE = "EXECUTE_REAL_TASK_ONCE"
 
+REAL_EXECUTE_CONFIRM_PHRASE = "EXECUTE_REAL_RUN_ONCE"
+
 
 # ---------------------------------------------------------------------------
 # 数据结构
@@ -2806,3 +2808,345 @@ def run_simulated_first_real_run_acceptance_parser(
     )
 
     return acceptance
+
+
+# ---------------------------------------------------------------------------
+# T096: First Real-Run Execute-Once Safety Gate
+# ---------------------------------------------------------------------------
+
+@dataclass
+class FirstRealRunExecuteOnceSafetyResult:
+    """首次真实执行 execute-once safety gate 检查结果。
+
+    接收 --real-execute-once 和 --real-execute-confirm，
+    复用已有 execute / real-call / run-once safety gate 逻辑，
+    新增第三重确认 EXECUTE_REAL_RUN_ONCE 检查。
+    不调用 run-project-task-full，不调用 Claude Code，不修改业务代码。
+    """
+
+    project: str
+    run_id: str
+    task_id: str | None                       # 当前 NEXT_PENDING
+    execution_mode: str                       # "first_real_run_execute_once_safety_gate"
+    execute_confirm_status: str               # "accepted" / "missing" / "rejected"
+    real_confirm_status: str                  # "accepted" / "missing" / "rejected"
+    real_execute_confirm_status: str          # "accepted" / "missing" / "rejected"
+    real_execute_once_requested: bool         # --real-execute-once 是否传入
+    real_execute_allowed: bool                # 全部检查通过才为 True
+    real_task_execution: str                  # "no"（safety gate 不执行）
+    run_project_task_full_called: str         # "no"
+    claude_code_called: str                   # "no"
+    business_code_changed: str                # "no"
+    workspace_status_before: str              # "clean" / "dirty"
+    preflight_status: str                     # "passed" / "failed"
+    max_tasks: int
+    planned_tasks: list[str]                  # 计划执行的任务 ID 列表
+    auto_continue_to_next_task: str           # "false"
+    auto_git_backup: str                      # "false"
+    human_review_required: str                # "true"
+    check_result: str                         # "pass" / "fail"
+    stop_reason: str | None                   # 停止原因
+    next_action: str                          # 建议下一步
+    message: str                              # 详细消息
+
+
+def validate_first_real_run_execute_once_safety(
+    project_path: str | Path,
+    max_tasks: int = 1,
+    confirm: str | None = None,
+    real_confirm: str | None = None,
+    real_execute_once: bool = False,
+    real_execute_confirm: str | None = None,
+    real_call_dry_run: bool = False,
+    adapter_dry_run: bool = False,
+    real_call_stub: bool = False,
+    dry_run_flag: bool = False,
+) -> FirstRealRunExecuteOnceSafetyResult:
+    """首次真实执行 execute-once safety gate。
+
+    复用已有 validate_real_call_safety() 做双重确认前置检查。
+    新增第三重确认 EXECUTE_REAL_RUN_ONCE 检查。
+    检查 max_tasks=1、planned task 非空、workspace clean。
+    不调用 run-project-task-full，不调用 Claude Code，不修改业务代码。
+
+    Args:
+        project_path: 项目根目录
+        max_tasks: 用户请求的 max_tasks（必须为 1）
+        confirm: 第一重确认短语
+        real_confirm: 第二重确认短语
+        real_execute_once: 是否传入 --real-execute-once
+        real_execute_confirm: 第三重确认短语
+        real_call_dry_run: 是否同时传入了 --real-call-dry-run
+        adapter_dry_run: 是否同时传入了 --adapter-dry-run
+        real_call_stub: 是否同时传入了 --real-call-stub
+        dry_run_flag: 是否同时传入了 --dry-run
+
+    Returns:
+        FirstRealRunExecuteOnceSafetyResult
+    """
+    project_path = Path(project_path)
+    run_id = _generate_run_id()
+
+    # --- 默认失败结果 ---
+    def _fail(
+        real_execute_confirm_status: str = "missing",
+        stop_reason: str | None = None,
+        next_action: str = "fix_execute_once_preflight_or_confirm",
+        message: str = "",
+        real_confirm_status: str = "missing",
+        execute_confirm_status: str = "missing",
+        preflight_status: str = "failed",
+        task_id: str | None = None,
+        planned_tasks: list[str] | None = None,
+        workspace_status_before: str = "unknown",
+    ) -> FirstRealRunExecuteOnceSafetyResult:
+        return FirstRealRunExecuteOnceSafetyResult(
+            project=str(project_path),
+            run_id=run_id,
+            task_id=task_id,
+            execution_mode="first_real_run_execute_once_safety_gate",
+            execute_confirm_status=execute_confirm_status,
+            real_confirm_status=real_confirm_status,
+            real_execute_confirm_status=real_execute_confirm_status,
+            real_execute_once_requested=real_execute_once,
+            real_execute_allowed=False,
+            real_task_execution="no",
+            run_project_task_full_called="no",
+            claude_code_called="no",
+            business_code_changed="no",
+            workspace_status_before=workspace_status_before,
+            preflight_status=preflight_status,
+            max_tasks=max_tasks,
+            planned_tasks=planned_tasks or [],
+            auto_continue_to_next_task="false",
+            auto_git_backup="false",
+            human_review_required="true",
+            check_result="fail",
+            stop_reason=stop_reason,
+            next_action=next_action,
+            message=message,
+        )
+
+    # --- 1. 如果没有 --real-execute-once，不进入此 gate ---
+    if not real_execute_once:
+        return _fail(
+            real_execute_confirm_status="missing",
+            stop_reason="real_execute_once_not_requested",
+            next_action="use_run_once_safety_shell",
+            message=(
+                "execute-once safety gate：未收到 --real-execute-once 请求。"
+                "如果只需要 safety shell，请使用 --real-call-run-once。"
+            ),
+        )
+
+    # --- 2. 模式互斥检查 ---
+    if real_call_dry_run:
+        return _fail(
+            stop_reason="mode_conflict_real_call_dry_run",
+            next_action="remove_real_call_dry_run",
+            message=(
+                "错误：--real-execute-once 和 --real-call-dry-run 互斥，"
+                "不能同时使用。"
+            ),
+        )
+
+    if adapter_dry_run:
+        return _fail(
+            stop_reason="mode_conflict_adapter_dry_run",
+            next_action="remove_adapter_dry_run",
+            message=(
+                "错误：--real-execute-once 和 --adapter-dry-run 互斥，"
+                "不能同时使用。"
+            ),
+        )
+
+    if real_call_stub:
+        return _fail(
+            stop_reason="mode_conflict_real_call_stub",
+            next_action="remove_real_call_stub",
+            message=(
+                "错误：--real-execute-once 和 --real-call-stub 互斥，"
+                "不能同时使用。"
+            ),
+        )
+
+    if dry_run_flag:
+        return _fail(
+            stop_reason="mode_conflict_dry_run",
+            next_action="remove_dry_run",
+            message=(
+                "错误：--real-execute-once 和 --dry-run 互斥，"
+                "不能同时使用。"
+            ),
+        )
+
+    # --- 3. 复用 validate_real_call_safety() 做双重确认前置检查 ---
+    safety = validate_real_call_safety(
+        project_root=project_path,
+        max_tasks=max_tasks,
+        execute_requested=True,
+        confirm=confirm,
+        real_call_requested=True,
+        real_confirm=real_confirm,
+        adapter_dry_run=False,
+        real_call_stub=False,
+    )
+
+    # 映射第一重和第二重确认状态
+    execute_confirm_status = "accepted" if safety.execute_allowed else (
+        "missing" if not safety.execute_allowed and confirm is None else "rejected"
+    )
+    real_confirm_status = safety.real_confirm_status
+
+    # --- 4. 双重确认不通过 → 返回失败 ---
+    if not safety.real_call_allowed:
+        return _fail(
+            real_execute_confirm_status="missing",
+            execute_confirm_status=execute_confirm_status,
+            real_confirm_status=real_confirm_status,
+            stop_reason=safety.stop_reason,
+            next_action=safety.next_action,
+            message=(
+                f"execute-once safety gate：双重确认前置检查未通过"
+                f"（{safety.stop_reason}）。"
+                f"REAL_TASK_EXECUTION=no。"
+            ),
+            task_id=safety.task_id,
+            planned_tasks=safety.planned_tasks,
+            workspace_status_before=safety.workspace_status,
+        )
+
+    # --- 5. 第三重确认检查 ---
+    if real_execute_confirm is None:
+        return _fail(
+            real_execute_confirm_status="missing",
+            execute_confirm_status="accepted",
+            real_confirm_status="accepted",
+            stop_reason="real_execute_confirm_missing",
+            next_action="provide_real_execute_confirm_phrase",
+            message=(
+                f"错误：缺少 --real-execute-confirm 参数。"
+                f"必须使用 --real-execute-confirm {REAL_EXECUTE_CONFIRM_PHRASE}"
+            ),
+            task_id=safety.task_id,
+            planned_tasks=safety.planned_tasks,
+            workspace_status_before=safety.workspace_status,
+            preflight_status="passed",
+        )
+
+    if real_execute_confirm != REAL_EXECUTE_CONFIRM_PHRASE:
+        return _fail(
+            real_execute_confirm_status="rejected",
+            execute_confirm_status="accepted",
+            real_confirm_status="accepted",
+            stop_reason="real_execute_confirm_rejected",
+            next_action="provide_correct_real_execute_confirm_phrase",
+            message=(
+                f"错误：第三重确认短语 '{real_execute_confirm}' 不合法。"
+                f"必须精确使用 --real-execute-confirm {REAL_EXECUTE_CONFIRM_PHRASE}"
+            ),
+            task_id=safety.task_id,
+            planned_tasks=safety.planned_tasks,
+            workspace_status_before=safety.workspace_status,
+            preflight_status="passed",
+        )
+
+    # --- 6. max_tasks 必须为 1 ---
+    if max_tasks != 1:
+        return _fail(
+            real_execute_confirm_status="accepted",
+            execute_confirm_status="accepted",
+            real_confirm_status="accepted",
+            stop_reason="max_tasks_not_one",
+            next_action="use_max_tasks_1_for_execute_once",
+            message=(
+                f"错误：--real-execute-once 当前只支持 max_tasks=1，"
+                f"请求的 max_tasks={max_tasks}。"
+                f"请使用 --max-tasks 1。"
+            ),
+            task_id=safety.task_id,
+            planned_tasks=safety.planned_tasks,
+            workspace_status_before=safety.workspace_status,
+            preflight_status="passed",
+        )
+
+    # --- 7. planned task 非空 ---
+    if not safety.planned_tasks:
+        return _fail(
+            real_execute_confirm_status="accepted",
+            execute_confirm_status="accepted",
+            real_confirm_status="accepted",
+            stop_reason="no_planned_tasks",
+            next_action="check_tasks_or_add_new",
+            message="错误：没有可执行的 pending 任务。",
+            task_id=safety.task_id,
+            workspace_status_before=safety.workspace_status,
+            preflight_status="passed",
+        )
+
+    task_id = safety.task_id
+
+    # --- 8. workspace clean（safety gate 已检查，但再次确认） ---
+    workspace_clean = _check_workspace_clean(project_path)
+    workspace_status_before = "clean" if workspace_clean else "dirty"
+
+    if not workspace_clean:
+        return FirstRealRunExecuteOnceSafetyResult(
+            project=str(project_path),
+            run_id=run_id,
+            task_id=task_id,
+            execution_mode="first_real_run_execute_once_safety_gate",
+            execute_confirm_status="accepted",
+            real_confirm_status="accepted",
+            real_execute_confirm_status="accepted",
+            real_execute_once_requested=True,
+            real_execute_allowed=False,
+            real_task_execution="no",
+            run_project_task_full_called="no",
+            claude_code_called="no",
+            business_code_changed="no",
+            workspace_status_before="dirty",
+            preflight_status="failed",
+            max_tasks=max_tasks,
+            planned_tasks=safety.planned_tasks,
+            auto_continue_to_next_task="false",
+            auto_git_backup="false",
+            human_review_required="true",
+            check_result="fail",
+            stop_reason="workspace_not_clean",
+            next_action="commit_or_stash_changes",
+            message="错误：工作区不 clean，请先提交或 stash 变更。",
+        )
+
+    # --- 全部检查通过 ---
+    return FirstRealRunExecuteOnceSafetyResult(
+        project=str(project_path),
+        run_id=run_id,
+        task_id=task_id,
+        execution_mode="first_real_run_execute_once_safety_gate",
+        execute_confirm_status="accepted",
+        real_confirm_status="accepted",
+        real_execute_confirm_status="accepted",
+        real_execute_once_requested=True,
+        real_execute_allowed=True,
+        real_task_execution="no",
+        run_project_task_full_called="no",
+        claude_code_called="no",
+        business_code_changed="no",
+        workspace_status_before="clean",
+        preflight_status="passed",
+        max_tasks=1,
+        planned_tasks=safety.planned_tasks,
+        auto_continue_to_next_task="false",
+        auto_git_backup="false",
+        human_review_required="true",
+        check_result="pass",
+        stop_reason="execute_once_safety_gate_only",
+        next_action="ready_for_T098_simulated_child_call",
+        message=(
+            f"execute-once safety gate 通过：三重确认正确，max_tasks=1，"
+            f"工作区 clean，任务 {task_id} 可执行。"
+            f"REAL_TASK_EXECUTION=no，"
+            f"RUN_PROJECT_TASK_FULL_CALLED=no（safety gate 不执行任务）。"
+        ),
+    )
