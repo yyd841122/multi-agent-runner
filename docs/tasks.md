@@ -2680,22 +2680,25 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T094 验证 first real-run acceptance pass/fail 场景
+## T094 验证 first real-run acceptance pass/fail 场景 ✅
 
-状态：pending
+状态：done ✅
 角色：Tester
 目标：验证验收协议的 pass/fail/blocked/unsafe 场景（阶段 B+C+D 模拟数据）。
 
 ### 验收标准
 
-- 验证 pass 后 ready_for_human_review
-- 验证 fail 后 blocked
-- 验证异常后 failed_to_parse
-- 验证 dirty_unexpected 后 unsafe_to_continue
-- 验证 unknown 字段不阻塞验收
-- 验证 pass 后不自动继续
-- 验证 fail 后不自动返工
-- 不真实调用 run_project_task_full
+- ✅ 验证 pass 后 ready_for_human_review（2 个 pass 场景）
+- ✅ 验证 fail 后 blocked（4 个 blocked 场景）
+- ✅ 验证异常后 failed_to_parse（1 个场景）
+- ✅ 验证 dirty_unexpected 后 unsafe_to_continue（1 个场景）
+- ✅ 验证 unknown 字段导致 blocked（不降级为 no）
+- ✅ 验证 pass 后不自动继续（auto_continue=false）
+- ✅ 验证 fail 后不自动返工（auto_continue=false）
+- ✅ 不真实调用 run_project_task_full
+
+<!-- NEXT_PENDING=T095 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ---
 
