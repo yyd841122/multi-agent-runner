@@ -2934,15 +2934,52 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T103 诊断 Claude Code CLI / 模型代理 / API 超时问题
 
-状态：pending
+状态：review_required
 角色：Developer
 目标：诊断 Claude Code 通过 subprocess 调用时 600 秒超时的根因，并提出修复方案。
 
 ### 验收标准
 
-- 确认 Claude Code CLI 在 subprocess 模式下的最小执行能力
-- 检查 API 连接、代理设置、网络状态
-- 测试不同的 Claude Code 调用方式（参数、prompt 传递方式）
-- 提出 timeout 修复或调用方式改进方案
-- 不盲目重跑真实任务
+- [x] 确认 Claude Code CLI 在 subprocess 模式下的最小执行能力
+- [x] 检查 API 连接、代理设置、网络状态
+- [x] 测试不同的 Claude Code 调用方式（参数、prompt 传递方式）
+- [x] 提出 timeout 修复或调用方式改进方案
+- [x] 不盲目重跑真实任务
+- [x] 不修改业务代码
+
+### 诊断结果
+
+- CLAUDE_CLI_FOUND=yes, CLAUDE_VERSION=2.1.104
+- ANTHROPIC_BASE_URL=https://open.bigmodel.cn/api/anthropic（智谱云端直连）
+- ANTHROPIC_MODEL=glm-5.1
+- 诊断分类：C — acceptEdits + tool use 兼容性问题
+- claude --print "OK" → pass
+- claude --acceptEdits --print "OK" → pass
+- claude --acceptEdits --print "创建文件" → **timeout**
+- 默认模式 + "创建文件" → pass（权限拒绝后正常返回）
+
+### 输出文件
+
+- reports/checks/T103-claude-zhipu-timeout-diagnostic.md
+- reports/dev/T103-dev-report.md
+
+<!-- NEXT_PENDING=T104 -->
+<!-- NEXT_STAGE=Stage 7 -->
+
+---
+
+## T104 设计 Claude Code + 智谱代理 tool-use 兼容性修复方案
+
+状态：pending
+角色：Architect
+目标：设计修复 Claude Code 在 acceptEdits 模式下与智谱代理 tool use 兼容性问题的方案。
+
+### 验收标准
+
+- 分析 acceptEdits + tool use 超时的具体技术原因
+- 评估多个候选修复方向（权限模式调整、调用参数调整、模型切换、API 兼容层修复）
+- 选择最可行的修复方案
+- 设计验证步骤（最小验证 → G008 验证 → 完整闭环验证）
+- 不盲目修改配置
+- 不执行真实任务
 - 不修改业务代码

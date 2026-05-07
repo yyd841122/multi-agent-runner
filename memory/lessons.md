@@ -684,3 +684,14 @@ G006 已完成完整闭环：
 - 后续不要继续盲目重跑真实任务，应先进行 Claude Code 连接诊断（T103）。
 - Claude Code 通过 `echo hello | claude --print` 方式可以秒级响应，但通过 subprocess 传递长 prompt 参数时可能行为不同。需要对比两种调用方式。
 - Safety gate 机制在 dirty workspace 下正确阻止执行。通过 stash → gate → pop 流程可以临时绕过，但需注意执行后恢复。
+
+## T103 Claude Code + 智谱代理超时诊断经验
+
+### 核心经验
+
+- **acceptEdits + tool use 是超时的根因。** `claude --print "OK"` 秒级返回，`claude --acceptEdits --print "OK"` 秒级返回，但 `claude --acceptEdits --print "创建文件..."` 120 秒无响应。
+- 默认模式下请求工具调用（如创建文件），权限被拒绝后能正常返回。但在 acceptEdits 模式下，工具被实际执行后，需要将 tool_result 发回 API 等待下一轮响应，此时卡住。
+- **诊断分类 C：CLI 正常、文本正常、acceptEdits 文本正常，但 acceptEdits + tool use 超时。** 这说明问题出在智谱 API 对 Claude Code tool_result 消息的兼容性上。
+- 当前使用智谱云端直连（`open.bigmodel.cn/api/anthropic`），不是本地代理。ANHTROPIC_MODEL=glm-5.1。
+- 后续必须先验证最小 tool use 测试，再验证 acceptEdits，再恢复 run-project-task-full。不要继续盲目重跑真实任务。
+- 修复方向包括：更换权限模式、调整调用参数、检查智谱 API tool use 兼容性、更换模型或代理。

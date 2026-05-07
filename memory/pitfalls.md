@@ -461,3 +461,11 @@
 - 不要忽略 Claude Code subprocess 调用方式差异。`echo hello | claude --print` 秒级响应，但 subprocess 传递长 prompt 参数可能行为完全不同。
 - Safety gate 在 dirty workspace 下会阻止执行。如果需要临时绕过（如 stash → gate → pop），必须确保 pop 后再执行真实调用。
 - 不要把 T102 标记为 done。smoke task 未成功完成，应标记为 review_required。
+
+## T103 Claude Code + 智谱代理超时诊断避坑
+
+- 不要在 acceptEdits + tool use 兼容性问题未修复前继续重跑真实任务。根因已定位：acceptEdits 模式下工具调用后等待 API 响应 tool_result 时卡住。
+- 不要只测 `claude --print "OK"` 就判断 Claude Code 正常。纯文本回复和工具调用是完全不同的代码路径，必须单独测试 tool use 场景。
+- 不要忽略默认模式和 acceptEdits 模式的行为差异。默认模式下工具调用被权限拒绝后能正常返回（不需要等 API 响应），但 acceptEdits 模式下工具被执行后需要等 API 响应。
+- 不要假设智谱 API 完全兼容 Anthropic API。tool_use / tool_result 消息格式可能存在细微差异，导致 Claude Code 无限等待。
+- 诊断时应该分层测试：CLI 基础 → 文本输出 → acceptEdits 文本 → acceptEdits + tool use，逐步缩小问题范围。
