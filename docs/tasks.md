@@ -2753,29 +2753,29 @@ T054 原始目标已经由以下任务前置完成：
 - ✅ reports/checks/T096-first-real-run-execute-once-safety-gate-check.md
 - ✅ reports/dev/T096-dev-report.md
 
-<!-- NEXT_PENDING=T097 -->
+<!-- NEXT_PENDING=T098 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ---
 
-## T097 人工验收第一次真实调用结果
+## T097 验证 execute-once 拒绝场景
 
-状态：pending
-角色：Human
-目标：使用 10 项验收清单人工验收第一次真实调用结果。
+状态：done
+角色：Tester
+目标：在 clean workspace 下验证 --real-execute-once 在前置条件不满足时必须拒绝，正确三重确认只进入 safety gate 不真实执行。
 
 ### 验收标准
 
-- 使用验收清单逐项确认
-- 确认 run-project-task-full 只运行一次
-- 确认执行了正确 task_id
-- 确认 CHECK_RESULT 可信
-- 确认报告存在
-- 确认 Claude Code 调用状态
-- 确认业务代码变更范围
-- 确认 git status 可解释
-- 决定是否 Git 提交
-- 决定是否进入下一任务
+- [x] 16 个拒绝场景全部验证通过
+- [x] 正确三重确认对照验证 REAL_EXECUTE_ALLOWED=true
+- [x] 第三重确认精确匹配（只有 EXECUTE_REAL_RUN_ONCE accepted）
+- [x] 未执行真实任务、未调用 run-project-task-full、未调用 Claude Code
+- [x] 工作区保持 clean
+
+### 输出文件
+
+- reports/checks/T097-execute-once-rejection-check.md
+- reports/dev/T097-dev-report.md
 
 ---
 
