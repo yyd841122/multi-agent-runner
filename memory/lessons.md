@@ -750,3 +750,11 @@ G006 已完成完整闭环：
 - **tool-use 兼容性表现不稳定。** T103 超时 vs T108 通过，相同测试场景不同结果，单次 unexpected_pass 不代表彻底修复。
 - **恢复 run-project-task-full 前必须先做分层稳定性验证。** 设计了 Layer 1-4（text-only → single-file tool-use → runner-level smoke → full loop smoke），每层通过后才进入下一层。
 - **路线决策需要基于充分证据。** 推荐短期路线 A（分层验证），备用路线 B（官方 Claude 验证闭环），长期路线 C（runner 自执行 patch）。
+
+### T110 真实执行路线决策经验
+
+- **选择路线 A（继续智谱代理 + 分层稳定性验证）。** T108 unexpected_pass 说明 tool-use 不一定完全不可用，但 T100/T102 真实任务仍不稳定，短期应先做 Layer 1-3 分层验证再决定是否恢复真实任务。
+- **不能直接恢复 run-project-task-full。** 即使 T108 通过了一次最小 tool-use 测试，真实任务涉及更长 prompt、多轮工具调用，风险更高。
+- **路线 B（官方 Claude）作为备用。** 如果路线 A 在 Layer 2 就失败，考虑切换官方 Claude 验证闭环，确认问题确实在智谱代理而非系统本身。
+- **路线 C（runner 自执行 patch）是长期方向。** 无论短期选择哪条路线，长期都应考虑让 runner 自己应用文件修改，绕开 tool-use 依赖。
+- **分层验证（Layer 1-4）是科学评估兼容性的正确方法。** 任何一层失败就停止，进入路线决策，避免浪费时间和额度。

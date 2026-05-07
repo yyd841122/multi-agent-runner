@@ -3147,13 +3147,116 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T110 决策真实执行路线
 
-状态：pending
+状态：done
 角色：Decision Maker
 目标：基于 T107-T109 评估结果，决策真实执行路线。
 
 ### 验收标准
 
-- 形成正式路线决策文档
-- 三种可能结论：继续智谱 / 切换官方 Claude / runner 自执行 patch
-- 明确后续任务列表
-- 不执行真实任务
+- [x] 形成正式路线决策文档
+- [x] 三种可能结论：继续智谱 / 切换官方 Claude / runner 自执行 patch
+- [x] 明确后续任务列表
+- [x] 不执行真实任务
+
+### 完成说明
+
+- DECISION_OPTION=A（Continue Zhipu proxy with layered stability validation）
+- NEXT_EXECUTION_ALLOWED=no
+- NEXT_REAL_TASK_ALLOWED=no
+- NEXT_SMOKE_TEST_ALLOWED=no
+- 后续任务：T111-T116（分层稳定性验证）
+- 产出：docs/real-execution-route-decision.md
+
+<!-- NEXT_PENDING=T111 -->
+<!-- NEXT_STAGE=Stage 7 -->
+
+---
+
+## T111 设计 layered Claude Code stability validation protocol
+
+状态：pending
+角色：Architect
+目标：设计分层 Claude Code 稳定性验证的详细协议，包括每层的测试命令、通过标准、失败处理。
+
+### 验收标准
+
+- 设计 Layer 1-3 详细协议
+- 每层包含测试命令、通过标准、失败处理
+- 不执行真实调用
+- 不修改代码
+
+---
+
+## T112 实现 text-only stability check dry-run/report
+
+状态：pending
+角色：Developer
+目标：实现 text-only 稳定性验证的 dry-run 和报告生成能力。
+
+### 验收标准
+
+- 支持 dry-run 模式验证
+- 支持报告生成
+- 不调用 Claude Code
+- 不修改代码
+
+---
+
+## T113 执行 Layer 1 text-only stability validation
+
+状态：pending
+角色：Tester
+目标：执行 Layer 1 文本输出稳定性验证（连续 3 次 default + 3 次 acceptEdits）。
+
+### 验收标准
+
+- 6/6 全部通过
+- 全部秒级返回
+- 不执行写文件操作
+- 不使用 run-project-task-full
+
+---
+
+## T114 执行 Layer 2 controlled single-file tool-use stability validation
+
+状态：pending
+角色：Tester
+目标：执行 Layer 2 单文件 tool-use 稳定性验证（最多 3 次 acceptEdits + 创建临时文件）。
+
+### 验收标准
+
+- 最多 3 次 acceptEdits + tool-use 测试
+- 每次创建临时文件，测试后清理
+- 任何一次 timeout 立即停止
+- 记录 pass/timeout/fail
+- 不使用 run-project-task-full
+
+---
+
+## T115 执行 Layer 3 runner-level minimal Claude call validation
+
+状态：pending
+角色：Tester
+目标：执行 Layer 3 runner 封装最小调用验证（runner 封装调用 Claude Code，不进入 full loop）。
+
+### 验收标准
+
+- 通过 runner 封装调用 Claude Code
+- 不进入 Developer → Tester → Reviewer → Decision 完整闭环
+- 任务内容极小（如创建一个临时文件）
+- 不使用 run-project-task-full
+
+---
+
+## T116 人工决策是否恢复 G008/G009 run-project-task-full smoke test
+
+状态：pending
+角色：Human
+目标：基于 T113-T115 Layer 1-3 验证结果，人工决策是否恢复 G008/G009 run-project-task-full smoke test。
+
+### 验收标准
+
+- 审查 Layer 1-3 验证结果
+- 决定是否恢复 Layer 4 (run-project-task-full smoke)
+- 决定使用哪条路线（继续路线 A / 切换路线 B / 启动路线 C）
+- 不自动恢复 run-project-task-full
