@@ -2968,18 +2968,129 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T104 设计 Claude Code + 智谱代理 tool-use 兼容性修复方案
+## T104 设计 Claude Code + 智谱代理 tool-use 兼容性修复方案 ✅
 
-状态：pending
+状态：done ✅
 角色：Architect
 目标：设计修复 Claude Code 在 acceptEdits 模式下与智谱代理 tool use 兼容性问题的方案。
 
 ### 验收标准
 
-- 分析 acceptEdits + tool use 超时的具体技术原因
-- 评估多个候选修复方向（权限模式调整、调用参数调整、模型切换、API 兼容层修复）
-- 选择最可行的修复方案
-- 设计验证步骤（最小验证 → G008 验证 → 完整闭环验证）
-- 不盲目修改配置
-- 不执行真实任务
+- ✅ 分析 acceptEdits + tool use 超时的具体技术原因
+- ✅ 评估多个候选修复方向（6 个方案 A-F）
+- ✅ 选择最可行的修复方案（短期 B+A，中期 D，长期 E，备用 F）
+- ✅ 设计验证步骤（T105-T110）
+- ✅ 不盲目修改配置
+- ✅ 不执行真实任务
+- ✅ 不修改业务代码
+
+### 设计结论
+
+- 短期推荐：方案 B+A（可配置 permission mode + 诊断验证）
+- 中期推荐：方案 D（评估智谱 API tool_use 兼容性）
+- 长期推荐：方案 E（runner 自执行 patch）
+- 备用方案：方案 F（切换官方 Claude）
+
+### 输出文件
+
+- docs/claude-zhipu-tool-use-fix-plan.md
+- reports/dev/T104-dev-report.md
+
+<!-- NEXT_PENDING=T105 -->
+<!-- NEXT_STAGE=Stage 7 -->
+
+---
+
+## T105 设计 configurable Claude permission mode
+
+状态：pending
+角色：Architect
+目标：设计 run_claude_code() 的 permission mode 可配置方案，支持 default / acceptEdits / bypassPermissions 模式切换。
+
+### 验收标准
+
+- 设计 permission mode 配置协议
+- 明确配置优先级（CLI 参数 > project.yaml > 默认值）
+- 明确 run_claude_code() 函数签名变更
+- 明确调用方传递规则
+- 不改变默认行为（保持 acceptEdits）
 - 不修改业务代码
+- 不执行真实任务
+
+---
+
+## T106 实现 configurable Claude permission mode
+
+状态：pending
+角色：Developer
+目标：实现 run_claude_code() 的 permission mode 可配置，支持 default / acceptEdits / bypassPermissions。
+
+### 验收标准
+
+- run_claude_code() 新增 permission_mode 参数
+- runner.py 新增 --claude-permission-mode CLI 参数
+- 默认保持 acceptEdits（不破坏已有逻辑）
+- 可通过 CLI 或配置切换为 default / bypassPermissions
+- 不执行真实任务
+
+---
+
+## T107 验证 default mode 最小 Claude Code 调用
+
+状态：pending
+角色：Tester
+目标：验证 default permission mode 下 Claude Code 最小调用行为，确认工具调用被权限拒绝后能正常返回。
+
+### 验收标准
+
+- 验证 default mode 下 claude --print "创建文件" 行为
+- 确认工具调用被权限拒绝后能正常返回
+- 确认不超时
+- 不执行真实大任务
+- 不使用 acceptEdits 模式
+
+---
+
+## T108 验证 acceptEdits tool-use blocked 回归
+
+状态：pending
+角色：Tester
+目标：验证 acceptEdits + tool use 仍然 blocked，形成兼容性记录，确认问题可复现。
+
+### 验收标准
+
+- 验证 acceptEdits + tool use 仍然超时
+- 记录超时时间
+- 形成兼容性记录文档
+- 不执行真实大任务
+
+---
+
+## T109 评估智谱代理 tool_use/tool_result 兼容性
+
+状态：pending
+角色：Researcher
+目标：评估智谱 API（open.bigmodel.cn/api/anthropic）对 Anthropic tool_use / tool_result 消息格式的兼容性。
+
+### 验收标准
+
+- 检查智谱 API 文档中 Anthropic 兼容层的 tool_use / tool_result 支持
+- 尝试不同模型（glm-4.7 vs glm-5.1）
+- 查看智谱社区是否有类似问题报告
+- 输出兼容性评估报告
+- 形成路线决策输入
+
+---
+
+## T110 决策真实执行路线
+
+状态：pending
+角色：Decision Maker
+目标：基于 T107-T109 评估结果，决策真实执行路线。
+
+### 验收标准
+
+- 形成正式路线决策文档
+- 三种可能结论：继续智谱 / 切换官方 Claude / runner 自执行 patch
+- 明确后续任务列表
+- 不执行真实任务

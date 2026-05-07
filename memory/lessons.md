@@ -695,3 +695,16 @@ G006 已完成完整闭环：
 - 当前使用智谱云端直连（`open.bigmodel.cn/api/anthropic`），不是本地代理。ANHTROPIC_MODEL=glm-5.1。
 - 后续必须先验证最小 tool use 测试，再验证 acceptEdits，再恢复 run-project-task-full。不要继续盲目重跑真实任务。
 - 修复方向包括：更换权限模式、调整调用参数、检查智谱 API tool use 兼容性、更换模型或代理。
+
+## T104 Claude Code + 智谱代理 tool-use 兼容性修复方案设计经验
+
+### 核心经验
+
+- **修复方案设计应先比较多个方向，再选择最小可行方案。** T104 比较了 6 个候选方案（A-F），推荐短期 B+A（可配置 permission mode + 诊断验证），中期 D（评估智谱 API 兼容性），长期 E（runner 自执行 patch）。
+- **短期不要继续真实任务执行。** 应先让 run_claude_code 的 permission mode 可配置，再验证 default/acceptEdits/bypass 等模式在不同环境下的行为。
+- **方案 B（可配置 permission mode）是当前最小改动方向。** 只需修改 run_claude_code() 函数签名和调用方，不改变默认行为，风险低。
+- **方案 A（去掉 acceptEdits）只能作为诊断手段。** 默认模式下 Claude Code 无法自动写文件，不符合最终自动化目标。
+- **方案 D（评估智谱 API 兼容性）是中期关键任务。** 需要确认智谱 API 是否支持 Anthropic tool_use/tool_result，如果不支持则需要选择替代路线。
+- **方案 E（runner 自执行 patch）是长期方向。** 绕开 Claude Code tool-use，让 runner 自己应用模型生成的 patch，更适合国内模型 API。
+- **方案 F（切换官方 Claude）是备用方案。** 兼容性最好但有成本和网络限制。
+- **修复验证应分层：最小 tool use 测试 → acceptEdits 测试 → G008 smoke test → 完整闭环。** 不要跳步。

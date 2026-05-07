@@ -469,3 +469,12 @@
 - 不要忽略默认模式和 acceptEdits 模式的行为差异。默认模式下工具调用被权限拒绝后能正常返回（不需要等 API 响应），但 acceptEdits 模式下工具被执行后需要等 API 响应。
 - 不要假设智谱 API 完全兼容 Anthropic API。tool_use / tool_result 消息格式可能存在细微差异，导致 Claude Code 无限等待。
 - 诊断时应该分层测试：CLI 基础 → 文本输出 → acceptEdits 文本 → acceptEdits + tool use，逐步缩小问题范围。
+
+## T104 Claude Code + 智谱代理 tool-use 修复方案设计避坑
+
+- 不要只设计一个修复方案就动手实现。应先比较多个方向（至少 5 个），评估改动量、可行性和风险，再选择最小可行方案。
+- 不要跳过可配置 permission mode 步骤直接修改 acceptEdits。先让模式可配置，再验证不同模式的行为，避免破坏已有逻辑。
+- 不要在 permission mode 可配置之前就跑真实任务。default mode 下 Claude Code 无法自动写文件，可能导致任务执行不完整。
+- 不要假设 bypassPermissions 模式不会有同样的问题。bypassPermissions 和 acceptEdits 的区别只在权限确认环节，tool_result 回传 API 的流程可能一样。
+- 不要把方案 E（runner 自执行 patch）当作短期修复方向。架构改动大，适合长期增强但不适合当前阶段。
+- 不要在 T109（智谱 API 兼容性评估）完成前做路线决策。需要先搞清楚智谱 API 是否支持 tool_use，再决定是修复还是绕开。
