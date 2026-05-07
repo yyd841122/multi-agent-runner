@@ -758,3 +758,11 @@ G006 已完成完整闭环：
 - **路线 B（官方 Claude）作为备用。** 如果路线 A 在 Layer 2 就失败，考虑切换官方 Claude 验证闭环，确认问题确实在智谱代理而非系统本身。
 - **路线 C（runner 自执行 patch）是长期方向。** 无论短期选择哪条路线，长期都应考虑让 runner 自己应用文件修改，绕开 tool-use 依赖。
 - **分层验证（Layer 1-4）是科学评估兼容性的正确方法。** 任何一层失败就停止，进入路线决策，避免浪费时间和额度。
+
+### T111 分层稳定性验证协议设计经验
+
+- **恢复 run-project-task-full 前必须通过 Layer 1-3。** Layer 1 (text-only 6 次) → Layer 2 (controlled tool-use 3 次) → Layer 3 (runner 封装 2 次)，逐层验证通过后才允许 Layer 4 smoke test。
+- **每层必须有明确的通过/失败标准。** 通过标准量化（6/6、3/3、2/2），失败标准具体（timeout、文件变更、无响应等），不能有模糊地带。
+- **任何一层失败必须停止并人工验收。** 不能自动进入下一层，不能自动重试，不能自动 Git backup。
+- **Layer 4 是人工决策门，不是自动执行。** 即使 Layer 1-3 全部通过，Layer 4 也需要 T116 人工决策后才允许。
+- **停止规则覆盖所有异常场景。** timeout、非预期文件变更、业务/框架代码变更、API 429、permission mode 不匹配、tool-use 异常行为、workspace dirty_unknown 等。

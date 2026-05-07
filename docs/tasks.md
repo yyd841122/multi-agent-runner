@@ -3174,16 +3174,31 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T111 设计 layered Claude Code stability validation protocol
 
-状态：pending
+状态：done
 角色：Architect
 目标：设计分层 Claude Code 稳定性验证的详细协议，包括每层的测试命令、通过标准、失败处理。
 
 ### 验收标准
 
-- 设计 Layer 1-3 详细协议
-- 每层包含测试命令、通过标准、失败处理
-- 不执行真实调用
-- 不修改代码
+- [x] 设计 Layer 1-3 详细协议
+- [x] 每层包含测试命令、通过标准、失败处理
+- [x] 设计 Layer 4 smoke gate（人工决策门）
+- [x] 设计停止规则和安全规则
+- [x] 设计报告结构和路径
+- [x] 不执行真实调用
+- [x] 不修改代码
+
+### 完成说明
+
+- 设计了 Layer 1 (text-only stability)、Layer 2 (controlled tool-use)、Layer 3 (runner-level)、Layer 4 (smoke gate)
+- 每层包含：目标、前置条件、测试内容、通过标准、失败标准、输出字段、失败处理
+- 设计了 9 项停止规则和 9 项安全规则
+- 设计了报告结构和路径
+- 设计了后续决策点（Layer 1/2/3 失败时的路线切换建议）
+- 产出：docs/layered-claude-code-stability-validation-protocol.md
+
+<!-- NEXT_PENDING=T112 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ---
 

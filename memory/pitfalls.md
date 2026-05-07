@@ -527,3 +527,12 @@
 - 不要在 Layer 2 失败时仍然坚持路线 A。Layer 2 失败说明 tool-use 确认不稳定，应切换路线 B 或启动路线 C。
 - 不要在 T116 之前自动进入 Layer 4 (run-project-task-full smoke)。Layer 4 需要人工决策。
 - 不要忽略路线 B 的对照实验价值。如果路线 A 在 Layer 3 失败，路线 B 可以快速确认问题是否在智谱代理。
+
+## T111 分层稳定性验证协议设计避坑
+
+- 不要在 Layer 1 失败时仍然尝试 Layer 2。Layer 1 是基础，text-only 不稳定说明 API 基础链路有问题。
+- 不要把 Layer 1-3 通过等同于可以恢复真实任务。Layer 1-3 通过后还需要 T116 人工决策才能进入 Layer 4。
+- 不要在 Layer 2 测试中使用 bypassPermissions。只使用 default 和 acceptEdits，bypassPermissions 风险过高。
+- 不要在 Layer 2 测试中让 Claude Code 在非预期路径创建文件。文件范围限制在 `reports/diagnostics/tool-use/`。
+- 不要忽略 Layer 3 runner 封装验证。即使 CLI 直接调用通过，runner 封装层可能引入额外问题（permission mode 传递、stdout/stderr 捕获等）。
+- 不要自动重试失败的测试。任何一次失败立即停止，记录结果，等待人工验收。
