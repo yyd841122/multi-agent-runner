@@ -708,3 +708,16 @@ G006 已完成完整闭环：
 - **方案 E（runner 自执行 patch）是长期方向。** 绕开 Claude Code tool-use，让 runner 自己应用模型生成的 patch，更适合国内模型 API。
 - **方案 F（切换官方 Claude）是备用方案。** 兼容性最好但有成本和网络限制。
 - **修复验证应分层：最小 tool use 测试 → acceptEdits 测试 → G008 smoke test → 完整闭环。** 不要跳步。
+
+## T105 configurable Claude permission mode 设计经验
+
+### 核心经验
+
+- **permission mode 必须可配置。** 当前 `run_claude_code()` 在 `tools/claude_code_runner.py:39` 硬编码 `--permission-mode acceptEdits`，无法切换到 default 或其他模式。
+- **短期采用底层函数参数 + CLI 参数方案（D+A）。** 先改 `run_claude_code()` 签名增加 `permission_mode` 参数，再在 `runner.py` 增加 `--claude-permission-mode` CLI 参数。
+- **默认值先保持 acceptEdits 以兼容历史行为。** 不传参时行为与改动前完全一致，避免破坏已有逻辑。真实任务诊断时显式传 `default`。
+- **配置优先级：CLI 参数 > 环境变量 > 项目配置 > 内置默认值。** CLI 参数最显式应优先级最高，环境变量适合本地长期配置，项目配置适合多项目场景。
+- **调用链需要全链路透传：** runner.py → project_runner.py → claude_code_runner.py，每个环节都需要接收和传递 permission_mode。
+- **支持 4 种模式：default / none / acceptEdits / bypassPermissions。** default 和 none 等价（不传 --permission-mode），bypassPermissions 标记为 high-risk。
+- **default mode 下 Claude Code 无法自动写文件。** 工具调用会被权限拒绝，只能输出建议代码。这符合当前诊断需求，但不适合无人值守自动化。
+- **20 个验证场景覆盖默认行为、显式传参、非法值、优先级和安全约束。**

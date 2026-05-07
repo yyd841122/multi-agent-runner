@@ -3001,21 +3001,38 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T105 设计 configurable Claude permission mode
+## T105 设计 configurable Claude permission mode ✅
 
-状态：pending
+状态：done ✅
 角色：Architect
 目标：设计 run_claude_code() 的 permission mode 可配置方案，支持 default / acceptEdits / bypassPermissions 模式切换。
 
 ### 验收标准
 
-- 设计 permission mode 配置协议
-- 明确配置优先级（CLI 参数 > project.yaml > 默认值）
-- 明确 run_claude_code() 函数签名变更
-- 明确调用方传递规则
-- 不改变默认行为（保持 acceptEdits）
-- 不修改业务代码
-- 不执行真实任务
+- ✅ 设计 permission mode 配置协议
+- ✅ 明确配置优先级（CLI 参数 > 环境变量 > 项目配置 > 内置默认值）
+- ✅ 明确 run_claude_code() 函数签名变更（新增 permission_mode 参数）
+- ✅ 明确调用方传递规则（全链路透传）
+- ✅ 不改变默认行为（保持 acceptEdits）
+- ✅ 不修改业务代码
+- ✅ 不执行真实任务
+- ✅ 20 个验证场景设计
+- ✅ 风险控制设计
+
+### 设计结论
+
+- 短期实现：D+A（底层函数参数 + CLI 参数）
+- 默认值：acceptEdits（兼容历史行为）
+- 改动范围：claude_code_runner.py + project_runner.py + full_task_runner.py + runner.py
+- CLI 参数：--claude-permission-mode <default|none|acceptEdits|bypassPermissions>
+
+### 输出文件
+
+- docs/configurable-claude-permission-mode-design.md
+- reports/dev/T105-dev-report.md
+
+<!-- NEXT_PENDING=T106 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ---
 

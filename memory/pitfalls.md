@@ -478,3 +478,13 @@
 - 不要假设 bypassPermissions 模式不会有同样的问题。bypassPermissions 和 acceptEdits 的区别只在权限确认环节，tool_result 回传 API 的流程可能一样。
 - 不要把方案 E（runner 自执行 patch）当作短期修复方向。架构改动大，适合长期增强但不适合当前阶段。
 - 不要在 T109（智谱 API 兼容性评估）完成前做路线决策。需要先搞清楚智谱 API 是否支持 tool_use，再决定是修复还是绕开。
+
+## T105 configurable Claude permission mode 设计避坑
+
+- 不要在 T106 实现时改变默认行为。默认值必须保持 acceptEdits，所有历史调用不传参时行为与改动前完全一致。
+- 不要只改 run_claude_code() 不改调用链。需要 runner.py → project_runner.py → claude_code_runner.py 全链路透传 permission_mode。
+- 不要忽略 CLI 参数验证。未知 permission mode 值必须拒绝并输出错误信息，不能静默忽略或回退到默认值。
+- 不要在命令预览中输出密钥或完整 prompt。CLAUDE_COMMAND_PREVIEW 只输出命令摘要，prompt 截断到 200 字符。
+- 不要假设 default mode 能完成需要文件写入的任务。default mode 下工具调用被权限拒绝，Claude Code 只输出建议代码。
+- 不要假设 bypassPermissions 没有同样的问题。bypassPermissions 绕过权限但不影响 tool_result 回传 API 的流程，可能同样卡住。
+- 不要跳过 T107（default mode 验证）直接跑真实任务。需要先确认 default mode 下的最小行为。
