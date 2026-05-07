@@ -428,3 +428,11 @@
 - 不要把 5 小时限额恢复机制在当前阶段实现。checkpoint / resume 等能力等首次真实调用跑通后单独设计。
 - 不要假设首次真实调用一定成功。需要同时设计成功和失败的验收标准，以及异常处理流程。
 - 不要在 unknown 字段出现时直接阻塞验收。unknown 字段只降级为 ready_for_human_review，不阻塞，但必须设置 HUMAN_REVIEW_REQUIRED=true。
+
+## T095 首次真实执行开关设计避坑
+
+- 不要把 `--real-call-run-once` 当成执行开关。它只进入 safety shell，构造 command/function_call 但不执行。`--real-execute-once` 才是真实执行请求。
+- 不要把第二重确认短语 `EXECUTE_REAL_TASK_ONCE` 用于第三重确认。三个确认短语不能互相替代，任何错位都必须拒绝。
+- 不要接受 yes/ok/确认 作为第三重确认。必须精确等于 `EXECUTE_REAL_RUN_ONCE`。
+- 不要在首次真实执行 pass 后自动进入下一任务。三重确认只允许执行一次，执行后必须停止等待人工验收。
+- 不要在当前阶段实现 API 429 / 5 小时限额自动恢复。当前只 stop and report，未来单独设计 checkpoint resume。

@@ -642,3 +642,13 @@ G006 已完成完整闭环：
 - 验收状态分为 4 种：ready_for_human_review（可验收）、blocked（有问题需处理）、failed_to_parse（结果无法解析）、unsafe_to_continue（不安全）。unknown 字段不阻塞验收，只降级为 ready_for_human_review。
 - 5 小时限额恢复机制是未来需求。checkpoint、run state 持久化、reset time 检测、resume_allowed 判断和恢复后自动继续，等首次真实调用跑通后单独设计。
 - 首次真实调用使用 Python 函数调用（非 subprocess），无 exit_code 和 stdout/stderr，需要用 FullTaskLoopResult.final_status 判断结果。
+
+## T095 首次真实执行开关设计经验
+
+### 核心经验
+
+- 真实执行需要三重确认：EXECUTE_PROJECT_LOOP（第一重）+ EXECUTE_REAL_TASK_ONCE（第二重）+ EXECUTE_REAL_RUN_ONCE（第三重）。双重确认用于 safety shell，三重确认才允许真实执行。
+- `--real-call-run-once` 不是执行开关，只进入 safety shell。`--real-execute-once` 才是执行请求，配合 `--real-execute-confirm EXECUTE_REAL_RUN_ONCE` 才允许真实执行。
+- 三个确认短语不能互相替代：EXECUTE_PROJECT_LOOP 只能用于 --confirm，EXECUTE_REAL_TASK_ONCE 只能用于 --real-confirm，EXECUTE_REAL_RUN_ONCE 只能用于 --real-execute-confirm。
+- API 429 / 5 小时限制当前阶段只 stop and report，不自动恢复。checkpoint / resume 等能力等首次真实调用跑通后单独设计。
+- 首次真实执行后无论 pass/fail 都不自动继续、不自动 Git backup、不自动返工，必须等待人工验收。

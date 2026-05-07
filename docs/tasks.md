@@ -2697,23 +2697,30 @@ T054 原始目标已经由以下任务前置完成：
 - ✅ 验证 fail 后不自动返工（auto_continue=false）
 - ✅ 不真实调用 run_project_task_full
 
-<!-- NEXT_PENDING=T095 -->
+<!-- NEXT_PENDING=T096 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ---
 
-## T095 设计首次真实调用 run-project-task-full 执行开关
+## T095 设计首次真实调用 run-project-task-full 执行开关 ✅
 
-状态：pending
+状态：done ✅
 角色：Architect
 目标：设计从 safety shell 升级到真实执行的切换机制，保留所有 preflight 检查。
 
 ### 验收标准
 
-- 设计执行开关机制
-- 设计异常处理和回退策略
-- 保留所有 preflight 检查
-- 不实现代码
+- ✅ 设计执行开关机制（--real-execute-once + --real-execute-confirm EXECUTE_REAL_RUN_ONCE）
+- ✅ 设计异常处理和回退策略
+- ✅ 保留所有 preflight 检查（19 项）
+- ✅ 不实现代码
+
+### 产出文件
+
+- ✅ docs/first-real-run-execution-switch-design.md
+- ✅ reports/dev/T095-dev-report.md
+- ✅ memory/lessons.md（追加经验）
+- ✅ memory/pitfalls.md（追加避坑记录）
 
 ---
 
@@ -2754,3 +2761,66 @@ T054 原始目标已经由以下任务前置完成：
 - 确认 git status 可解释
 - 决定是否 Git 提交
 - 决定是否进入下一任务
+
+---
+
+## T098 实现 first real-run executor simulated child call
+
+状态：pending
+角色：Developer
+目标：实现模拟 FullTaskLoopResult 输入的执行链路验证，不真实调用 run_project_task_full。
+
+### 验收标准
+
+- 模拟 FullTaskLoopResult 输入（pass / fail / exception）
+- 模拟 workspace 变化
+- 复用 evaluate_first_real_run_acceptance() 评估验收状态
+- 验证执行流程完整
+- 不真实调用 run_project_task_full
+
+---
+
+## T099 验证 simulated real execution pass/fail
+
+状态：pending
+角色：Tester
+目标：验证模拟执行链路在 pass/fail 场景下的行为正确性。
+
+### 验收标准
+
+- 验证 simulated pass → ready_for_human_review
+- 验证 simulated fail → blocked
+- 验证 simulated exception → blocked
+- 验证所有场景停止等待人工验收
+- 不真实调用 run_project_task_full
+
+---
+
+## T100 执行第一次真实 run-project-task-full 调用
+
+状态：pending
+角色：Developer
+目标：解除 simulated，连接真实 run_project_task_full()，执行第一次真实调用。
+
+### 验收标准
+
+- 真实调用 run_project_task_full(project_path, task_id)
+- 捕获 FullTaskLoopResult
+- 构建 FirstRealRunAcceptanceResult
+- workspace 前后检查
+- 输出验收结果
+- 停止等待人工确认
+
+---
+
+## T101 人工验收第一次真实调用结果
+
+状态：pending
+角色：Human
+目标：使用 10 项验收清单人工验收第一次真实调用结果。
+
+### 验收标准
+
+- 使用验收清单逐项确认
+- 确认执行结果可信
+- 决定是否继续下一任务
