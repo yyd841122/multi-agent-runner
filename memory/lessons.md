@@ -766,3 +766,10 @@ G006 已完成完整闭环：
 - **任何一层失败必须停止并人工验收。** 不能自动进入下一层，不能自动重试，不能自动 Git backup。
 - **Layer 4 是人工决策门，不是自动执行。** 即使 Layer 1-3 全部通过，Layer 4 也需要 T116 人工决策后才允许。
 - **停止规则覆盖所有异常场景。** timeout、非预期文件变更、业务/框架代码变更、API 429、permission mode 不匹配、tool-use 异常行为、workspace dirty_unknown 等。
+
+### T112 稳定性验证 helper dry-run/report skeleton 实现经验
+
+- **dry-run plan 必须与真实执行严格分离。** tools/claude_stability_validator.py 只生成计划，不调用 Claude Code、不创建诊断文件、不进入 run-project-task-full。真正执行从 T113 开始。
+- **数据结构应包含完整安全输出字段。** StabilityValidationPlanResult 的 20 个字段覆盖了所有安全检查需求（claude_code_called, bypass_permissions_used, business_code_changed 等）。
+- **报告 skeleton 应预填待执行字段。** "*(待 T11x 执行后填写)*" 占位符让 T113/T114/T115 只需填写实际结果即可。
+- **CLI 命令应支持分层查看和全量查看。** --layer 1|2|3|all 满足不同使用场景，--skeleton 可预览报告结构。

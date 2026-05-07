@@ -3204,7 +3204,7 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T112 实现 text-only stability check dry-run/report
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 text-only 稳定性验证的 dry-run 和报告生成能力。
 
@@ -3214,6 +3214,16 @@ T054 原始目标已经由以下任务前置完成：
 - 支持报告生成
 - 不调用 Claude Code
 - 不修改代码
+
+### 完成说明
+
+- 新增 tools/claude_stability_validator.py（数据结构 + Layer 1/2/3 dry-run plan + report skeleton）
+- runner.py 新增 claude-stability-plan --layer 1|2|3|all CLI 命令
+- 13/13 验证场景全部 PASS
+- 未调用 Claude Code，未执行真实任务，未创建诊断目标文件
+
+<!-- NEXT_PENDING=T113 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ---
 

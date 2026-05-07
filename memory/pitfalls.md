@@ -536,3 +536,10 @@
 - 不要在 Layer 2 测试中让 Claude Code 在非预期路径创建文件。文件范围限制在 `reports/diagnostics/tool-use/`。
 - 不要忽略 Layer 3 runner 封装验证。即使 CLI 直接调用通过，runner 封装层可能引入额外问题（permission mode 传递、stdout/stderr 捕获等）。
 - 不要自动重试失败的测试。任何一次失败立即停止，记录结果，等待人工验收。
+
+## T112 稳定性验证 helper dry-run 避坑
+
+- 不要在 dry-run plan 中调用 Claude Code。dry-run 只生成计划，T113 才允许调用 Claude Code。
+- 不要在 dry-run 中创建 reports/diagnostics/tool-use 目标文件。文件只在 T114 真实执行时创建。
+- 不要在 runner.py 中将 claude-stability-plan 命令误接入 run_project_task_full。该命令只读不执行。
+- 不要在 StabilityValidationPlanResult 中将 claude_code_called 写成 yes。dry-run 模式下始终为 no。

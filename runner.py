@@ -52,6 +52,7 @@ from tools.continuous_task_planner import evaluate_first_real_run_acceptance
 from tools.continuous_task_planner import run_simulated_first_real_run_acceptance_parser
 from tools.continuous_task_planner import validate_first_real_run_execute_once_safety
 from tools.continuous_task_planner import run_first_real_run_executor_simulated_child_call
+from tools.claude_stability_validator import build_stability_plan_for_layer, build_stability_report_skeleton
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -2171,6 +2172,56 @@ def main():
                           f"next_action={tr.next_action}")
                 print()
             print(f"Message：{result.message}")
+    elif args[0] == "claude-stability-plan":
+        # T112: Claude Code stability validation dry-run planner
+        target_layer = "all"
+        show_skeleton = False
+        i = 1
+        while i < len(args):
+            if args[i] == "--layer" and i + 1 < len(args):
+                target_layer = args[i + 1]
+                i += 2
+            elif args[i] == "--skeleton":
+                show_skeleton = True
+                i += 1
+            else:
+                i += 1
+
+        plan = build_stability_plan_for_layer(target_layer)
+
+        print()
+        print(f"STABILITY_PLAN_STATUS=done")
+        print(f"LAYER={plan.layer}")
+        print(f"DRY_RUN={plan.dry_run}")
+        print(f"COMMAND_COUNT={plan.command_count}")
+        print(f"REAL_TASK_EXECUTION={plan.real_task_execution}")
+        print(f"RUN_PROJECT_TASK_FULL_CALLED={plan.run_project_task_full_called}")
+        print(f"CLAUDE_CODE_CALLED={plan.claude_code_called}")
+        print(f"BYPASS_PERMISSIONS_USED={plan.bypass_permissions_used}")
+        print(f"CHECK_RESULT={plan.check_result}")
+        print(f"NEXT_ACTION={plan.next_action}")
+        print()
+        if plan.commands:
+            print("--- Planned Commands ---")
+            for cmd in plan.commands:
+                tool_use_str = "yes" if cmd.expected_tool_use else "no"
+                file_change_str = "yes" if cmd.expected_file_change else "no"
+                print(f"  {cmd.scenario_id}: mode={cmd.permission_mode}, kind={cmd.command_kind}, "
+                      f"tool_use={tool_use_str}, file_change={file_change_str}, timeout={cmd.timeout_seconds}s"
+                      + (f", target={cmd.target_file}" if cmd.target_file else ""))
+            print()
+        print(f"Message：{plan.message}")
+
+        if show_skeleton and plan.check_result == "pass":
+            print()
+            print("--- Report Skeleton Preview ---")
+            if plan.layer == "all":
+                for l in ["1", "2", "3"]:
+                    print(f"=== Layer {l} ===")
+                    print(build_stability_report_skeleton(l))
+                    print()
+            else:
+                print(build_stability_report_skeleton(plan.layer))
     else:
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")
@@ -2198,6 +2249,7 @@ def main():
         print("  python runner.py run-project-task-full --project <path> --task <id>  单任务完整闭环（Developer/Tester/Reviewer/Decision）")
         print("  python runner.py plan-project-loop [--max-tasks N]  连续任务推进计划（dry-run）")
         print("  python runner.py run-project-loop [--max-tasks N] [--dry-run]  连续任务模拟推进（dry-run）")
+        print("  python runner.py claude-stability-plan --layer <1|2|3|all> [--skeleton]  Claude Code 稳定性验证 dry-run 计划")
 
 
 if __name__ == "__main__":
