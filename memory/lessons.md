@@ -817,3 +817,7 @@ G006 已完成完整闭环：
 ### T122 Stage 7 no-tool-use execution 归档经验
 
 - **After no-tool-use parser, validator, patch dry-run, and pass/fail validation are complete, the next safe step is human-reviewed controlled apply, not automatic real execution.** Why: dry-run chain 验证的是解析、校验和预览逻辑，不等于真实 apply 的安全性。直接跳到自动真实执行会跳过 human review 这个关键安全门。How to apply: T123 应设计 human-reviewed controlled apply gate，确认人工审查通过后才允许 controlled apply，不跳过 review 步骤。
+
+### T123 human-reviewed controlled apply gate 设计经验
+
+- **Human-reviewed controlled apply gate must distinguish ready_for_human_review from ready_for_real_apply.** Why: ready_for_human_review 只代表 dry-run pipeline 校验通过，不等于可以真实 apply。如果把两者混淆，dry-run pass 后会直接跳到真实执行，跳过人工审查。How to apply: gate 设计了 12 个前置条件和 17 个拒绝条件，只有全部通过且用户提供 APPROVE_CONTROLLED_APPLY_DRY_RUN token 后才允许进入 controlled apply dry-run，且仍然不等于真实 apply。

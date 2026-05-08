@@ -3307,7 +3307,7 @@ Designed no-tool-use safe execution fallback strategy after Layer 2 timeout.
 Direct tool-use real execution remains blocked.
 Stage 7 continues through runner-controlled no-tool-use path.
 
-<!-- NEXT_PENDING=T123 -->
+<!-- NEXT_PENDING=T124 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ---
@@ -3473,7 +3473,7 @@ Generated archive summary, check report, and dev report.
 
 ## T123 设计 human-reviewed controlled apply gate
 
-状态：pending
+状态：done
 角色：Developer
 目标：设计 dry-run pipeline 通过后、真实 apply 之前的人工审查门。
 
@@ -3483,6 +3483,12 @@ Generated archive summary, check report, and dev report.
 - 人工审查流程定义清晰
 - 从 dry-run 到 controlled apply 的边界条件明确
 - 安全约束文档化
+
+### 完成说明
+
+Designed human-reviewed controlled apply gate.
+Defined approval token (APPROVE_CONTROLLED_APPLY_DRY_RUN), 12 preconditions, 17 rejection conditions, dirty workspace protection, 6 allowed actions, 10 forbidden actions, gate output format, and T124 boundary.
+No real apply, no command execution, no business code modification.
 
 ---
 

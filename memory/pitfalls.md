@@ -599,3 +599,8 @@
 
 - 不要把 validated dry-run chain 当作可以跳到 Stage 8 continuous real execution 的许可。dry-run 只验证了解析和校验，不等于真实执行安全。
 - 不要在归档任务中实现新功能或修改 pipeline 逻辑。归档只做总结和确认下一步方向。
+
+## T123 human-reviewed controlled apply gate 避坑
+
+- 不要允许 approval token for dry-run 暗示 permission for real apply, commit, push, 或 Stage 8 continuation。APPROVE_CONTROLLED_APPLY_DRY_RUN 只允许进入 T124 dry-run，不等于任何真实执行许可。
+- 不要把 gate pass 误认为可以自动继续执行。gate pass 后仍需要人工审查 apply preview，不自动进入下一个任务。
