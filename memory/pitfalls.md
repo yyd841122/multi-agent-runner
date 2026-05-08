@@ -563,3 +563,9 @@
 - 不要在 parser 或 patch apply 实现前跳过 proposal schema 设计。schema 是 parser、validator 和 patch apply 的输入定义，必须先稳定。
 - 不要允许 proposal 省略 safety 声明。7 个 safety 字段是硬约束，缺失任何一个都应 hard reject。
 - 不要让 proposal 支持 auto_continue 或 auto_git_backup 为 "yes"。这是 no-tool-use pipeline 的安全底线。
+
+## T117 proposal parser 避坑
+
+- 不要把 parser 实现与 allowed scope validation 或 patch application 混在一起。parser 只负责解析和报告结构，scope/patch 校验是 T118+ 的职责。
+- 不要在 parser 中引入重型依赖。PyYAML 已在环境中可用，直接使用 safe_load 即可。
+- 不要忽略 YAML 提取的回退策略。模型输出可能不包含 ```proposal fenced block，需要支持 ```yaml 和纯 YAML 文本。

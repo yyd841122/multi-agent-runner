@@ -3,6 +3,7 @@
 严格遵循 docs/continuous-task-auto-advance-design.md 协议。
 T059 实现 dry-run 计划生成，T060 实现 loop dry-run 模拟推进。
 T065 实现 execute mode safety gate（确认协议、前置检查、execute 硬限制）。
+T117 实现 no-tool-use proposal parser dry-run。
 不执行任务，不调用 Claude Code。
 """
 
@@ -3518,3 +3519,721 @@ def run_first_real_run_executor_simulated_child_call(
             f"REAL_TASK_EXECUTION=no，RUN_PROJECT_TASK_FULL_CALLED=no。"
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# T117: No-Tool-Use Proposal Parser Dry-Run
+# ---------------------------------------------------------------------------
+
+# T116 schema 定义的 required fields
+_PROPOSAL_REQUIRED_FIELDS = [
+    "proposal_version",
+    "execution_mode",
+    "task",
+    "intent",
+    "scope",
+    "changes",
+    "safety",
+    "validation",
+    "next_action",
+]
+
+_PROPOSAL_REQUIRED_TASK_FIELDS = ["id", "title"]
+_PROPOSAL_REQUIRED_SAFETY_FIELDS = [
+    "real_task_execution",
+    "run_project_task_full_called",
+    "claude_code_tool_use_used",
+    "auto_continue_to_next_task",
+    "auto_git_backup",
+    "bypass_permissions_used",
+    "human_review_required",
+]
+
+_VALID_EXECUTION_MODE = "no_tool_use_single_task_proposal"
+_VALID_PROPOSAL_TYPES = {
+    "doc_only", "report_only", "patch_proposal",
+    "command_only", "mixed_safe_proposal",
+}
+
+
+@dataclass
+class NoToolUseProposalParseResult:
+    """No-tool-use proposal 解析结果。
+
+    只负责解析结构，不做 scope 校验、patch 校验或 command 执行。
+    """
+    # 核心字段
+    proposal_version: str | None
+    execution_mode: str | None
+    task_id: str | None
+    task_title: str | None
+    change_type: str | None
+    target_files: list[str]
+    proposed_commands: list[str]
+    expected_reports: list[str]
+
+    # Safety 字段（parser 只读取，不校验）
+    safety_declarations_present: bool
+    human_review_required: str | None
+    auto_continue_to_next_task: str | None
+    auto_git_backup: str | None
+
+    # 解析元信息
+    next_action: str | None
+    required_fields_missing: list[str]
+    yaml_parse_error: str | None
+    parse_status: str  # parsed / failed_to_parse / missing_required_fields / invalid_execution_mode
+    check_result: str  # pass / fail
+    message: str
+
+
+def _extract_yaml_from_text(text: str) -> str | None:
+    """从 Markdown 文本中提取 YAML proposal 块。
+
+    支持 ```proposal 和 ```yaml 两种 fenced block。
+    如果没有 fenced block，假设整段文本就是 YAML。
+    """
+    # 优先匹配 ```proposal
+    pattern = r"```proposal\s*\n(.*?)```"
+    match = re.search(pattern, text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+
+    # 其次匹配 ```yaml
+    pattern = r"```yaml\s*\n(.*?)```"
+    match = re.search(pattern, text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+
+    # 最后假设整段文本是 YAML（去除可能的 markdown 标题行）
+    lines = text.strip().split("\n")
+    yaml_lines = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("#") and not stripped.startswith("# "):
+            # 可能是 YAML 注释，保留
+            yaml_lines.append(line)
+        elif stripped.startswith("# "):
+            # Markdown 标题，跳过
+            continue
+        else:
+            yaml_lines.append(line)
+    result = "\n".join(yaml_lines).strip()
+    return result if result else None
+
+
+def parse_no_tool_use_execution_proposal(proposal_text: str) -> NoToolUseProposalParseResult:
+    """解析 no-tool-use execution proposal 文本。
+
+    职责：
+    1. 从 Markdown fenced block 中提取 YAML
+    2. 解析 YAML
+    3. 提取 T116 schema 中的关键字段
+    4. 检查 required fields 是否存在
+    5. 检查 execution_mode 是否正确
+    6. 返回 NoToolUseProposalParseResult
+
+    不做 allowed scope 校验、patch 校验或 command 执行。
+    """
+    import yaml
+
+    # --- 1. 提取 YAML ---
+    yaml_text = _extract_yaml_from_text(proposal_text)
+    if yaml_text is None:
+        return NoToolUseProposalParseResult(
+            proposal_version=None,
+            execution_mode=None,
+            task_id=None,
+            task_title=None,
+            change_type=None,
+            target_files=[],
+            proposed_commands=[],
+            expected_reports=[],
+            safety_declarations_present=False,
+            human_review_required=None,
+            auto_continue_to_next_task=None,
+            auto_git_backup=None,
+            next_action=None,
+            required_fields_missing=[],
+            yaml_parse_error="No YAML content found in proposal text",
+            parse_status="failed_to_parse",
+            check_result="fail",
+            message="无法从文本中提取 YAML proposal 内容",
+        )
+
+    # --- 2. 解析 YAML ---
+    try:
+        data = yaml.safe_load(yaml_text)
+    except yaml.YAMLError as e:
+        return NoToolUseProposalParseResult(
+            proposal_version=None,
+            execution_mode=None,
+            task_id=None,
+            task_title=None,
+            change_type=None,
+            target_files=[],
+            proposed_commands=[],
+            expected_reports=[],
+            safety_declarations_present=False,
+            human_review_required=None,
+            auto_continue_to_next_task=None,
+            auto_git_backup=None,
+            next_action=None,
+            required_fields_missing=[],
+            yaml_parse_error=str(e),
+            parse_status="failed_to_parse",
+            check_result="fail",
+            message=f"YAML 解析失败：{e}",
+        )
+
+    if not isinstance(data, dict):
+        return NoToolUseProposalParseResult(
+            proposal_version=None,
+            execution_mode=None,
+            task_id=None,
+            task_title=None,
+            change_type=None,
+            target_files=[],
+            proposed_commands=[],
+            expected_reports=[],
+            safety_declarations_present=False,
+            human_review_required=None,
+            auto_continue_to_next_task=None,
+            auto_git_backup=None,
+            next_action=None,
+            required_fields_missing=[],
+            yaml_parse_error="YAML content is not a mapping",
+            parse_status="failed_to_parse",
+            check_result="fail",
+            message="YAML 内容不是键值映射结构",
+        )
+
+    # --- 3. 检查 required fields ---
+    missing: list[str] = []
+    for f in _PROPOSAL_REQUIRED_FIELDS:
+        if f not in data:
+            missing.append(f)
+
+    # 检查 task 子字段
+    task_data = data.get("task")
+    if isinstance(task_data, dict):
+        for f in _PROPOSAL_REQUIRED_TASK_FIELDS:
+            if f not in task_data:
+                missing.append(f"task.{f}")
+    elif "task" not in missing:
+        # task 存在但不是 dict
+        missing.append("task.id")
+        missing.append("task.title")
+
+    # 检查 safety 子字段
+    safety_data = data.get("safety")
+    safety_present = isinstance(safety_data, dict)
+    missing_safety: list[str] = []
+    if safety_present:
+        for f in _PROPOSAL_REQUIRED_SAFETY_FIELDS:
+            if f not in safety_data:
+                missing_safety.append(f"safety.{f}")
+                missing.append(f"safety.{f}")
+    elif "safety" not in missing:
+        # safety 存在但不是 dict
+        for f in _PROPOSAL_REQUIRED_SAFETY_FIELDS:
+            missing.append(f"safety.{f}")
+
+    if missing:
+        return NoToolUseProposalParseResult(
+            proposal_version=data.get("proposal_version"),
+            execution_mode=data.get("execution_mode"),
+            task_id=task_data.get("id") if isinstance(task_data, dict) else None,
+            task_title=task_data.get("title") if isinstance(task_data, dict) else None,
+            change_type=data.get("changes", {}).get("type") if isinstance(data.get("changes"), dict) else None,
+            target_files=_extract_target_files(data),
+            proposed_commands=_extract_commands(data),
+            expected_reports=_extract_reports(data),
+            safety_declarations_present=safety_present and len(missing_safety) == 0,
+            human_review_required=safety_data.get("human_review_required") if safety_present else None,
+            auto_continue_to_next_task=safety_data.get("auto_continue_to_next_task") if safety_present else None,
+            auto_git_backup=safety_data.get("auto_git_backup") if safety_present else None,
+            next_action=data.get("next_action", {}).get("recommendation") if isinstance(data.get("next_action"), dict) else None,
+            required_fields_missing=missing,
+            yaml_parse_error=None,
+            parse_status="missing_required_fields",
+            check_result="fail",
+            message=f"缺少必需字段：{', '.join(missing)}",
+        )
+
+    # --- 4. 检查 execution_mode ---
+    execution_mode = data.get("execution_mode", "")
+    if execution_mode != _VALID_EXECUTION_MODE:
+        return NoToolUseProposalParseResult(
+            proposal_version=data.get("proposal_version"),
+            execution_mode=execution_mode,
+            task_id=task_data.get("id") if isinstance(task_data, dict) else None,
+            task_title=task_data.get("title") if isinstance(task_data, dict) else None,
+            change_type=data.get("changes", {}).get("type") if isinstance(data.get("changes"), dict) else None,
+            target_files=_extract_target_files(data),
+            proposed_commands=_extract_commands(data),
+            expected_reports=_extract_reports(data),
+            safety_declarations_present=True,
+            human_review_required=safety_data.get("human_review_required") if safety_present else None,
+            auto_continue_to_next_task=safety_data.get("auto_continue_to_next_task") if safety_present else None,
+            auto_git_backup=safety_data.get("auto_git_backup") if safety_present else None,
+            next_action=data.get("next_action", {}).get("recommendation") if isinstance(data.get("next_action"), dict) else None,
+            required_fields_missing=[],
+            yaml_parse_error=None,
+            parse_status="invalid_execution_mode",
+            check_result="fail",
+            message=f"execution_mode 不正确：期望 '{_VALID_EXECUTION_MODE}'，实际 '{execution_mode}'",
+        )
+
+    # --- 5. 全部通过，构造 parsed result ---
+    return NoToolUseProposalParseResult(
+        proposal_version=data.get("proposal_version"),
+        execution_mode=execution_mode,
+        task_id=task_data.get("id") if isinstance(task_data, dict) else None,
+        task_title=task_data.get("title") if isinstance(task_data, dict) else None,
+        change_type=data.get("changes", {}).get("type") if isinstance(data.get("changes"), dict) else None,
+        target_files=_extract_target_files(data),
+        proposed_commands=_extract_commands(data),
+        expected_reports=_extract_reports(data),
+        safety_declarations_present=True,
+        human_review_required=safety_data.get("human_review_required"),
+        auto_continue_to_next_task=safety_data.get("auto_continue_to_next_task"),
+        auto_git_backup=safety_data.get("auto_git_backup"),
+        next_action=data.get("next_action", {}).get("recommendation") if isinstance(data.get("next_action"), dict) else None,
+        required_fields_missing=[],
+        yaml_parse_error=None,
+        parse_status="parsed",
+        check_result="pass",
+        message="Proposal 解析成功",
+    )
+
+
+def _extract_target_files(data: dict) -> list[str]:
+    """从 parsed data 中提取 target_files 路径列表。"""
+    changes = data.get("changes")
+    if not isinstance(changes, dict):
+        return []
+    target_files = changes.get("target_files")
+    if not isinstance(target_files, list):
+        return []
+    result: list[str] = []
+    for item in target_files:
+        if isinstance(item, dict) and "path" in item:
+            result.append(item["path"])
+        elif isinstance(item, str):
+            result.append(item)
+    return result
+
+
+def _extract_commands(data: dict) -> list[str]:
+    """从 parsed data 中提取 proposed commands 列表。"""
+    commands = data.get("commands")
+    if not isinstance(commands, dict):
+        return []
+    proposed = commands.get("proposed")
+    if not isinstance(proposed, list):
+        return []
+    result: list[str] = []
+    for item in proposed:
+        if isinstance(item, dict) and "command" in item:
+            result.append(item["command"])
+        elif isinstance(item, str):
+            result.append(item)
+    return result
+
+
+def _extract_reports(data: dict) -> list[str]:
+    """从 parsed data 中提取 expected reports 路径列表。"""
+    reports = data.get("reports")
+    if not isinstance(reports, dict):
+        return []
+    expected = reports.get("expected")
+    if not isinstance(expected, list):
+        return []
+    result: list[str] = []
+    for item in expected:
+        if isinstance(item, dict) and "path" in item:
+            result.append(item["path"])
+        elif isinstance(item, str):
+            result.append(item)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# T117: 内置 sample proposals
+# ---------------------------------------------------------------------------
+
+_SAMPLE_PASS_PROPOSAL = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T116"
+  title: "Design no-tool-use execution proposal schema"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Create the proposal schema document for no-tool-use execution mode"
+  expected_outcome: "docs/no-tool-use-execution-proposal-schema.md created with complete schema definition"
+
+scope:
+  allowed_files:
+    - "docs/no-tool-use-execution-proposal-schema.md"
+    - "reports/dev/T116-dev-report.md"
+  forbidden_files:
+    - "runner.py"
+    - "tools/*.py"
+    - "projects/**"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "doc_only"
+  target_files:
+    - path: "docs/no-tool-use-execution-proposal-schema.md"
+      change_type: "create"
+      reason: "New schema design document"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "pass"
+  success_criteria:
+    - "Schema document exists at docs/no-tool-use-execution-proposal-schema.md"
+    - "Schema contains all required field definitions"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_SAMPLE_MISSING_REQUIRED_FIELD = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T116"
+  title: "Design no-tool-use execution proposal schema"
+
+intent:
+  summary: "Create the proposal schema document"
+  expected_outcome: "Schema document created"
+
+# scope is missing entirely
+
+changes:
+  type: "doc_only"
+  target_files:
+    - path: "docs/some-file.md"
+      change_type: "create"
+      reason: "New document"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "pass"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_SAMPLE_INVALID_YAML = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: no_tool_use_single_task_proposal
+task:
+  id: "T116"
+  title: Test proposal
+  this is not valid yaml: [
+    unclosed bracket
+```
+"""
+
+_SAMPLE_INVALID_EXECUTION_MODE = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "direct_tool_use_execution"
+
+task:
+  id: "T116"
+  title: "Design schema"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Do something"
+  expected_outcome: "Result"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+  forbidden_files:
+    - "runner.py"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "doc_only"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "create"
+      reason: "Test"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "pass"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_SAMPLE_MISSING_SAFETY = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T116"
+  title: "Design schema"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Do something"
+  expected_outcome: "Result"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+  forbidden_files:
+    - "runner.py"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "doc_only"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "create"
+      reason: "Test"
+
+# safety is missing entirely
+
+validation:
+  expected_check_result: "pass"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_SAMPLE_AUTO_CONTINUE_REQUESTED = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T116"
+  title: "Design schema"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Do something"
+  expected_outcome: "Result"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+  forbidden_files:
+    - "runner.py"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "doc_only"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "create"
+      reason: "Test"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "yes"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "pass"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_SAMPLE_AUTO_GIT_BACKUP_REQUESTED = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T116"
+  title: "Design schema"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Do something"
+  expected_outcome: "Result"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+  forbidden_files:
+    - "runner.py"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "doc_only"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "create"
+      reason: "Test"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "yes"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "pass"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_PARSER_SAMPLES: dict[str, str] = {
+    "pass": _SAMPLE_PASS_PROPOSAL,
+    "missing-required-field": _SAMPLE_MISSING_REQUIRED_FIELD,
+    "invalid-yaml": _SAMPLE_INVALID_YAML,
+    "invalid-execution-mode": _SAMPLE_INVALID_EXECUTION_MODE,
+    "missing-safety": _SAMPLE_MISSING_SAFETY,
+    "auto-continue-requested": _SAMPLE_AUTO_CONTINUE_REQUESTED,
+    "auto-git-backup-requested": _SAMPLE_AUTO_GIT_BACKUP_REQUESTED,
+}
+
+
+def run_no_tool_use_proposal_parser_dry_run(sample: str = "pass") -> NoToolUseProposalParseResult:
+    """运行 proposal parser dry-run。
+
+    使用内置 sample 文本作为 parser 输入，不读取任何外部文件。
+    不执行命令、不应用 patch、不修改任何文件。
+
+    Args:
+        sample: 样本类型名称，必须在 _PARSER_SAMPLES 中存在。
+    """
+    if sample not in _PARSER_SAMPLES:
+        available = ", ".join(sorted(_PARSER_SAMPLES.keys()))
+        return NoToolUseProposalParseResult(
+            proposal_version=None,
+            execution_mode=None,
+            task_id=None,
+            task_title=None,
+            change_type=None,
+            target_files=[],
+            proposed_commands=[],
+            expected_reports=[],
+            safety_declarations_present=False,
+            human_review_required=None,
+            auto_continue_to_next_task=None,
+            auto_git_backup=None,
+            next_action=None,
+            required_fields_missing=[],
+            yaml_parse_error=f"Unknown sample: {sample}",
+            parse_status="failed_to_parse",
+            check_result="fail",
+            message=f"未知 sample '{sample}'。可用样本：{available}",
+        )
+
+    text = _PARSER_SAMPLES[sample]
+    result = parse_no_tool_use_execution_proposal(text)
+
+    # auto-continue 和 auto-git-backup 样本在 parser 层面可以解析成功
+    # 但这些字段值违反安全约束，parser 只读取字段值，validator 负责拒绝
+    # 为保持 dry-run 场景覆盖，将 check_result 标记为 fail
+    if sample == "auto-continue-requested" and result.parse_status == "parsed":
+        return NoToolUseProposalParseResult(
+            proposal_version=result.proposal_version,
+            execution_mode=result.execution_mode,
+            task_id=result.task_id,
+            task_title=result.task_title,
+            change_type=result.change_type,
+            target_files=result.target_files,
+            proposed_commands=result.proposed_commands,
+            expected_reports=result.expected_reports,
+            safety_declarations_present=result.safety_declarations_present,
+            human_review_required=result.human_review_required,
+            auto_continue_to_next_task=result.auto_continue_to_next_task,
+            auto_git_backup=result.auto_git_backup,
+            next_action=result.next_action,
+            required_fields_missing=result.required_fields_missing,
+            yaml_parse_error=result.yaml_parse_error,
+            parse_status="parsed",
+            check_result="fail",
+            message=f"Proposal 解析成功，但 auto_continue_to_next_task={result.auto_continue_to_next_task} 违反安全约束",
+        )
+
+    if sample == "auto-git-backup-requested" and result.parse_status == "parsed":
+        return NoToolUseProposalParseResult(
+            proposal_version=result.proposal_version,
+            execution_mode=result.execution_mode,
+            task_id=result.task_id,
+            task_title=result.task_title,
+            change_type=result.change_type,
+            target_files=result.target_files,
+            proposed_commands=result.proposed_commands,
+            expected_reports=result.expected_reports,
+            safety_declarations_present=result.safety_declarations_present,
+            human_review_required=result.human_review_required,
+            auto_continue_to_next_task=result.auto_continue_to_next_task,
+            auto_git_backup=result.auto_git_backup,
+            next_action=result.next_action,
+            required_fields_missing=result.required_fields_missing,
+            yaml_parse_error=result.yaml_parse_error,
+            parse_status="parsed",
+            check_result="fail",
+            message=f"Proposal 解析成功，但 auto_git_backup={result.auto_git_backup} 违反安全约束",
+        )
+
+    return result

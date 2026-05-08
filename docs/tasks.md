@@ -3307,7 +3307,7 @@ Designed no-tool-use safe execution fallback strategy after Layer 2 timeout.
 Direct tool-use real execution remains blocked.
 Stage 7 continues through runner-controlled no-tool-use path.
 
-<!-- NEXT_PENDING=T117 -->
+<!-- NEXT_PENDING=T118 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ---
@@ -3338,7 +3338,7 @@ Parser implementation deferred to T117.
 
 ## T117 实现 proposal parser dry-run
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 proposal parser，解析模型返回的结构化文本为可执行的内部数据结构。
 
@@ -3350,6 +3350,10 @@ Parser implementation deferred to T117.
 - dry-run 模式使用样例数据验证
 - 不调用 Claude Code
 - 不执行真实任务
+
+Implemented no-tool-use proposal parser dry-run.
+Parser extracts structured proposal fields and supports 7 pass/fail sample scenarios (pass, missing-required-field, invalid-yaml, invalid-execution-mode, missing-safety, auto-continue-requested, auto-git-backup-requested).
+Validator, scope gate, and patch apply are deferred to T118+.
 
 ---
 

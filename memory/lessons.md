@@ -789,4 +789,9 @@ G006 已完成完整闭环：
 
 ### T116 no-tool-use proposal schema 设计经验
 
-- **In no-tool-use Stage 7 flow, model outputs must be structured proposals with mandatory safety declarations, not free-form implementation instructions.** Why: runner 需要确定性解析和校验 proposal，自由格式文本无法被机器可靠解析和范围检查。How to apply: 所有模型输出必须包含 proposal_version、execution_mode、task.id、scope（allowed_files + forbidden_files）、safety（7 个必填字段全部为 "no"/"yes"）和 next_action。缺失任何必填字段直接拒绝。
+- **In no-tool-use Stage 7 flow, model outputs must be structured proposals with mandatory safety declarations, not free-free implementation instructions.** Why: runner 需要确定性解析和校验 proposal，自由格式文本无法被机器可靠解析和范围检查。How to apply: 所有模型输出必须包含 proposal_version、execution_mode、task.id、scope（allowed_files + forbidden_files）、safety（7 个必填字段全部为 "no"/"yes"）和 next_action。缺失任何必填字段直接拒绝。
+
+### T117 no-tool-use proposal parser dry-run 经验
+
+- **Proposal parser dry-run should only parse and report structure; safety decisions belong to later validator tasks.** Why: parser 职责是提取字段和检测缺失，如果把 scope validation 和 patch validation 混入 parser，会导致职责不清且难以独立测试。How to apply: parser 只做 YAML 解析 + required fields 检查 + execution_mode 检查；safety 字段值校验、scope 校验、patch 校验由 T118+ validator 负责。
+- **auto-continue 和 auto-git-backup 样本在 parser 层面可以解析成功但仍标记 fail，因为字段值违反安全约束。** Why: parser 需要让用户知道这些字段值不安全，但 parser 不应拒绝解析——拒绝是 validator 的职责。How to apply: parser 标记 parse_status=parsed 但 check_result=fail，由 validator 做最终拒绝决策。

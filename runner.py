@@ -53,6 +53,7 @@ from tools.continuous_task_planner import run_simulated_first_real_run_acceptanc
 from tools.continuous_task_planner import validate_first_real_run_execute_once_safety
 from tools.continuous_task_planner import run_first_real_run_executor_simulated_child_call
 from tools.claude_stability_validator import build_stability_plan_for_layer, build_stability_report_skeleton
+from tools.continuous_task_planner import run_no_tool_use_proposal_parser_dry_run
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -2222,6 +2223,37 @@ def main():
                     print()
             else:
                 print(build_stability_report_skeleton(plan.layer))
+    elif args[0] == "no-tool-use-parse-proposal":
+        # T117: no-tool-use proposal parser dry-run
+        sample_type = "pass"
+        if len(args) >= 3 and args[1] == "--sample":
+            sample_type = args[2]
+        elif len(args) >= 2 and not args[1].startswith("-"):
+            sample_type = args[1]
+
+        result = run_no_tool_use_proposal_parser_dry_run(sample=sample_type)
+
+        print()
+        print(f"EXECUTION_MODE=no_tool_use_proposal_parser_dry_run")
+        print(f"PROPOSAL_SAMPLE={sample_type}")
+        print(f"PROPOSAL_VERSION={result.proposal_version or 'missing'}")
+        print(f"PROPOSAL_EXECUTION_MODE={result.execution_mode or 'missing'}")
+        print(f"TASK_ID={result.task_id or 'missing'}")
+        print(f"CHANGE_TYPE={result.change_type or 'missing'}")
+        print(f"TARGET_FILES_COUNT={len(result.target_files)}")
+        print(f"PROPOSED_COMMANDS_COUNT={len(result.proposed_commands)}")
+        print(f"EXPECTED_REPORTS_COUNT={len(result.expected_reports)}")
+        print(f"SAFETY_DECLARATIONS_PRESENT={'yes' if result.safety_declarations_present else 'no'}")
+        print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required or 'missing'}")
+        print(f"AUTO_CONTINUE_TO_NEXT_TASK={result.auto_continue_to_next_task or 'missing'}")
+        print(f"AUTO_GIT_BACKUP={result.auto_git_backup or 'missing'}")
+        print(f"NEXT_ACTION={result.next_action or 'missing'}")
+        print(f"PARSE_STATUS={result.parse_status}")
+        missing_str = ", ".join(result.required_fields_missing) if result.required_fields_missing else "NONE"
+        print(f"MISSING_REQUIRED_FIELDS={missing_str}")
+        print(f"CHECK_RESULT={result.check_result}")
+        print()
+        print(f"Message：{result.message}")
     else:
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")
@@ -2250,6 +2282,7 @@ def main():
         print("  python runner.py plan-project-loop [--max-tasks N]  连续任务推进计划（dry-run）")
         print("  python runner.py run-project-loop [--max-tasks N] [--dry-run]  连续任务模拟推进（dry-run）")
         print("  python runner.py claude-stability-plan --layer <1|2|3|all> [--skeleton]  Claude Code 稳定性验证 dry-run 计划")
+        print("  python runner.py no-tool-use-parse-proposal [--sample <name>]  No-tool-use proposal parser dry-run")
 
 
 if __name__ == "__main__":
