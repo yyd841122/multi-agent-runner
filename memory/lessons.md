@@ -849,3 +849,7 @@ G006 已完成完整闭环：
 ### T130 real apply approval record dry-run 经验
 
 - **Approval/audit record dry-run should persist evidence files before real apply is even considered.** Why: dry-run records prove the record generation pipeline works correctly without any real side effects. How to apply: use run_real_apply_approval_record_sample_dry_run() to validate all scenarios (pass + fail-closed) before any real apply.
+
+### T131 post-apply validation gate 设计经验
+
+- **Post-apply validation must compare expected files with actual changed files before any commit or push is considered.** Why: apply 后的 validation gate 是最后一道安全门，如果 actual files 不在 expected 范围内就无法确认 apply 的安全性。How to apply: 18 项检查覆盖 record existence、file scope、diff stat、validation results、reports 和 safety flags，全部通过才允许进入 Git backup dry-run。

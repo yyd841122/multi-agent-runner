@@ -642,3 +642,8 @@
 
 - 不要把生成的 approval/audit dry-run records 当作 real patch apply 或 command execution 的许可。它们只是证明 record generation pipeline 正确。
 - 不要在 fail-closed 场景中生成 record 文件。只有 pass 场景才写入文件，避免混淆。
+
+## T131 post-apply validation gate 设计避坑
+
+- 不要把 expected_dirty after apply 当成 commit 的许可。expected_dirty 只表示变更符合预期范围，仍需 human review 和 Git backup gate 才能考虑 commit。
+- 不要在 post-apply validation gate 中执行验证命令。gate 只验证命令结果是否已记录，command execution 由独立 executor gate 控制。

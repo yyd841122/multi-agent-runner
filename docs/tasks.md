@@ -3559,7 +3559,7 @@ Designed real apply approval persistence and audit record.
 Defined approval record schema, audit record schema, file path design, required evidence (20 items), invalidation conditions (15 conditions), and T130 boundary.
 No real apply, no command execution, no business code modification.
 
-<!-- NEXT_PENDING=T131 -->
+<!-- NEXT_PENDING=T132 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ## T130 实现 real apply approval record dry-run
@@ -3575,9 +3575,13 @@ Real apply, command execution, auto Git backup, and Stage 8 remain blocked.
 
 ## T131 设计 post-apply validation gate
 
-状态：pending
+状态：done
 角色：Designer
 目标：设计 apply 后验证门。
+
+Designed post-apply validation gate.
+Defined required inputs (12 items), post-apply checks (18 checks), dirty workspace classification (3 categories), expected vs actual file validation, diff stat validation (5 rejection conditions), validation command result handling, required reports (3 reports), pass/fail decisions, rejection conditions (21 conditions), and T132 boundary.
+No real apply, no command execution, no business code modification.
 
 ## T132 实现 first real patch apply guarded dry-run
 
