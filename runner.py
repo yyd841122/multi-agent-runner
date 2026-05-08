@@ -60,6 +60,8 @@ from tools.continuous_task_planner import run_first_no_tool_use_single_task_samp
 from tools.continuous_task_planner import run_controlled_apply_approval_model_sample_dry_run
 from tools.continuous_task_planner import run_controlled_apply_approval_model_dry_run
 from tools.continuous_task_planner import run_command_allowlist_validation_dry_run
+from tools.continuous_task_planner import run_first_human_reviewed_controlled_apply_sample_dry_run
+from tools.continuous_task_planner import run_first_human_reviewed_controlled_apply_dry_run
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -2493,6 +2495,70 @@ def main():
         print(f"CHECK_RESULT={result.check_result}")
         print()
         print(f"Message：{result.message}")
+    elif args[0] == "first-human-reviewed-controlled-apply-dry-run":
+        # T126: first human-reviewed controlled apply dry-run
+        sample_type = None
+        approval_token_arg = None
+        i = 1
+        while i < len(args):
+            if args[i] == "--sample" and i + 1 < len(args):
+                sample_type = args[i + 1]
+                i += 2
+            elif args[i] == "--approval-token" and i + 1 < len(args):
+                approval_token_arg = args[i + 1]
+                i += 2
+            else:
+                i += 1
+
+        if sample_type:
+            result = run_first_human_reviewed_controlled_apply_sample_dry_run(sample=sample_type)
+        elif approval_token_arg is not None:
+            # 使用自定义 token，配合默认 pass pipeline
+            from tools.continuous_task_planner import _SINGLE_TASK_SAMPLES
+            proposal_text = _SINGLE_TASK_SAMPLES.get("pass", "")
+            result = run_first_human_reviewed_controlled_apply_dry_run(
+                proposal_text=proposal_text,
+                approval_token=approval_token_arg,
+                command_sample="pass-status",
+            )
+        else:
+            # 默认 pass sample
+            result = run_first_human_reviewed_controlled_apply_sample_dry_run(sample="pass")
+
+        print()
+        print(f"EXECUTION_MODE={result.execution_mode}")
+        print(f"CONTROLLED_APPLY_SAMPLE={sample_type or 'default'}")
+        print(f"APPROVAL_CHECK_RESULT={result.approval_check_result}")
+        print(f"APPROVAL_READY_FOR_CONTROLLED_APPLY_DRY_RUN={result.approval_ready_for_controlled_apply_dry_run}")
+        print(f"COMMAND_ALLOWLIST_CHECK_RESULT={result.command_allowlist_check_result}")
+        print(f"COMMAND_EXECUTION_BLOCKED={result.command_execution_blocked}")
+        print(f"PROPOSAL_PARSE_CHECK_RESULT={result.proposal_parse_check_result}")
+        print(f"SCOPE_VALIDATION_CHECK_RESULT={result.scope_validation_check_result}")
+        print(f"PATCH_DRY_RUN_CHECK_RESULT={result.patch_dry_run_check_result}")
+        print(f"CONTROLLED_APPLY_DRY_RUN_STATUS={result.controlled_apply_dry_run_status}")
+        target_str = ", ".join(result.target_files) if result.target_files else "NONE"
+        print(f"TARGET_FILES={target_str}")
+        patch_str = ", ".join(result.patch_files) if result.patch_files else "NONE"
+        print(f"PATCH_FILES={patch_str}")
+        print(f"COMMANDS_TOTAL={result.commands_total}")
+        print(f"COMMANDS_ALLOWED={result.commands_allowed}")
+        print(f"COMMANDS_REJECTED={result.commands_rejected}")
+        print(f"REAL_PATCH_APPLIED={result.real_patch_applied}")
+        print(f"COMMAND_EXECUTION_PERFORMED={result.command_execution_performed}")
+        print(f"REAL_TASK_EXECUTION={result.real_task_execution}")
+        print(f"RUN_PROJECT_TASK_FULL_CALLED={result.run_project_task_full_called}")
+        print(f"CLAUDE_CODE_CALLED={result.claude_code_called}")
+        print(f"BUSINESS_CODE_CHANGED={result.business_code_changed}")
+        print(f"AUTO_CONTINUE_TO_NEXT_TASK={result.auto_continue_to_next_task}")
+        print(f"AUTO_GIT_BACKUP={result.auto_git_backup}")
+        print(f"BYPASS_PERMISSIONS_USED={result.bypass_permissions_used}")
+        print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required}")
+        print(f"READY_FOR_CONTROLLED_APPLY_DRY_RUN={result.ready_for_controlled_apply_dry_run}")
+        print(f"READY_FOR_REAL_APPLY={result.ready_for_real_apply}")
+        print(f"READY_FOR_STAGE_8={result.ready_for_stage_8}")
+        print(f"CHECK_RESULT={result.check_result}")
+        print()
+        print(f"Message：{result.message}")
     else:
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")
@@ -2524,6 +2590,10 @@ def main():
         print("  python runner.py no-tool-use-parse-proposal [--sample <name>]  No-tool-use proposal parser dry-run")
         print("  python runner.py no-tool-use-validate-scope [--sample <name>]  No-tool-use allowed scope validator dry-run")
         print("  python runner.py no-tool-use-patch-apply-dry-run [--sample <name>]  No-tool-use controlled patch apply dry-run")
+        print("  python runner.py first-no-tool-use-single-task-dry-run [--sample <name>]  No-tool-use single-task pipeline dry-run")
+        print("  python runner.py controlled-apply-approval-dry-run [--sample <name> | --approval-token <token>]  Controlled apply approval dry-run")
+        print("  python runner.py command-allowlist-dry-run [--sample <name> | --command <cmd>]  Command allowlist validation dry-run")
+        print("  python runner.py first-human-reviewed-controlled-apply-dry-run [--sample <name> | --approval-token <token>]  First human-reviewed controlled apply dry-run")
 
 
 if __name__ == "__main__":

@@ -829,3 +829,7 @@ G006 已完成完整闭环：
 ### T125 command allowlist validation dry-run 经验
 
 - **Command allowlist validation must be string-only dry-run and must never execute the proposed commands.** Why: command allowlist 只做分类判断，不负责执行。如果在 allowlist 校验中执行命令，就跳过了后续 safety gate。How to apply: _classify_command() 只做字符串级别匹配，不调用 subprocess、不调用 shell、不执行任何命令。允许的命令类别只有 status/validation/test 三类，其他一律拒绝。
+
+### T126 first human-reviewed controlled apply dry-run 经验
+
+- **Human-reviewed controlled apply dry-run should combine proposal pipeline, approval gate, and command allowlist while still blocking real apply and command execution.** Why: 三层串联（pipeline + approval + command allowlist）确保每层独立校验，任何一层失败立即终止。如果跳过任何层或把 dry-run readiness 当作真实执行许可，就绕过了多层安全保护。How to apply: run_first_human_reviewed_controlled_apply_dry_run() 按顺序调用 T120 pipeline → T124 approval → T125 command allowlist，每层 fail 直接返回对应 status（failed_pipeline/failed_approval/failed_command_allowlist），全部 pass 才标记 ready_for_human_review，但 ready_for_real_apply 和 ready_for_stage_8 始终为 no。

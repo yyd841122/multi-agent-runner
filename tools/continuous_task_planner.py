@@ -7191,3 +7191,508 @@ def _get_command_sample(sample: str) -> list[str]:
         # 未知 sample 返回空列表（将导致 fail）
         return []
     return _COMMAND_SAMPLES[sample]
+
+
+# ---------------------------------------------------------------------------
+# T126: First Human-Reviewed Controlled Apply Dry-Run
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class FirstHumanReviewedControlledApplyDryRunResult:
+    """First human-reviewed controlled apply dry-run 结果。
+
+    串联 no-tool-use pipeline + approval model + command allowlist。
+    不真实 apply patch，不执行 command，不调用 Claude Code。
+    """
+
+    # 模式标识
+    execution_mode: str  # first_human_reviewed_controlled_apply_dry_run
+
+    # Approval 检查
+    approval_token_expected: str
+    approval_token_provided: str
+    approval_check_result: str  # pass / fail
+    approval_ready_for_controlled_apply_dry_run: str  # yes / no
+
+    # Command allowlist 检查
+    command_allowlist_check_result: str  # pass / fail
+    command_execution_blocked: str  # yes
+
+    # Pipeline 阶段结果
+    proposal_parse_status: str
+    proposal_parse_check_result: str  # pass / fail
+    scope_validation_status: str
+    scope_validation_check_result: str  # pass / fail
+    patch_dry_run_status: str
+    patch_dry_run_check_result: str  # pass / fail
+
+    # 综合状态
+    controlled_apply_dry_run_status: str  # ready_for_human_review / failed_approval / failed_command_allowlist / failed_pipeline
+
+    # 文件 / 命令信息
+    target_files: list[str]
+    patch_files: list[str]
+    commands_total: int
+    commands_allowed: int
+    commands_rejected: int
+
+    # 安全保证字段（始终为安全值）
+    real_patch_applied: str           # no
+    command_execution_performed: str  # no
+    real_task_execution: str          # no
+    run_project_task_full_called: str # no
+    claude_code_called: str           # no
+    business_code_changed: str        # no
+    framework_code_changed: str       # no
+    auto_continue_to_next_task: str   # no
+    auto_git_backup: str              # no
+    bypass_permissions_used: str      # no
+    human_review_required: str        # yes
+
+    # Gate 结果
+    ready_for_controlled_apply_dry_run: str  # yes / no
+    ready_for_real_apply: str          # no
+    ready_for_stage_8: str             # no
+
+    # 失败详情
+    stop_reason: str | None
+    violations: list[str]
+
+    # 最终结果
+    check_result: str  # pass / fail
+    message: str
+
+
+def run_first_human_reviewed_controlled_apply_dry_run(
+    proposal_text: str,
+    approval_token: str | None = None,
+    command_sample: str = "pass-status",
+) -> FirstHumanReviewedControlledApplyDryRunResult:
+    """执行 first human-reviewed controlled apply dry-run。
+
+    串联：
+    1. run_first_no_tool_use_single_task_dry_run() — T120 pipeline
+    2. run_controlled_apply_approval_model_dry_run() — T124 approval
+    3. run_command_allowlist_validation_dry_run() — T125 command allowlist
+
+    不修改任何文件。不调用 Claude Code。不执行任何命令。
+    """
+    # Safety defaults
+    _safe = dict(
+        real_patch_applied="no",
+        command_execution_performed="no",
+        real_task_execution="no",
+        run_project_task_full_called="no",
+        claude_code_called="no",
+        business_code_changed="no",
+        framework_code_changed="no",
+        auto_continue_to_next_task="no",
+        auto_git_backup="no",
+        bypass_permissions_used="no",
+        human_review_required="yes",
+        ready_for_real_apply="no",
+        ready_for_stage_8="no",
+    )
+
+    token_provided = approval_token or ""
+
+    # Step 1: Pipeline — T120
+    pipeline = run_first_no_tool_use_single_task_dry_run(proposal_text)
+
+    if pipeline.check_result != "pass":
+        # Pipeline fail → 整体 fail
+        return FirstHumanReviewedControlledApplyDryRunResult(
+            execution_mode="first_human_reviewed_controlled_apply_dry_run",
+            approval_token_expected=APPROVAL_TOKEN_EXPECTED,
+            approval_token_provided=token_provided,
+            approval_check_result="not_evaluated",
+            approval_ready_for_controlled_apply_dry_run="no",
+            command_allowlist_check_result="not_evaluated",
+            command_execution_blocked="yes",
+            proposal_parse_status=pipeline.parse_status,
+            proposal_parse_check_result=pipeline.parse_check_result,
+            scope_validation_status=pipeline.validation_status,
+            scope_validation_check_result=pipeline.validation_check_result,
+            patch_dry_run_status=pipeline.patch_dry_run_status,
+            patch_dry_run_check_result=pipeline.patch_dry_run_check_result,
+            controlled_apply_dry_run_status="failed_pipeline",
+            target_files=pipeline.target_files,
+            patch_files=pipeline.patch_files,
+            commands_total=0,
+            commands_allowed=0,
+            commands_rejected=0,
+            ready_for_controlled_apply_dry_run="no",
+            stop_reason="pipeline_failed",
+            violations=pipeline.violations,
+            check_result="fail",
+            message=f"Controlled apply dry-run failed: pipeline failed at stage '{pipeline.pipeline_status}'. {pipeline.message}",
+            **_safe,
+        )
+
+    # Step 2: Approval — T124
+    approval = run_controlled_apply_approval_model_dry_run(
+        approval_token=approval_token,
+        worktree_status="clean",
+        previous_pipeline_status="ready_for_human_review",
+        previous_pipeline_check_result="pass",
+        human_review_required="yes",
+        ready_for_real_apply="no",
+        auto_continue_to_next_task="no",
+        auto_git_backup="no",
+    )
+
+    if approval.check_result != "pass":
+        # Approval fail → 整体 fail
+        return FirstHumanReviewedControlledApplyDryRunResult(
+            execution_mode="first_human_reviewed_controlled_apply_dry_run",
+            approval_token_expected=APPROVAL_TOKEN_EXPECTED,
+            approval_token_provided=token_provided,
+            approval_check_result="fail",
+            approval_ready_for_controlled_apply_dry_run="no",
+            command_allowlist_check_result="not_evaluated",
+            command_execution_blocked="yes",
+            proposal_parse_status=pipeline.parse_status,
+            proposal_parse_check_result=pipeline.parse_check_result,
+            scope_validation_status=pipeline.validation_status,
+            scope_validation_check_result=pipeline.validation_check_result,
+            patch_dry_run_status=pipeline.patch_dry_run_status,
+            patch_dry_run_check_result=pipeline.patch_dry_run_check_result,
+            controlled_apply_dry_run_status="failed_approval",
+            target_files=pipeline.target_files,
+            patch_files=pipeline.patch_files,
+            commands_total=0,
+            commands_allowed=0,
+            commands_rejected=0,
+            ready_for_controlled_apply_dry_run="no",
+            stop_reason="approval_failed",
+            violations=[f"Approval rejected: {', '.join(approval.rejection_reasons)}"],
+            check_result="fail",
+            message=f"Controlled apply dry-run failed: approval rejected. Reasons: {', '.join(approval.rejection_reasons)}",
+            **_safe,
+        )
+
+    # Step 3: Command Allowlist — T125
+    command_result = run_command_allowlist_validation_dry_run(sample=command_sample)
+
+    if command_result.check_result != "pass":
+        # Command allowlist fail → 整体 fail
+        return FirstHumanReviewedControlledApplyDryRunResult(
+            execution_mode="first_human_reviewed_controlled_apply_dry_run",
+            approval_token_expected=APPROVAL_TOKEN_EXPECTED,
+            approval_token_provided=token_provided,
+            approval_check_result="pass",
+            approval_ready_for_controlled_apply_dry_run="yes",
+            command_allowlist_check_result="fail",
+            command_execution_blocked="yes",
+            proposal_parse_status=pipeline.parse_status,
+            proposal_parse_check_result=pipeline.parse_check_result,
+            scope_validation_status=pipeline.validation_status,
+            scope_validation_check_result=pipeline.validation_check_result,
+            patch_dry_run_status=pipeline.patch_dry_run_status,
+            patch_dry_run_check_result=pipeline.patch_dry_run_check_result,
+            controlled_apply_dry_run_status="failed_command_allowlist",
+            target_files=pipeline.target_files,
+            patch_files=pipeline.patch_files,
+            commands_total=command_result.commands_total,
+            commands_allowed=command_result.commands_allowed,
+            commands_rejected=command_result.commands_rejected,
+            ready_for_controlled_apply_dry_run="no",
+            stop_reason="command_allowlist_failed",
+            violations=[f"Command rejected: {r}" for r in command_result.rejection_reasons],
+            check_result="fail",
+            message=f"Controlled apply dry-run failed: command allowlist validation failed. {command_result.message}",
+            **_safe,
+        )
+
+    # All pass
+    return FirstHumanReviewedControlledApplyDryRunResult(
+        execution_mode="first_human_reviewed_controlled_apply_dry_run",
+        approval_token_expected=APPROVAL_TOKEN_EXPECTED,
+        approval_token_provided=token_provided,
+        approval_check_result="pass",
+        approval_ready_for_controlled_apply_dry_run="yes",
+        command_allowlist_check_result="pass",
+        command_execution_blocked="yes",
+        proposal_parse_status=pipeline.parse_status,
+        proposal_parse_check_result=pipeline.parse_check_result,
+        scope_validation_status=pipeline.validation_status,
+        scope_validation_check_result=pipeline.validation_check_result,
+        patch_dry_run_status=pipeline.patch_dry_run_status,
+        patch_dry_run_check_result=pipeline.patch_dry_run_check_result,
+        controlled_apply_dry_run_status="ready_for_human_review",
+        target_files=pipeline.target_files,
+        patch_files=pipeline.patch_files,
+        commands_total=command_result.commands_total,
+        commands_allowed=command_result.commands_allowed,
+        commands_rejected=command_result.commands_rejected,
+        ready_for_controlled_apply_dry_run="yes",
+        stop_reason=None,
+        violations=[],
+        check_result="pass",
+        message="Controlled apply dry-run passed: pipeline + approval + command allowlist all pass. Ready for human review.",
+        **_safe,
+    )
+
+
+def run_first_human_reviewed_controlled_apply_sample_dry_run(
+    sample: str = "pass",
+) -> FirstHumanReviewedControlledApplyDryRunResult:
+    """运行 first human-reviewed controlled apply dry-run 样本。
+
+    使用内置参数，不读取外部文件，不检查真实 git status。
+    不应用 patch、不执行命令、不修改任何文件、不调用 Claude Code。
+
+    Args:
+        sample: 样本类型名称。
+
+    Returns:
+        FirstHumanReviewedControlledApplyDryRunResult
+    """
+    _CONTROLLED_APPLY_SAMPLES: dict[str, dict] = {
+        "pass": {
+            "proposal_sample": "pass",
+            "approval_token": APPROVAL_TOKEN_EXPECTED,
+            "command_sample": "pass-status",
+        },
+        "missing-approval": {
+            "proposal_sample": "pass",
+            "approval_token": None,
+            "command_sample": "pass-status",
+        },
+        "wrong-approval": {
+            "proposal_sample": "pass",
+            "approval_token": "WRONG_TOKEN",
+            "command_sample": "pass-status",
+        },
+        "pipeline-fail": {
+            "proposal_sample": "unsafe-scope",
+            "approval_token": APPROVAL_TOKEN_EXPECTED,
+            "command_sample": "pass-status",
+        },
+        "command-unsafe": {
+            "proposal_sample": "pass",
+            "approval_token": APPROVAL_TOKEN_EXPECTED,
+            "command_sample": "git-add",
+        },
+        "auto-continue-requested": {
+            "proposal_sample": "auto-continue",
+            "approval_token": APPROVAL_TOKEN_EXPECTED,
+            "command_sample": "pass-status",
+        },
+        "auto-git-backup-requested": {
+            "proposal_sample": "auto-git-backup",
+            "approval_token": APPROVAL_TOKEN_EXPECTED,
+            "command_sample": "pass-status",
+        },
+        "ready-for-real-apply-unexpected": {
+            "proposal_sample": "ready-for-real-apply",
+            "approval_token": APPROVAL_TOKEN_EXPECTED,
+            "command_sample": "pass-status",
+        },
+        "dirty-worktree": {
+            "proposal_sample": "pass",
+            "approval_token": APPROVAL_TOKEN_EXPECTED,
+            "command_sample": "pass-status",
+            "worktree_status": "dirty",
+        },
+    }
+
+    if sample not in _CONTROLLED_APPLY_SAMPLES:
+        available = ", ".join(sorted(_CONTROLLED_APPLY_SAMPLES.keys()))
+        return FirstHumanReviewedControlledApplyDryRunResult(
+            execution_mode="first_human_reviewed_controlled_apply_dry_run",
+            approval_token_expected=APPROVAL_TOKEN_EXPECTED,
+            approval_token_provided="",
+            approval_check_result="fail",
+            approval_ready_for_controlled_apply_dry_run="no",
+            command_allowlist_check_result="not_evaluated",
+            command_execution_blocked="yes",
+            proposal_parse_status="unknown",
+            proposal_parse_check_result="fail",
+            scope_validation_status="unknown",
+            scope_validation_check_result="fail",
+            patch_dry_run_status="unknown",
+            patch_dry_run_check_result="fail",
+            controlled_apply_dry_run_status="failed_pipeline",
+            target_files=[],
+            patch_files=[],
+            commands_total=0,
+            commands_allowed=0,
+            commands_rejected=0,
+            real_patch_applied="no",
+            command_execution_performed="no",
+            real_task_execution="no",
+            run_project_task_full_called="no",
+            claude_code_called="no",
+            business_code_changed="no",
+            framework_code_changed="no",
+            auto_continue_to_next_task="no",
+            auto_git_backup="no",
+            bypass_permissions_used="no",
+            human_review_required="yes",
+            ready_for_controlled_apply_dry_run="no",
+            ready_for_real_apply="no",
+            ready_for_stage_8="no",
+            stop_reason="unknown_sample",
+            violations=[f"Unknown controlled apply sample: {sample}"],
+            check_result="fail",
+            message=f"未知 controlled apply sample '{sample}'。可用样本：{available}",
+        )
+
+    params = _CONTROLLED_APPLY_SAMPLES[sample]
+
+    # 处理 dirty-worktree 特殊样本
+    if params.get("worktree_status") == "dirty":
+        return _run_dirty_worktree_sample(params)
+
+    # 获取 proposal text
+    proposal_sample_name = params["proposal_sample"]
+    if proposal_sample_name not in _SINGLE_TASK_SAMPLES:
+        return FirstHumanReviewedControlledApplyDryRunResult(
+            execution_mode="first_human_reviewed_controlled_apply_dry_run",
+            approval_token_expected=APPROVAL_TOKEN_EXPECTED,
+            approval_token_provided=params.get("approval_token") or "",
+            approval_check_result="fail",
+            approval_ready_for_controlled_apply_dry_run="no",
+            command_allowlist_check_result="not_evaluated",
+            command_execution_blocked="yes",
+            proposal_parse_status="unknown",
+            proposal_parse_check_result="fail",
+            scope_validation_status="unknown",
+            scope_validation_check_result="fail",
+            patch_dry_run_status="unknown",
+            patch_dry_run_check_result="fail",
+            controlled_apply_dry_run_status="failed_pipeline",
+            target_files=[],
+            patch_files=[],
+            commands_total=0,
+            commands_allowed=0,
+            commands_rejected=0,
+            real_patch_applied="no",
+            command_execution_performed="no",
+            real_task_execution="no",
+            run_project_task_full_called="no",
+            claude_code_called="no",
+            business_code_changed="no",
+            framework_code_changed="no",
+            auto_continue_to_next_task="no",
+            auto_git_backup="no",
+            bypass_permissions_used="no",
+            human_review_required="yes",
+            ready_for_controlled_apply_dry_run="no",
+            ready_for_real_apply="no",
+            ready_for_stage_8="no",
+            stop_reason="unknown_proposal_sample",
+            violations=[f"Unknown proposal sample: {proposal_sample_name}"],
+            check_result="fail",
+            message=f"未知 proposal sample '{proposal_sample_name}'",
+        )
+
+    proposal_text = _SINGLE_TASK_SAMPLES[proposal_sample_name]
+
+    return run_first_human_reviewed_controlled_apply_dry_run(
+        proposal_text=proposal_text,
+        approval_token=params.get("approval_token"),
+        command_sample=params["command_sample"],
+    )
+
+
+def _run_dirty_worktree_sample(
+    params: dict,
+) -> FirstHumanReviewedControlledApplyDryRunResult:
+    """处理 dirty-worktree 特殊样本。
+
+    dirty worktree 在 approval model 阶段就会被拒绝。
+    """
+    proposal_sample_name = params["proposal_sample"]
+    proposal_text = _SINGLE_TASK_SAMPLES.get(proposal_sample_name, "")
+
+    # 先跑 pipeline
+    pipeline = run_first_no_tool_use_single_task_dry_run(proposal_text)
+
+    # 再跑 approval with dirty worktree → 应该 fail
+    approval = run_controlled_apply_approval_model_dry_run(
+        approval_token=params.get("approval_token"),
+        worktree_status="dirty",
+        previous_pipeline_status="ready_for_human_review",
+        previous_pipeline_check_result="pass",
+        human_review_required="yes",
+        ready_for_real_apply="no",
+        auto_continue_to_next_task="no",
+        auto_git_backup="no",
+    )
+
+    _safe = dict(
+        real_patch_applied="no",
+        command_execution_performed="no",
+        real_task_execution="no",
+        run_project_task_full_called="no",
+        claude_code_called="no",
+        business_code_changed="no",
+        framework_code_changed="no",
+        auto_continue_to_next_task="no",
+        auto_git_backup="no",
+        bypass_permissions_used="no",
+        human_review_required="yes",
+        ready_for_real_apply="no",
+        ready_for_stage_8="no",
+    )
+
+    if approval.check_result != "pass":
+        return FirstHumanReviewedControlledApplyDryRunResult(
+            execution_mode="first_human_reviewed_controlled_apply_dry_run",
+            approval_token_expected=APPROVAL_TOKEN_EXPECTED,
+            approval_token_provided=params.get("approval_token") or "",
+            approval_check_result="fail",
+            approval_ready_for_controlled_apply_dry_run="no",
+            command_allowlist_check_result="not_evaluated",
+            command_execution_blocked="yes",
+            proposal_parse_status=pipeline.parse_status,
+            proposal_parse_check_result=pipeline.parse_check_result,
+            scope_validation_status=pipeline.validation_status,
+            scope_validation_check_result=pipeline.validation_check_result,
+            patch_dry_run_status=pipeline.patch_dry_run_status,
+            patch_dry_run_check_result=pipeline.patch_dry_run_check_result,
+            controlled_apply_dry_run_status="failed_approval",
+            target_files=pipeline.target_files,
+            patch_files=pipeline.patch_files,
+            commands_total=0,
+            commands_allowed=0,
+            commands_rejected=0,
+            ready_for_controlled_apply_dry_run="no",
+            stop_reason="approval_failed_dirty_worktree",
+            violations=[f"Approval rejected: {', '.join(approval.rejection_reasons)}"],
+            check_result="fail",
+            message=f"Controlled apply dry-run failed: approval rejected. Reasons: {', '.join(approval.rejection_reasons)}",
+            **_safe,
+        )
+
+    # 不应该到这里（dirty worktree 应该被 approval 拒绝）
+    return FirstHumanReviewedControlledApplyDryRunResult(
+        execution_mode="first_human_reviewed_controlled_apply_dry_run",
+        approval_token_expected=APPROVAL_TOKEN_EXPECTED,
+        approval_token_provided=params.get("approval_token") or "",
+        approval_check_result="pass",
+        approval_ready_for_controlled_apply_dry_run="yes",
+        command_allowlist_check_result="not_evaluated",
+        command_execution_blocked="yes",
+        proposal_parse_status=pipeline.parse_status,
+        proposal_parse_check_result=pipeline.parse_check_result,
+        scope_validation_status=pipeline.validation_status,
+        scope_validation_check_result=pipeline.validation_check_result,
+        patch_dry_run_status=pipeline.patch_dry_run_status,
+        patch_dry_run_check_result=pipeline.patch_dry_run_check_result,
+        controlled_apply_dry_run_status="ready_for_human_review",
+        target_files=pipeline.target_files,
+        patch_files=pipeline.patch_files,
+        commands_total=0,
+        commands_allowed=0,
+        commands_rejected=0,
+        ready_for_controlled_apply_dry_run="yes",
+        stop_reason=None,
+        violations=[],
+        check_result="pass",
+        message="Controlled apply dry-run passed (unexpected for dirty-worktree sample).",
+        **_safe,
+    )

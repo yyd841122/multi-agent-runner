@@ -615,3 +615,9 @@
 - 不要把 allowlisted commands 当成 permission to run them。Allowlist 只做分类判断，execution 需要单独的 command executor gate。
 - 不要用 subprocess 或 shell 执行命令来验证 allowlist。Allowlist 校验是纯字符串匹配，不调用任何外部执行器。
 - 不要在 _classify_command 中返回 "allowed" 后认为命令安全。Allowlisted 命令仍然不能在本阶段执行，只表示命令类别属于安全范围。
+
+## T126 first human-reviewed controlled apply dry-run 避坑
+
+- 不要把 controlled apply dry-run readiness 当成 permission for real apply、command execution、Git commit、push 或 Stage 8。ready_for_human_review 只代表三层 dry-run 全部通过等待人工审查，不等于任何真实执行许可。
+- 不要在三层串联中跳过任何层。pipeline fail 不能继续 approval，approval fail 不能继续 command allowlist，必须严格按顺序逐层检查。
+- 不要把 auto-continue-requested / auto-git-backup-requested / ready-for-real-apply-unexpected 样本的失败误认为应该在 approval 或 command allowlist 层拦截。这些样本的 proposal 本身包含不安全的 safety 字段值，在 T120 pipeline 层就会被 T118 validator 拦截。
