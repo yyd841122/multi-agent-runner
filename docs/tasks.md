@@ -3307,14 +3307,14 @@ Designed no-tool-use safe execution fallback strategy after Layer 2 timeout.
 Direct tool-use real execution remains blocked.
 Stage 7 continues through runner-controlled no-tool-use path.
 
-<!-- NEXT_PENDING=T116 -->
+<!-- NEXT_PENDING=T117 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ---
 
 ## T116 设计 no-tool-use execution proposal schema
 
-状态：pending
+状态：done
 角色：Architect
 目标：设计 no-tool-use 执行管线中模型输出的 proposal 结构化 schema（JSON/YAML），定义字段、类型、约束和默认值。
 
@@ -3327,6 +3327,12 @@ Stage 7 continues through runner-controlled no-tool-use path.
 - 不实现代码
 - 不调用 Claude Code
 - 不执行真实任务
+
+### 完成说明
+
+Designed no-tool-use execution proposal schema.
+Schema defines 22 required fields, 5 proposal types (doc_only / report_only / patch_proposal / command_only / mixed_safe_proposal), 30 validation rules across 6 categories, 20 failure cases with hard/soft rejection, and a sample doc_only proposal.
+Parser implementation deferred to T117.
 
 ---
 

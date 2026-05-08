@@ -557,3 +557,9 @@
 - 不要在 tool-use unstable 时强行进入真实执行。应先设计 no-tool-use pipeline，模型只输出 structured proposal，runner 控制实际执行。
 - 不要让模型直接执行文件修改。模型 proposal 必须经过 runner 解析、范围检查后才由 runner 应用 patch。
 - 不要把 no-tool-use fallback 当作临时方案。这是长期路线 C 的起点，应设计为可持续演进的 pipeline。
+
+## T116 proposal schema 避坑
+
+- 不要在 parser 或 patch apply 实现前跳过 proposal schema 设计。schema 是 parser、validator 和 patch apply 的输入定义，必须先稳定。
+- 不要允许 proposal 省略 safety 声明。7 个 safety 字段是硬约束，缺失任何一个都应 hard reject。
+- 不要让 proposal 支持 auto_continue 或 auto_git_backup 为 "yes"。这是 no-tool-use pipeline 的安全底线。

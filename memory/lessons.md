@@ -786,3 +786,7 @@ G006 已完成完整闭环：
 - **When text-only calls are stable but tool-use calls timeout, Stage 7 should continue through a no-tool-use fallback strategy instead of forcing direct tool-use real execution.** Why: T113 text-only 6/6 pass 但 T114 tool-use 0/3 pass（timeout），强行依赖 tool-use 进入真实执行会导致不可控的卡住和超时。How to apply: 后续所有真实任务执行应通过 runner 控制的 no-tool-use pipeline，模型只输出 structured proposal，runner 负责解析、验证和应用。
 - **模型角色应从"直接执行者"转变为"结构化输出提供者"。** Why: tool-use 不稳定时让模型直接修改文件风险过高，runner 无法精确控制修改范围。How to apply: Claude Code / 国内模型使用 default 模式只输出 text-only proposal（patch、计划、命令提案），runner 用 Python 代码直接操作文件。
 - **Layer 2 失败不代表 Stage 7 失败。** Why: text-only 链路稳定，可以通过 no-tool-use fallback 继续推进真实任务执行。How to apply: 不跳过 Stage 7，不暂停项目，改用 runner-controlled no-tool-use execution path。
+
+### T116 no-tool-use proposal schema 设计经验
+
+- **In no-tool-use Stage 7 flow, model outputs must be structured proposals with mandatory safety declarations, not free-form implementation instructions.** Why: runner 需要确定性解析和校验 proposal，自由格式文本无法被机器可靠解析和范围检查。How to apply: 所有模型输出必须包含 proposal_version、execution_mode、task.id、scope（allowed_files + forbidden_files）、safety（7 个必填字段全部为 "no"/"yes"）和 next_action。缺失任何必填字段直接拒绝。
