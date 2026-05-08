@@ -621,3 +621,8 @@
 - 不要把 controlled apply dry-run readiness 当成 permission for real apply、command execution、Git commit、push 或 Stage 8。ready_for_human_review 只代表三层 dry-run 全部通过等待人工审查，不等于任何真实执行许可。
 - 不要在三层串联中跳过任何层。pipeline fail 不能继续 approval，approval fail 不能继续 command allowlist，必须严格按顺序逐层检查。
 - 不要把 auto-continue-requested / auto-git-backup-requested / ready-for-real-apply-unexpected 样本的失败误认为应该在 approval 或 command allowlist 层拦截。这些样本的 proposal 本身包含不安全的 safety 字段值，在 T120 pipeline 层就会被 T118 validator 拦截。
+
+## T127 controlled apply pass/fail validation 避坑
+
+- 不要把 pass/fail validation pass 当成 permission for real apply。T127 只确认 dry-run pipeline 行为稳定，不等于可以进入真实执行。
+- 验证时必须检查所有 9 个场景的安全字段，不能只看 CHECK_RESULT 就下结论。

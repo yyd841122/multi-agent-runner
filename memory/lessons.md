@@ -833,3 +833,7 @@ G006 已完成完整闭环：
 ### T126 first human-reviewed controlled apply dry-run 经验
 
 - **Human-reviewed controlled apply dry-run should combine proposal pipeline, approval gate, and command allowlist while still blocking real apply and command execution.** Why: 三层串联（pipeline + approval + command allowlist）确保每层独立校验，任何一层失败立即终止。如果跳过任何层或把 dry-run readiness 当作真实执行许可，就绕过了多层安全保护。How to apply: run_first_human_reviewed_controlled_apply_dry_run() 按顺序调用 T120 pipeline → T124 approval → T125 command allowlist，每层 fail 直接返回对应 status（failed_pipeline/failed_approval/failed_command_allowlist），全部 pass 才标记 ready_for_human_review，但 ready_for_real_apply 和 ready_for_stage_8 始终为 no。
+
+### T127 controlled apply pass/fail validation 经验
+
+- **Pass/fail validation must confirm both the approved path and fail-closed behavior before any future real apply step.** Why: T127 独立验证 T126 的 9 个场景稳定性，确认 pass 路径正确到达 ready_for_human_review，fail 路径全部 fail closed 且覆盖所有三层（pipeline/approval/command allowlist）。How to apply: 每次新增场景或修改 pipeline 后，必须重新运行全部 9 个场景验证，确认安全字段全部为安全值、无副作用。

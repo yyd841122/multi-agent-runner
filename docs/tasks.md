@@ -3307,7 +3307,7 @@ Designed no-tool-use safe execution fallback strategy after Layer 2 timeout.
 Direct tool-use real execution remains blocked.
 Stage 7 continues through runner-controlled no-tool-use path.
 
-<!-- NEXT_PENDING=T127 -->
+<!-- NEXT_PENDING=T128 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ---
@@ -3529,7 +3529,9 @@ Real apply, command execution, auto-continue, and auto Git backup remain blocked
 
 ## T127 验证 first human-reviewed controlled apply dry-run pass/fail 场景
 
-状态：pending
+状态：done
+
+完成说明：Validated first human-reviewed controlled apply dry-run pass/fail scenarios. Pass path reaches ready_for_human_review. Failure paths fail closed and never enter real apply, command execution, or Stage 8. No real patch applied, no command executed, no Claude Code called. 9/9 scenarios pass.
 角色：Tester
 目标：验证 T126 controlled apply dry-run 的 pass/fail 行为。
 
