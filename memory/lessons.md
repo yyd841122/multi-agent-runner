@@ -837,3 +837,7 @@ G006 已完成完整闭环：
 ### T127 controlled apply pass/fail validation 经验
 
 - **Pass/fail validation must confirm both the approved path and fail-closed behavior before any future real apply step.** Why: T127 独立验证 T126 的 9 个场景稳定性，确认 pass 路径正确到达 ready_for_human_review，fail 路径全部 fail closed 且覆盖所有三层（pipeline/approval/command allowlist）。How to apply: 每次新增场景或修改 pipeline 后，必须重新运行全部 9 个场景验证，确认安全字段全部为安全值、无副作用。
+
+### T128 human-reviewed controlled apply archive 经验
+
+- **Validated controlled-apply dry-run chain still does not mean real apply readiness.** Why: T123-T127 only prove the human-reviewed controlled apply dry-run path, not real patch apply or command execution. How to apply: after T128 archive, continue Stage 7 with approval persistence and audit record before any real apply.

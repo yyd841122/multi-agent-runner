@@ -3307,7 +3307,7 @@ Designed no-tool-use safe execution fallback strategy after Layer 2 timeout.
 Direct tool-use real execution remains blocked.
 Stage 7 continues through runner-controlled no-tool-use path.
 
-<!-- NEXT_PENDING=T128 -->
+<!-- NEXT_PENDING=T129 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ---
@@ -3539,6 +3539,34 @@ Real apply, command execution, auto-continue, and auto Git backup remain blocked
 
 ## T128 归档 Stage 7 human-reviewed controlled apply dry-run 成果
 
-状态：pending
+状态：done
 角色：Archivist
 目标：归档 T123-T127 human-reviewed controlled apply dry-run 阶段成果并确认下一步。
+
+Archived Stage 7 human-reviewed controlled apply dry-run chain.
+Confirmed T123-T127 reports are present and human-reviewed controlled apply dry-run pipeline is validated.
+Next safe step remains Stage 7 approval persistence and audit record, not real apply or Stage 8.
+
+## T129 设计 real apply approval persistence and audit record
+
+状态：pending
+角色：Designer
+目标：设计 real apply 前的 approval 持久化和审计记录。
+
+## T130 实现 real apply approval record dry-run
+
+状态：pending
+角色：Implementer
+目标：实现 approval record dry-run。
+
+## T131 设计 post-apply validation gate
+
+状态：pending
+角色：Designer
+目标：设计 apply 后验证门。
+
+## T132 实现 first real patch apply guarded dry-run
+
+状态：pending
+角色：Implementer
+目标：实现 guarded real patch apply dry-run。

@@ -626,3 +626,8 @@
 
 - 不要把 pass/fail validation pass 当成 permission for real apply。T127 只确认 dry-run pipeline 行为稳定，不等于可以进入真实执行。
 - 验证时必须检查所有 9 个场景的安全字段，不能只看 CHECK_RESULT 就下结论。
+
+## T128 human-reviewed controlled apply archive 避坑
+
+- 不要把 human-reviewed controlled apply dry-run 的归档完成误判为可以进入 Stage 8。
+- 不要把 dry-run chain validated 当成真实 patch apply、command execution、Git backup 的许可。
