@@ -3256,7 +3256,7 @@ T054 原始目标已经由以下任务前置完成：
 
 ## T114 执行 Layer 2 controlled single-file tool-use stability validation
 
-状态：pending
+状态：done
 角色：Tester
 目标：执行 Layer 2 单文件 tool-use 稳定性验证（最多 3 次 acceptEdits + 创建临时文件）。
 
@@ -3267,6 +3267,18 @@ T054 原始目标已经由以下任务前置完成：
 - 任何一次 timeout 立即停止
 - 记录 pass/timeout/fail
 - 不使用 run-project-task-full
+
+### 完成说明
+
+- 第 1 次 tool-use 测试 timeout（120s），Claude Code 未返回
+- 按协议立即停止，测试 2/3 skipped
+- LAYER_2_STATUS=fail, TOOL_USE_STABILITY=unstable
+- 与 T103 诊断结论一致（acceptEdits + tool-use 兼容性问题）
+- READY_FOR_FIRST_REAL_SINGLE_TASK_EXECUTION=no
+- HUMAN_REVIEW_REQUIRED=yes
+
+<!-- NEXT_PENDING=T115 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ---
 
