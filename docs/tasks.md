@@ -3307,7 +3307,7 @@ Designed no-tool-use safe execution fallback strategy after Layer 2 timeout.
 Direct tool-use real execution remains blocked.
 Stage 7 continues through runner-controlled no-tool-use path.
 
-<!-- NEXT_PENDING=T120 -->
+<!-- NEXT_PENDING=T121 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ---
@@ -3400,7 +3400,13 @@ Patch apply is deferred to T119.
 
 ## T120 执行 first no-tool-use real single-task dry-run
 
-状态：pending
+状态：done
+
+完成说明：Executed first no-tool-use real single-task dry-run pipeline.
+Pipeline integrates parser, allowed scope validator, and controlled patch apply dry-run.
+No real patch applied, no command executed, no Claude Code called, and human review remains required.
+8/8 scenarios verified: pass, parse-fail, validation-fail, patch-dry-run-fail, no-patch, unsafe-command, auto-continue-requested, auto-git-backup-requested.
+
 角色：Tester
 目标：使用 no-tool-use pipeline dry-run 执行第一个真实单任务，验证完整流程。
 

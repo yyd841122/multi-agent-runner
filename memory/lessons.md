@@ -804,3 +804,8 @@ G006 已完成完整闭环：
 
 - **Patch apply dry-run must reuse parser and validator as prerequisite gates; only proposals passing both parse and scope validation should enter patch-level checks.** Why: 跳过 parser/validator 直接检查 patch 格式会遗漏 scope 逃逸和 safety 声明违规，而且会造成三层校验逻辑重复。How to apply: 三层流水线（T117 parse → T118 validate → T119 patch apply），每一层失败直接返回对应状态，不继续后续检查。
 - **Patch samples must be designed so that earlier-layer failures (parse fail, scope fail) are caught at the correct layer.** Why: 如果 patch-outside-allowed sample 不把违规文件同时列为 target_file，T118 就不会拦截，测试不到"validation 层拦截"这一路径。How to apply: 每个失败样本必须明确它在哪一层被拦截（parse / validation / patch），确保样本设计与预期拦截层一致。
+
+### T120 first no-tool-use single-task dry-run 经验
+
+- **Single-task dry-run pipeline should integrate parser, validator, and patch dry-run as sequential stages; each stage failure immediately terminates the pipeline.** Why: 串联三层已验证的独立校验能力比重新实现更安全，而且每一层的 fail 路径已经被 T117-T119 独立验证过。How to apply: run_first_no_tool_use_single_task_dry_run() 按顺序调用 T117 parse → T118 validate → T119 patch apply，任何一层 fail 直接返回 pipeline_status 对应值，不继续后续检查。
+- **unsafe-command 样本需要同时在 scope 层面触发违规才能被当前 pipeline 拦截。** Why: 当前 pipeline 三层（parse/validate/patch）不包含 command allowlist 检查，dangerous command 本身不会被拦截。How to apply: 要让 unsafe-command 样本在 T118 层面失败，需同时包含 scope 违规（如 target_file 在 forbidden_files 中）。Command allowlist 检查是 T121+ 的范围。

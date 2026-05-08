@@ -5901,3 +5901,637 @@ def run_no_tool_use_controlled_patch_apply_sample_dry_run(
 
     text = _PATCH_APPLY_SAMPLES[sample]
     return run_no_tool_use_controlled_patch_apply_dry_run(text)
+
+
+# ---------------------------------------------------------------------------
+# T120: First No-Tool-Use Real Single-Task Dry-Run
+# ---------------------------------------------------------------------------
+
+@dataclass
+class FirstNoToolUseSingleTaskDryRunResult:
+    """First no-tool-use single-task dry-run result。
+
+    串联 parser → validator → patch apply dry-run 的完整 pipeline。
+    不真实 apply patch，不执行 command，不调用 Claude Code。
+    """
+
+    # Execution mode
+    execution_mode: str  # first_no_tool_use_real_single_task_dry_run
+
+    # Task info
+    task_id: str | None
+    task_title: str | None
+    proposal_source: str  # sample / file / model_output
+
+    # Pipeline stage results
+    parse_status: str
+    parse_check_result: str
+    validation_status: str
+    validation_check_result: str
+    patch_dry_run_status: str
+    patch_dry_run_check_result: str
+
+    # Pipeline summary
+    pipeline_status: str  # ready_for_human_review / failed_parse / failed_validation / failed_patch_dry_run
+
+    # File / patch info
+    target_files: list[str]
+    patch_files: list[str]
+    proposed_commands: list[str]
+    expected_reports: list[str]
+
+    # Safety guarantees (hardcoded)
+    real_patch_applied: str       # always "no"
+    command_execution_performed: str  # always "no"
+    real_task_execution: str      # always "no"
+    run_project_task_full_called: str  # always "no"
+    claude_code_called: str       # always "no"
+    business_code_changed: str    # always "no"
+    framework_code_changed: str   # always "no"
+    auto_continue_to_next_task: str   # always "no"
+    auto_git_backup: str          # always "no"
+    bypass_permissions_used: str  # always "no"
+    human_review_required: str    # always "yes"
+    ready_for_human_review: bool
+    ready_for_real_execution: str  # always "no"
+
+    # Failure detail
+    stop_reason: str | None
+    violations: list[str]
+
+    # Final result
+    check_result: str  # pass / fail
+    message: str
+
+
+def run_first_no_tool_use_single_task_dry_run(
+    proposal_text: str,
+) -> FirstNoToolUseSingleTaskDryRunResult:
+    """串联 parser → validator → patch apply dry-run 的完整 pipeline。
+
+    依次调用：
+    1. parse_no_tool_use_execution_proposal() — T117 parser
+    2. validate_no_tool_use_allowed_scope_dry_run() — T118 validator
+    3. run_no_tool_use_controlled_patch_apply_dry_run() — T119 patch apply
+
+    不修改任何文件。不调用 Claude Code。不执行任何命令。
+    """
+    # Safety defaults
+    _safe = dict(
+        real_patch_applied="no",
+        command_execution_performed="no",
+        real_task_execution="no",
+        run_project_task_full_called="no",
+        claude_code_called="no",
+        business_code_changed="no",
+        framework_code_changed="no",
+        auto_continue_to_next_task="no",
+        auto_git_backup="no",
+        bypass_permissions_used="no",
+        human_review_required="yes",
+        ready_for_real_execution="no",
+    )
+
+    # Step 1: Parse — T117
+    parse = parse_no_tool_use_execution_proposal(proposal_text)
+
+    if parse.parse_status != "parsed":
+        return FirstNoToolUseSingleTaskDryRunResult(
+            execution_mode="first_no_tool_use_real_single_task_dry_run",
+            task_id=parse.task_id,
+            task_title=None,
+            proposal_source="sample",
+            parse_status=parse.parse_status,
+            parse_check_result=parse.check_result,
+            validation_status="failed_parse",
+            validation_check_result="fail",
+            patch_dry_run_status="failed_parse",
+            patch_dry_run_check_result="fail",
+            pipeline_status="failed_parse",
+            target_files=[],
+            patch_files=[],
+            proposed_commands=[],
+            expected_reports=[],
+            ready_for_human_review=False,
+            stop_reason="parse_failed",
+            violations=[f"Parse failed: {parse.message}"],
+            check_result="fail",
+            message=f"Pipeline 在 parse 阶段失败：{parse.message}",
+            **_safe,
+        )
+
+    # Step 2: Validate — T118
+    validation = validate_no_tool_use_allowed_scope_dry_run(proposal_text)
+
+    if validation.check_result != "pass":
+        return FirstNoToolUseSingleTaskDryRunResult(
+            execution_mode="first_no_tool_use_real_single_task_dry_run",
+            task_id=parse.task_id,
+            task_title=None,
+            proposal_source="sample",
+            parse_status=parse.parse_status,
+            parse_check_result=parse.check_result,
+            validation_status=validation.validation_status,
+            validation_check_result=validation.check_result,
+            patch_dry_run_status="failed_validation",
+            patch_dry_run_check_result="fail",
+            pipeline_status="failed_validation",
+            target_files=parse.target_files,
+            patch_files=[],
+            proposed_commands=parse.proposed_commands,
+            expected_reports=parse.expected_reports,
+            ready_for_human_review=False,
+            stop_reason="validation_failed",
+            violations=validation.violations if hasattr(validation, "violations") else [validation.message],
+            check_result="fail",
+            message=f"Pipeline 在 validation 阶段失败：{validation.message}",
+            **_safe,
+        )
+
+    # Step 3: Patch Apply Dry-Run — T119
+    patch_result = run_no_tool_use_controlled_patch_apply_dry_run(proposal_text)
+
+    if patch_result.check_result != "pass":
+        return FirstNoToolUseSingleTaskDryRunResult(
+            execution_mode="first_no_tool_use_real_single_task_dry_run",
+            task_id=parse.task_id,
+            task_title=None,
+            proposal_source="sample",
+            parse_status=parse.parse_status,
+            parse_check_result=parse.check_result,
+            validation_status=validation.validation_status,
+            validation_check_result=validation.check_result,
+            patch_dry_run_status=patch_result.patch_dry_run_status,
+            patch_dry_run_check_result=patch_result.check_result,
+            pipeline_status="failed_patch_dry_run",
+            target_files=parse.target_files,
+            patch_files=patch_result.patch_files,
+            proposed_commands=parse.proposed_commands,
+            expected_reports=parse.expected_reports,
+            ready_for_human_review=False,
+            stop_reason="patch_dry_run_failed",
+            violations=patch_result.violations,
+            check_result="fail",
+            message=f"Pipeline 在 patch dry-run 阶段失败：{patch_result.message}",
+            **_safe,
+        )
+
+    # All stages passed — ready for human review
+    return FirstNoToolUseSingleTaskDryRunResult(
+        execution_mode="first_no_tool_use_real_single_task_dry_run",
+        task_id=parse.task_id,
+        task_title=None,
+        proposal_source="sample",
+        parse_status=parse.parse_status,
+        parse_check_result=parse.check_result,
+        validation_status=validation.validation_status,
+        validation_check_result=validation.check_result,
+        patch_dry_run_status=patch_result.patch_dry_run_status,
+        patch_dry_run_check_result=patch_result.check_result,
+        pipeline_status="ready_for_human_review",
+        target_files=parse.target_files,
+        patch_files=patch_result.patch_files,
+        proposed_commands=parse.proposed_commands,
+        expected_reports=parse.expected_reports,
+        ready_for_human_review=True,
+        stop_reason=None,
+        violations=[],
+        check_result="pass",
+        message="Pipeline 全部通过：parse → validate → patch dry-run。"
+                 "等待人工审查后决定是否进入真实执行。",
+        **_safe,
+    )
+
+
+# --- T120 样本 ---
+
+_SINGLE_TASK_SAMPLE_PASS = """\
+```proposal
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T120"
+  title: "执行 first no-tool-use real single-task dry-run"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "模拟一次完整的 no-tool-use 单任务执行链路"
+  expected_outcome: "Pipeline 全部通过，等待人工审查"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+    - "reports/dev/T120-dev-report.md"
+  forbidden_files:
+    - "runner.py"
+    - "tools/*.py"
+    - "projects/**"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "patch_proposal"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "create"
+      reason: "Test file for dry-run validation"
+
+patches:
+  - file: "docs/test.md"
+    format: "unified_diff"
+    content: |
+      --- a/docs/test.md
+      +++ b/docs/test.md
+      @@ -0,0 +1,3 @@
+      +# Test
+      +
+      +Test content for dry-run validation.
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "pass"
+  success_criteria:
+    - "Pipeline parse → validate → patch dry-run all pass"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_SINGLE_TASK_SAMPLE_PARSE_FAIL = """\
+```yaml
+this is not valid yaml: [
+```
+"""
+
+_SINGLE_TASK_SAMPLE_VALIDATION_FAIL = """\
+```proposal
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T120"
+  title: "Validation fail sample"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test validation failure"
+  expected_outcome: "Should fail validation"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+  forbidden_files:
+    - "runner.py"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "doc_only"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "create"
+      reason: "Test"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "yes"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "pass"
+  success_criteria:
+    - "Should fail due to auto_continue"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_SINGLE_TASK_SAMPLE_PATCH_DRY_RUN_FAIL = """\
+```proposal
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T120"
+  title: "Patch dry-run fail sample"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test patch dry-run failure with empty patch"
+  expected_outcome: "Should fail patch dry-run"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+  forbidden_files:
+    - "runner.py"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "patch_proposal"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "modify"
+      reason: "Test patch with empty content"
+
+patches:
+  - file: "docs/test.md"
+    format: "unified_diff"
+    content: ""
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "pass"
+  success_criteria:
+    - "Should fail due to empty patch"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_SINGLE_TASK_SAMPLE_NO_PATCH = """\
+```proposal
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T120"
+  title: "No patch sample"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test missing patches for patch_proposal type"
+  expected_outcome: "Should fail because patches are required but missing"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+  forbidden_files:
+    - "runner.py"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "patch_proposal"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "create"
+      reason: "Test no patches"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "pass"
+  success_criteria:
+    - "Should fail due to missing patches"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_SINGLE_TASK_SAMPLE_UNSAFE_COMMAND = """\
+```proposal
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T120"
+  title: "Unsafe command sample"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test unsafe proposal with forbidden file target and dangerous command"
+  expected_outcome: "Should fail validation due to forbidden file target"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+  forbidden_files:
+    - "runner.py"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "command_only"
+  target_files:
+    - path: "runner.py"
+      change_type: "modify"
+      reason: "Forbidden target file with unsafe command"
+
+commands:
+  proposed:
+    - command: "rm -rf /"
+      purpose: "Dangerous command"
+      required: true
+      allowlist_category: "test"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "fail"
+  success_criteria:
+    - "Should fail due to forbidden file target"
+
+next_action:
+  recommendation: "block"
+```
+"""
+
+_SINGLE_TASK_SAMPLE_AUTO_CONTINUE_REQUESTED = """\
+```proposal
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T120"
+  title: "Auto-continue requested sample"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test auto-continue requested"
+  expected_outcome: "Should fail validation"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+  forbidden_files:
+    - "runner.py"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "doc_only"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "create"
+      reason: "Test"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "yes"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "pass"
+  success_criteria:
+    - "Should fail due to auto_continue=yes"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_SINGLE_TASK_SAMPLE_AUTO_GIT_BACKUP_REQUESTED = """\
+```proposal
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T120"
+  title: "Auto-git-backup requested sample"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test auto-git-backup requested"
+  expected_outcome: "Should fail validation"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+  forbidden_files:
+    - "runner.py"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "doc_only"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "create"
+      reason: "Test"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "yes"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "pass"
+  success_criteria:
+    - "Should fail due to auto_git_backup=yes"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_SINGLE_TASK_SAMPLES: dict[str, str] = {
+    "pass": _SINGLE_TASK_SAMPLE_PASS,
+    "parse-fail": _SINGLE_TASK_SAMPLE_PARSE_FAIL,
+    "validation-fail": _SINGLE_TASK_SAMPLE_VALIDATION_FAIL,
+    "patch-dry-run-fail": _SINGLE_TASK_SAMPLE_PATCH_DRY_RUN_FAIL,
+    "no-patch": _SINGLE_TASK_SAMPLE_NO_PATCH,
+    "unsafe-command": _SINGLE_TASK_SAMPLE_UNSAFE_COMMAND,
+    "auto-continue-requested": _SINGLE_TASK_SAMPLE_AUTO_CONTINUE_REQUESTED,
+    "auto-git-backup-requested": _SINGLE_TASK_SAMPLE_AUTO_GIT_BACKUP_REQUESTED,
+}
+
+
+def run_first_no_tool_use_single_task_sample_dry_run(
+    sample: str = "pass",
+) -> FirstNoToolUseSingleTaskDryRunResult:
+    """运行 first no-tool-use single-task dry-run 样本。
+
+    使用内置 sample 文本作为输入，不读取任何外部文件。
+    不应用 patch、不执行命令、不修改任何文件、不调用 Claude Code。
+
+    Args:
+        sample: 样本类型名称，必须在 _SINGLE_TASK_SAMPLES 中存在。
+    """
+    if sample not in _SINGLE_TASK_SAMPLES:
+        available = ", ".join(sorted(_SINGLE_TASK_SAMPLES.keys()))
+        return FirstNoToolUseSingleTaskDryRunResult(
+            execution_mode="first_no_tool_use_real_single_task_dry_run",
+            task_id=None,
+            task_title=None,
+            proposal_source="sample",
+            parse_status="failed_to_parse",
+            parse_check_result="fail",
+            validation_status="failed_parse",
+            validation_check_result="fail",
+            patch_dry_run_status="failed_parse",
+            patch_dry_run_check_result="fail",
+            pipeline_status="failed_parse",
+            target_files=[],
+            patch_files=[],
+            proposed_commands=[],
+            expected_reports=[],
+            real_patch_applied="no",
+            command_execution_performed="no",
+            real_task_execution="no",
+            run_project_task_full_called="no",
+            claude_code_called="no",
+            business_code_changed="no",
+            framework_code_changed="no",
+            auto_continue_to_next_task="no",
+            auto_git_backup="no",
+            bypass_permissions_used="no",
+            human_review_required="yes",
+            ready_for_human_review=False,
+            ready_for_real_execution="no",
+            stop_reason="unknown_sample",
+            violations=[f"Unknown single-task sample: {sample}"],
+            check_result="fail",
+            message=f"未知 single-task sample '{sample}'。可用样本：{available}",
+        )
+
+    text = _SINGLE_TASK_SAMPLES[sample]
+    return run_first_no_tool_use_single_task_dry_run(text)

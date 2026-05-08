@@ -582,3 +582,10 @@
 - 不要在 patch apply dry-run 中真实 apply patch 或执行 command。dry-run 只解析、分类和预览，不修改任何文件。
 - 不要假设 patch file 与 target_files 一定一致。必须显式检查 patch file 是否在 target_files 列表中。
 - 不要在 proposal type 不需要 patches 时（doc_only, report_only, command_only）标记为 fail。只有 patch_proposal 和 mixed_safe_proposal 缺少 patches 才是 fail。
+
+## T120 first no-tool-use single-task dry-run 避坑
+
+- 不要把 ready_for_human_review 等同于 ready_for_real_execution。前者只代表 pipeline 校验通过等待人工审查，后者始终为 no。
+- 不要在 unsafe-command 样本中只依赖 command 内容触发失败。当前 pipeline 不包含 command allowlist 检查，需要同时在 scope 层面制造违规。
+- 不要在 pipeline 串联中跳过任何一层。即使 parser 和 validator 的 fail 路径已被 T117/T119 独立验证，T120 pipeline 仍需正确转发每层的失败状态。
+- 不要假设所有 fail 样本都在同一层被拦截。8 个样本中有 4 个在 T118 层拦截、2 个在 T119 层拦截、1 个在 T117 层拦截，需要明确每个样本的预期拦截层。
