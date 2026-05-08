@@ -3307,7 +3307,7 @@ Designed no-tool-use safe execution fallback strategy after Layer 2 timeout.
 Direct tool-use real execution remains blocked.
 Stage 7 continues through runner-controlled no-tool-use path.
 
-<!-- NEXT_PENDING=T122 -->
+<!-- NEXT_PENDING=T123 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ---
@@ -3448,11 +3448,18 @@ No real patch applied, no command executed, no Claude Code called.
 
 ---
 
-## T122 提交并推送 Stage 7 no-tool-use execution reports
+## T122 归档 Stage 7 no-tool-use execution 阶段成果并确认下一步
 
-状态：pending
+状态：done
 角色：Developer
-目标：提交并推送 T116-T121 no-tool-use execution pipeline 成果。
+目标：归档 T115-T121 no-tool-use execution pipeline 阶段成果，确认下一步方向。
+
+### 完成说明
+
+Archived Stage 7 no-tool-use execution chain.
+Confirmed T117-T121 reports are present and no-tool-use dry-run pipeline is validated (41/41 scenarios).
+Next safe step remains Stage 7 human-reviewed controlled apply, not Stage 8.
+Generated archive summary, check report, and dev report.
 
 ### 验收标准
 
@@ -3461,3 +3468,42 @@ No real patch applied, no command executed, no Claude Code called.
 - commit message 清晰
 - 已成功 push 到远程仓库
 - push 后工作区 clean
+
+---
+
+## T123 设计 human-reviewed controlled apply gate
+
+状态：pending
+角色：Developer
+目标：设计 dry-run pipeline 通过后、真实 apply 之前的人工审查门。
+
+### 验收标准
+
+- controlled apply gate 设计文档完成
+- 人工审查流程定义清晰
+- 从 dry-run 到 controlled apply 的边界条件明确
+- 安全约束文档化
+
+---
+
+## T124 实现 controlled apply approval model dry-run
+
+状态：pending
+角色：Developer
+目标：实现人工审查通过后的 controlled apply approval model dry-run。
+
+---
+
+## T125 实现 command allowlist validation dry-run
+
+状态：pending
+角色：Developer
+目标：实现 command allowlist 校验 dry-run，补全 T118 未覆盖的 command 检查。
+
+---
+
+## T126 执行 first human-reviewed controlled apply dry-run
+
+状态：pending
+角色：Developer
+目标：执行第一次 human-reviewed controlled apply 端到端 dry-run。

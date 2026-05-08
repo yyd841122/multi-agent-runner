@@ -594,3 +594,8 @@
 
 - 不要把 dry-run ready_for_human_review 当作自动真实执行的许可。ready_for_human_review 只代表 pipeline 校验通过，真实执行仍需人工确认。
 - 不要在验证任务中修改 pipeline 逻辑或业务代码。T121 只验证 T120 已有实现的 pass/fail 行为。
+
+## T122 Stage 7 归档避坑
+
+- 不要把 validated dry-run chain 当作可以跳到 Stage 8 continuous real execution 的许可。dry-run 只验证了解析和校验，不等于真实执行安全。
+- 不要在归档任务中实现新功能或修改 pipeline 逻辑。归档只做总结和确认下一步方向。

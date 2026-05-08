@@ -813,3 +813,7 @@ G006 已完成完整闭环：
 ### T121 no-tool-use pass/fail 验证经验
 
 - **Pass/fail validation should verify both success path and fail-closed behavior before any real execution is allowed.** Why: 单独验证 pass 或单独验证 fail 都不够，必须同时确认 pass 正确到达 ready_for_human_review 且所有 fail 路径都 fail closed，才能信任 pipeline 的安全性。How to apply: 验证 8 个场景覆盖 1 个 pass + 7 个 fail，确认 layer interception 正确（T117 拦截 1 个、T118 拦截 4 个、T119 拦截 2 个），所有安全字段在 8/8 场景中均为安全值。
+
+### T122 Stage 7 no-tool-use execution 归档经验
+
+- **After no-tool-use parser, validator, patch dry-run, and pass/fail validation are complete, the next safe step is human-reviewed controlled apply, not automatic real execution.** Why: dry-run chain 验证的是解析、校验和预览逻辑，不等于真实 apply 的安全性。直接跳到自动真实执行会跳过 human review 这个关键安全门。How to apply: T123 应设计 human-reviewed controlled apply gate，确认人工审查通过后才允许 controlled apply，不跳过 review 步骤。
