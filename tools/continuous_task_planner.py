@@ -6883,3 +6883,311 @@ def run_controlled_apply_approval_model_sample_dry_run(
 
     params = _APPROVAL_SAMPLES[sample]
     return run_controlled_apply_approval_model_dry_run(**params)
+
+
+# ---------------------------------------------------------------------------
+# T125: Command Allowlist Validation Dry-Run
+# ---------------------------------------------------------------------------
+
+# 允许的命令类别及其模式
+COMMAND_ALLOWLIST_CATEGORIES: dict[str, list[str]] = {
+    "status": [
+        "git status",
+        "git log",
+        "git diff",
+        "git branch",
+        "git remote",
+        "git tag",
+    ],
+    "validation": [
+        "python runner.py",
+        "uv run python runner.py",
+        "python -c",
+        "uv run python -c",
+    ],
+    "test": [
+        "pytest",
+        "uv run pytest",
+        "python -m pytest",
+        "uv run python -m pytest",
+    ],
+}
+
+# 禁止的命令模式（字符串包含即拒绝）
+FORBIDDEN_COMMAND_PATTERNS: list[str] = [
+    # Git 写操作
+    "git add",
+    "git commit",
+    "git push",
+    "git reset",
+    "git checkout .",
+    "git checkout --",
+    "git clean",
+    "git stash",
+    "git merge",
+    "git rebase",
+    "git cherry-pick",
+    "git revert",
+    # 文件破坏操作
+    "rm ",
+    "rm -",
+    "del ",
+    "rmdir ",
+    "Remove-Item",
+    # Shell 链接
+    " && ",
+    " ; ",
+    " | ",
+    " > ",
+    " >> ",
+    # 网络执行
+    "curl | bash",
+    "irm ",
+    "iex",
+    "powershell -ExecutionPolicy Bypass",
+    # 危险操作
+    "chmod +x",
+    "move /Y",
+    "copy /Y",
+    # 框架调用
+    "run-project-task-full",
+    "run_project_task_full",
+    # Claude Code tool-use
+    "claude --permission-mode acceptEdits",
+    "claude --permission-mode bypassPermissions",
+    # 绝对路径写入
+    ":/>",
+    "://>",
+]
+
+
+@dataclass
+class CommandAllowlistValidationDryRunResult:
+    """T125 command allowlist validation dry-run 结果。"""
+
+    # 模式标识
+    validation_mode: str                        # command_allowlist_validation_dry_run
+
+    # 输入
+    command_sample: str                         # sample 名称或 "custom"
+    commands: list[str]                         # 待校验命令列表
+
+    # 统计
+    commands_total: int                         # 总命令数
+    commands_allowed: int                       # 允许命令数
+    commands_rejected: int                      # 拒绝命令数
+
+    # 分类
+    allowed_commands: list[str]                 # 允许的命令列表
+    rejected_commands: list[str]                # 拒绝的命令列表
+    rejection_reasons: list[str]                # 拒绝原因列表
+
+    # Allowlist 类别
+    allowlist_categories: list[str]             # 命中到的允许类别
+    forbidden_patterns_detected: list[str]      # 检测到的禁止模式
+
+    # 安全保证字段（始终为安全值）
+    command_execution_blocked: str              # yes
+    real_patch_applied: str                     # no
+    real_task_execution: str                    # no
+    run_project_task_full_called: str           # no
+    claude_code_called: str                     # no
+    business_code_changed: str                  # no
+    framework_code_changed: str                 # no
+    auto_continue_to_next_task: str             # no
+    auto_git_backup: str                        # no
+    bypass_permissions_used: str                # no
+    human_review_required: str                  # yes
+
+    # Gate 结果
+    ready_for_command_execution: str            # no
+    ready_for_controlled_apply_dry_run: str     # yes / no
+    check_result: str                           # pass / fail
+    message: str
+
+
+def _classify_command(command: str) -> tuple[str, str | None, str | None]:
+    """分类单个命令。
+
+    Returns:
+        (status, allowlist_category, forbidden_pattern)
+        status: "allowed" / "forbidden" / "unknown"
+    """
+    cmd_lower = command.strip().lower()
+    cmd_stripped = command.strip()
+
+    if not cmd_stripped:
+        return "forbidden", None, "empty_command"
+
+    # 先检查禁止模式（优先于允许检查）
+    for pattern in FORBIDDEN_COMMAND_PATTERNS:
+        if pattern.lower() in cmd_lower:
+            return "forbidden", None, pattern.strip()
+
+    # 检查允许类别
+    for category, patterns in COMMAND_ALLOWLIST_CATEGORIES.items():
+        for pattern in patterns:
+            if cmd_lower.startswith(pattern.lower()):
+                return "allowed", category, None
+
+    # 未知命令（保守原则：不确定就拒绝）
+    return "unknown", None, "unknown_command"
+
+
+def run_command_allowlist_validation_dry_run(
+    commands: list[str] | None = None,
+    sample: str = "pass-status",
+) -> CommandAllowlistValidationDryRunResult:
+    """执行 command allowlist validation dry-run。
+
+    只做字符串级别 dry-run 判断，不执行任何命令，不调用 shell，不应用 patch。
+
+    Args:
+        commands: 自定义命令列表。None 时使用内置 sample。
+        sample: 内置 sample 名称。
+
+    Returns:
+        CommandAllowlistValidationDryRunResult
+    """
+    # 如果提供了自定义 commands，使用自定义命令
+    if commands is not None:
+        cmd_list = commands
+        sample_name = "custom"
+    else:
+        # 使用内置 sample
+        sample_name = sample
+        cmd_list = _get_command_sample(sample)
+
+    # 分类每个命令
+    allowed_commands: list[str] = []
+    rejected_commands: list[str] = []
+    rejection_reasons: list[str] = []
+    allowlist_categories: list[str] = []
+    forbidden_patterns_detected: list[str] = []
+
+    for cmd in cmd_list:
+        status, category, forbidden = _classify_command(cmd)
+        if status == "allowed":
+            allowed_commands.append(cmd)
+            if category and category not in allowlist_categories:
+                allowlist_categories.append(category)
+        else:
+            rejected_commands.append(cmd)
+            if forbidden:
+                reason = f"{cmd}: {forbidden}"
+                rejection_reasons.append(reason)
+                if forbidden not in forbidden_patterns_detected:
+                    forbidden_patterns_detected.append(forbidden)
+
+    # 综合判断
+    all_allowed = len(rejected_commands) == 0 and len(cmd_list) > 0
+    check_result = "pass" if all_allowed else "fail"
+    ready_for_controlled = "yes" if all_allowed else "no"
+
+    if all_allowed:
+        msg = f"Command allowlist validation dry-run: all {len(cmd_list)} commands allowed."
+    else:
+        msg = (
+            f"Command allowlist validation dry-run: "
+            f"{len(rejected_commands)}/{len(cmd_list)} commands rejected. "
+            f"Reasons: {'; '.join(rejection_reasons)}"
+        )
+
+    return CommandAllowlistValidationDryRunResult(
+        validation_mode="command_allowlist_validation_dry_run",
+        command_sample=sample_name,
+        commands=cmd_list,
+        commands_total=len(cmd_list),
+        commands_allowed=len(allowed_commands),
+        commands_rejected=len(rejected_commands),
+        allowed_commands=allowed_commands,
+        rejected_commands=rejected_commands,
+        rejection_reasons=rejection_reasons,
+        allowlist_categories=allowlist_categories,
+        forbidden_patterns_detected=forbidden_patterns_detected,
+        command_execution_blocked="yes",
+        real_patch_applied="no",
+        real_task_execution="no",
+        run_project_task_full_called="no",
+        claude_code_called="no",
+        business_code_changed="no",
+        framework_code_changed="no",
+        auto_continue_to_next_task="no",
+        auto_git_backup="no",
+        bypass_permissions_used="no",
+        human_review_required="yes",
+        ready_for_command_execution="no",
+        ready_for_controlled_apply_dry_run=ready_for_controlled,
+        check_result=check_result,
+        message=msg,
+    )
+
+
+def _get_command_sample(sample: str) -> list[str]:
+    """获取内置 command sample。
+
+    Args:
+        sample: sample 名称。
+
+    Returns:
+        命令列表。
+    """
+    _COMMAND_SAMPLES: dict[str, list[str]] = {
+        "pass-status": [
+            "git status --short",
+            "git log --oneline -5",
+            "git diff --stat",
+        ],
+        "pass-validation": [
+            "python runner.py --help",
+            "python runner.py no-tool-use-parse-proposal --sample pass",
+        ],
+        "pass-test": [
+            "pytest",
+            "uv run pytest",
+        ],
+        "empty-command": [
+            "",
+        ],
+        "git-add": [
+            "git add .",
+        ],
+        "git-commit": [
+            "git commit -m 'test'",
+        ],
+        "git-push": [
+            "git push origin main",
+        ],
+        "git-reset": [
+            "git reset --hard HEAD~1",
+        ],
+        "rm-command": [
+            "rm -rf /tmp/test",
+        ],
+        "pipe-command": [
+            "git status | grep modified",
+        ],
+        "redirect-command": [
+            "echo hello > output.txt",
+        ],
+        "run-project-task-full": [
+            "python runner.py run-project-task-full --project projects/test",
+        ],
+        "claude-acceptedits": [
+            "claude --permission-mode acceptEdits --print 'test'",
+        ],
+        "unknown-command": [
+            "npm install lodash",
+        ],
+        "mixed-safe-unsafe": [
+            "git status --short",
+            "git add .",
+            "pytest",
+            "rm -rf /tmp/test",
+        ],
+    }
+
+    if sample not in _COMMAND_SAMPLES:
+        # 未知 sample 返回空列表（将导致 fail）
+        return []
+    return _COMMAND_SAMPLES[sample]

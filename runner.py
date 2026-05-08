@@ -59,6 +59,7 @@ from tools.continuous_task_planner import run_no_tool_use_controlled_patch_apply
 from tools.continuous_task_planner import run_first_no_tool_use_single_task_sample_dry_run
 from tools.continuous_task_planner import run_controlled_apply_approval_model_sample_dry_run
 from tools.continuous_task_planner import run_controlled_apply_approval_model_dry_run
+from tools.continuous_task_planner import run_command_allowlist_validation_dry_run
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -2434,6 +2435,61 @@ def main():
         print(f"BUSINESS_CODE_CHANGED={result.business_code_changed}")
         rejection_str = ", ".join(result.rejection_reasons) if result.rejection_reasons else "NONE"
         print(f"REJECTION_REASONS={rejection_str}")
+        print(f"CHECK_RESULT={result.check_result}")
+        print()
+        print(f"Message：{result.message}")
+    elif args[0] == "command-allowlist-dry-run":
+        # T125: command allowlist validation dry-run
+        sample_type = None
+        custom_command = None
+        i = 1
+        while i < len(args):
+            if args[i] == "--sample" and i + 1 < len(args):
+                sample_type = args[i + 1]
+                i += 2
+            elif args[i] == "--command" and i + 1 < len(args):
+                custom_command = args[i + 1]
+                i += 2
+            else:
+                i += 1
+
+        if custom_command is not None:
+            # 使用自定义命令
+            result = run_command_allowlist_validation_dry_run(commands=[custom_command])
+        elif sample_type:
+            result = run_command_allowlist_validation_dry_run(sample=sample_type)
+        else:
+            # 默认 pass-status sample
+            result = run_command_allowlist_validation_dry_run(sample="pass-status")
+
+        print()
+        print(f"EXECUTION_MODE={result.validation_mode}")
+        print(f"COMMAND_SAMPLE={result.command_sample}")
+        print(f"COMMANDS_TOTAL={result.commands_total}")
+        print(f"COMMANDS_ALLOWED={result.commands_allowed}")
+        print(f"COMMANDS_REJECTED={result.commands_rejected}")
+        allowed_str = ", ".join(result.allowed_commands) if result.allowed_commands else "NONE"
+        print(f"ALLOWED_COMMANDS={allowed_str}")
+        rejected_str = ", ".join(result.rejected_commands) if result.rejected_commands else "NONE"
+        print(f"REJECTED_COMMANDS={rejected_str}")
+        rejection_str = "; ".join(result.rejection_reasons) if result.rejection_reasons else "NONE"
+        print(f"REJECTION_REASONS={rejection_str}")
+        categories_str = ", ".join(result.allowlist_categories) if result.allowlist_categories else "NONE"
+        print(f"ALLOWLIST_CATEGORIES={categories_str}")
+        forbidden_str = ", ".join(result.forbidden_patterns_detected) if result.forbidden_patterns_detected else "NONE"
+        print(f"FORBIDDEN_PATTERNS_DETECTED={forbidden_str}")
+        print(f"COMMAND_EXECUTION_BLOCKED={result.command_execution_blocked}")
+        print(f"READY_FOR_COMMAND_EXECUTION={result.ready_for_command_execution}")
+        print(f"READY_FOR_CONTROLLED_APPLY_DRY_RUN={result.ready_for_controlled_apply_dry_run}")
+        print(f"REAL_PATCH_APPLIED={result.real_patch_applied}")
+        print(f"REAL_TASK_EXECUTION={result.real_task_execution}")
+        print(f"RUN_PROJECT_TASK_FULL_CALLED={result.run_project_task_full_called}")
+        print(f"CLAUDE_CODE_CALLED={result.claude_code_called}")
+        print(f"BUSINESS_CODE_CHANGED={result.business_code_changed}")
+        print(f"AUTO_CONTINUE_TO_NEXT_TASK={result.auto_continue_to_next_task}")
+        print(f"AUTO_GIT_BACKUP={result.auto_git_backup}")
+        print(f"BYPASS_PERMISSIONS_USED={result.bypass_permissions_used}")
+        print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required}")
         print(f"CHECK_RESULT={result.check_result}")
         print()
         print(f"Message：{result.message}")

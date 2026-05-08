@@ -3307,7 +3307,7 @@ Designed no-tool-use safe execution fallback strategy after Layer 2 timeout.
 Direct tool-use real execution remains blocked.
 Stage 7 continues through runner-controlled no-tool-use path.
 
-<!-- NEXT_PENDING=T125 -->
+<!-- NEXT_PENDING=T126 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ---
@@ -3509,9 +3509,11 @@ Real apply, command execution, auto-continue, and auto Git backup remain blocked
 
 ## T125 实现 command allowlist validation dry-run
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 command allowlist 校验 dry-run，补全 T118 未覆盖的 command 检查。
+
+完成说明：Implemented command allowlist validation dry-run. Defined safe status/validation/test command categories and rejected destructive, chained, redirect, run-project-task-full, and Claude Code tool-use commands. No command execution occurred. 15/15 scenarios verified (3 pass + 12 fail closed).
 
 ---
 

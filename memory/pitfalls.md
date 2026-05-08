@@ -609,3 +609,9 @@
 
 - 不要让 valid approval token bypass clean worktree、previous pipeline pass、human review、auto-continue 或 auto-git-backup gates。Token 只是前置条件之一，不是万能通行证。
 - 不要在 approval model dry-run 中检查真实 git status。函数只根据传入参数 dry-run，真实 git status 检查在执行步骤中做。
+
+## T125 command allowlist validation dry-run 避坑
+
+- 不要把 allowlisted commands 当成 permission to run them。Allowlist 只做分类判断，execution 需要单独的 command executor gate。
+- 不要用 subprocess 或 shell 执行命令来验证 allowlist。Allowlist 校验是纯字符串匹配，不调用任何外部执行器。
+- 不要在 _classify_command 中返回 "allowed" 后认为命令安全。Allowlisted 命令仍然不能在本阶段执行，只表示命令类别属于安全范围。

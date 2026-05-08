@@ -825,3 +825,7 @@ G006 已完成完整闭环：
 ### T124 controlled apply approval model dry-run 经验
 
 - **Approval model dry-run should allow only controlled apply dry-run readiness, never real apply readiness.** Why: approval token 只验证前置条件是否满足，不授予任何真实执行权限。如果 approval pass 后允许 real apply，就绕过了后续 safety gate。How to apply: ready_for_real_apply_after_approval 始终为 no，即使所有前置条件通过。real patch apply、command execution、auto-continue 和 auto Git backup 在 approval model 中始终被阻止。
+
+### T125 command allowlist validation dry-run 经验
+
+- **Command allowlist validation must be string-only dry-run and must never execute the proposed commands.** Why: command allowlist 只做分类判断，不负责执行。如果在 allowlist 校验中执行命令，就跳过了后续 safety gate。How to apply: _classify_command() 只做字符串级别匹配，不调用 subprocess、不调用 shell、不执行任何命令。允许的命令类别只有 status/validation/test 三类，其他一律拒绝。
