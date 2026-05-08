@@ -3549,9 +3549,18 @@ Next safe step remains Stage 7 approval persistence and audit record, not real a
 
 ## T129 设计 real apply approval persistence and audit record
 
-状态：pending
+状态：done
 角色：Designer
 目标：设计 real apply 前的 approval 持久化和审计记录。
+
+### 完成说明
+
+Designed real apply approval persistence and audit record.
+Defined approval record schema, audit record schema, file path design, required evidence (20 items), invalidation conditions (15 conditions), and T130 boundary.
+No real apply, no command execution, no business code modification.
+
+<!-- NEXT_PENDING=T130 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ## T130 实现 real apply approval record dry-run
 

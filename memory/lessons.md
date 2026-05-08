@@ -841,3 +841,7 @@ G006 已完成完整闭环：
 ### T128 human-reviewed controlled apply archive 经验
 
 - **Validated controlled-apply dry-run chain still does not mean real apply readiness.** Why: T123-T127 only prove the human-reviewed controlled apply dry-run path, not real patch apply or command execution. How to apply: after T128 archive, continue Stage 7 with approval persistence and audit record before any real apply.
+
+### T129 real apply approval persistence and audit record 设计经验
+
+- **Before any real apply, approval and audit records must be persisted so the decision is reviewable, traceable, and invalidatable.** Why: in-memory approval decisions or transient CLI output cannot serve as evidence for future real apply. If approval is not persisted, there is no way to audit who approved what, when, and whether the approved content has changed since approval. How to apply: every approval must generate a persistent approval_record with fingerprints (proposal_hash, patch_hash, target_files_hash), and every apply must have pre/post audit records with git state snapshots.

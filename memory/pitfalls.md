@@ -631,3 +631,9 @@
 
 - 不要把 human-reviewed controlled apply dry-run 的归档完成误判为可以进入 Stage 8。
 - 不要把 dry-run chain validated 当成真实 patch apply、command execution、Git backup 的许可。
+
+## T129 real apply approval persistence 避坑
+
+- 不要让 in-memory approval decision 或 transient CLI output 成为 future real apply 的唯一 evidence。必须持久化 approval record。
+- 不要忽略 proposal fingerprint 检查。approval 后如果 proposal 内容变化，approval record 必须标记为 invalidated。
+- 不要把 approval record 的 existence 等同于 approval 的 validity。approval 可能已被 invalidated 或 expired。
