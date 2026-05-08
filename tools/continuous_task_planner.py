@@ -4,6 +4,7 @@
 T059 实现 dry-run 计划生成，T060 实现 loop dry-run 模拟推进。
 T065 实现 execute mode safety gate（确认协议、前置检查、execute 硬限制）。
 T117 实现 no-tool-use proposal parser dry-run。
+T118 实现 no-tool-use allowed scope validator dry-run。
 不执行任务，不调用 Claude Code。
 """
 
@@ -4237,3 +4238,758 @@ def run_no_tool_use_proposal_parser_dry_run(sample: str = "pass") -> NoToolUsePr
         )
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# T118: No-Tool-Use Allowed Scope Validator Dry-Run
+# ---------------------------------------------------------------------------
+
+def _has_path_traversal(file_path: str) -> bool:
+    """检查文件路径是否包含路径逃逸 (..)。"""
+    parts = file_path.replace("\\", "/").split("/")
+    return ".." in parts
+
+
+def _is_absolute_path(file_path: str) -> bool:
+    """检查文件路径是否是绝对路径。"""
+    if file_path.startswith("/"):
+        return True
+    if len(file_path) >= 2 and file_path[1] == ":":
+        return True
+    return False
+
+
+def _path_matches_pattern(file_path: str, pattern: str) -> bool:
+    """检查文件路径是否匹配指定模式。
+
+    支持：
+    - 精确匹配：pattern == file_path
+    - 递归通配："projects/**" 匹配 "projects/a/b/c"
+    - 单层通配："tools/*.py" 匹配 "tools/test.py"
+    """
+    import fnmatch
+
+    if pattern == file_path:
+        return True
+
+    if pattern.endswith("/**"):
+        prefix = pattern[:-3]
+        if file_path.startswith(prefix + "/") or file_path == prefix:
+            return True
+        return False
+
+    if "*" in pattern:
+        return fnmatch.fnmatch(file_path, pattern)
+
+    return False
+
+
+def _is_path_in_scope(file_path: str, allowed_patterns: list[str]) -> bool:
+    """检查文件路径是否在 allowed scope 内。保守原则：空列表则 fail。"""
+    if not allowed_patterns:
+        return False
+    return any(_path_matches_pattern(file_path, p) for p in allowed_patterns)
+
+
+def _is_path_forbidden(file_path: str, forbidden_patterns: list[str]) -> bool:
+    """检查文件路径是否命中 forbidden scope。"""
+    if not forbidden_patterns:
+        return False
+    return any(_path_matches_pattern(file_path, p) for p in forbidden_patterns)
+
+
+@dataclass
+class NoToolUseAllowedScopeValidationResult:
+    """No-tool-use allowed scope validation result。
+
+    只做 scope 和 safety 校验，不应用 patch，不执行 command。
+    """
+    # Parse 状态
+    parse_status: str
+    parse_check_result: str
+    validation_status: str  # validated / failed_parse / failed_scope / failed_safety
+
+    # Proposal 基本信息
+    proposal_version: str | None
+    execution_mode: str | None
+    task_id: str | None
+    change_type: str | None
+
+    # Scope 信息
+    allowed_files: list[str]
+    forbidden_files: list[str]
+    target_files: list[str]
+    proposed_commands: list[str]
+    expected_reports: list[str]
+
+    # Scope 校验结果
+    allowed_scope_pass: bool
+    forbidden_scope_pass: bool
+
+    # Safety 校验结果
+    safety_declarations_pass: bool
+    human_review_required_pass: bool
+    auto_continue_pass: bool
+    auto_git_backup_pass: bool
+
+    # 安全保证（dry-run 硬编码）
+    command_execution_blocked: bool   # 始终 True
+    patch_apply_blocked: bool         # 始终 True
+    real_task_execution: str          # 始终 "no"
+    run_project_task_full_called: str # 始终 "no"
+    claude_code_called: str           # 始终 "no"
+    business_code_changed: str        # 始终 "no"
+    framework_code_changed: str       # 始终 "no"
+
+    # 违规列表
+    violations: list[str]
+
+    # 最终结果
+    check_result: str  # pass / fail
+    message: str
+
+
+def validate_no_tool_use_allowed_scope_dry_run(
+    proposal_text: str,
+) -> NoToolUseAllowedScopeValidationResult:
+    """验证 no-tool-use proposal 的 allowed scope。
+
+    职责：
+    1. 调用 parse_no_tool_use_execution_proposal() 解析 proposal
+    2. 如果 parse fail，返回 failed_parse
+    3. 从原始 YAML 中提取 scope.allowed_files 和 scope.forbidden_files
+    4. 校验 target_files 是否被 allowed_files 覆盖
+    5. 校验 target_files 是否命中 forbidden_files
+    6. 校验路径安全（无 ../ 逃逸，无绝对路径）
+    7. 校验 safety declarations
+    8. 返回 validation result
+
+    不应用 patch，不执行 command。
+    """
+    import yaml
+
+    # Step 1: 解析 proposal
+    parse_result = parse_no_tool_use_execution_proposal(proposal_text)
+
+    # Step 2: Parse 失败 → 返回 failed_parse
+    if parse_result.parse_status != "parsed":
+        return NoToolUseAllowedScopeValidationResult(
+            parse_status=parse_result.parse_status,
+            parse_check_result=parse_result.check_result,
+            validation_status="failed_parse",
+            proposal_version=parse_result.proposal_version,
+            execution_mode=parse_result.execution_mode,
+            task_id=parse_result.task_id,
+            change_type=parse_result.change_type,
+            allowed_files=[],
+            forbidden_files=[],
+            target_files=parse_result.target_files,
+            proposed_commands=parse_result.proposed_commands,
+            expected_reports=parse_result.expected_reports,
+            allowed_scope_pass=False,
+            forbidden_scope_pass=False,
+            safety_declarations_pass=False,
+            human_review_required_pass=False,
+            auto_continue_pass=False,
+            auto_git_backup_pass=False,
+            command_execution_blocked=True,
+            patch_apply_blocked=True,
+            real_task_execution="no",
+            run_project_task_full_called="no",
+            claude_code_called="no",
+            business_code_changed="no",
+            framework_code_changed="no",
+            violations=[f"Proposal parse failed: {parse_result.message}"],
+            check_result="fail",
+            message=f"Proposal 解析失败，无法进行 scope 校验：{parse_result.message}",
+        )
+
+    # Step 3: 从原始 YAML 提取 scope 数据
+    yaml_text = _extract_yaml_from_text(proposal_text)
+    data = yaml.safe_load(yaml_text)
+
+    scope_data = data.get("scope", {})
+    if not isinstance(scope_data, dict):
+        scope_data = {}
+    allowed_files = scope_data.get("allowed_files", [])
+    forbidden_files = scope_data.get("forbidden_files", [])
+    if not isinstance(allowed_files, list):
+        allowed_files = []
+    if not isinstance(forbidden_files, list):
+        forbidden_files = []
+
+    # Step 4: 校验 target_files
+    violations: list[str] = []
+    allowed_scope_pass = True
+    forbidden_scope_pass = True
+
+    for tf in parse_result.target_files:
+        # 路径逃逸检查
+        if _has_path_traversal(tf):
+            violations.append(f"Path traversal detected: {tf}")
+            allowed_scope_pass = False
+            continue
+
+        # 绝对路径检查
+        if _is_absolute_path(tf):
+            violations.append(f"Absolute path detected: {tf}")
+            allowed_scope_pass = False
+            continue
+
+        # allowed_files 覆盖检查
+        if not _is_path_in_scope(tf, allowed_files):
+            violations.append(f"Target file not in allowed scope: {tf}")
+            allowed_scope_pass = False
+
+        # forbidden_files 命中检查
+        if _is_path_forbidden(tf, forbidden_files):
+            violations.append(f"Target file in forbidden scope: {tf}")
+            forbidden_scope_pass = False
+
+    # Step 5: 校验 safety declarations
+    safety_data = data.get("safety", {})
+    if not isinstance(safety_data, dict):
+        safety_data = {}
+
+    safety_violations: list[str] = []
+
+    if safety_data.get("human_review_required") != "yes":
+        safety_violations.append("human_review_required must be 'yes'")
+    human_review_required_pass = safety_data.get("human_review_required") == "yes"
+
+    if safety_data.get("auto_continue_to_next_task") != "no":
+        safety_violations.append("auto_continue_to_next_task must be 'no'")
+    auto_continue_pass = safety_data.get("auto_continue_to_next_task") == "no"
+
+    if safety_data.get("auto_git_backup") != "no":
+        safety_violations.append("auto_git_backup must be 'no'")
+    auto_git_backup_pass = safety_data.get("auto_git_backup") == "no"
+
+    if safety_data.get("real_task_execution") != "no":
+        safety_violations.append("real_task_execution must be 'no'")
+    if safety_data.get("run_project_task_full_called") != "no":
+        safety_violations.append("run_project_task_full_called must be 'no'")
+    if safety_data.get("claude_code_tool_use_used") != "no":
+        safety_violations.append("claude_code_tool_use_used must be 'no'")
+
+    safety_declarations_pass = (
+        human_review_required_pass
+        and auto_continue_pass
+        and auto_git_backup_pass
+        and safety_data.get("real_task_execution") == "no"
+        and safety_data.get("run_project_task_full_called") == "no"
+        and safety_data.get("claude_code_tool_use_used") == "no"
+    )
+
+    violations.extend(safety_violations)
+
+    # Step 6: 确定 validation_status 和 check_result
+    if not allowed_scope_pass or not forbidden_scope_pass:
+        validation_status = "failed_scope"
+    elif not safety_declarations_pass:
+        validation_status = "failed_safety"
+    else:
+        validation_status = "validated"
+
+    check_result = "pass" if (
+        allowed_scope_pass
+        and forbidden_scope_pass
+        and safety_declarations_pass
+    ) else "fail"
+
+    message = (
+        "Scope validation passed" if check_result == "pass"
+        else f"Scope validation failed: {'; '.join(violations)}"
+    )
+
+    return NoToolUseAllowedScopeValidationResult(
+        parse_status=parse_result.parse_status,
+        parse_check_result=parse_result.check_result,
+        validation_status=validation_status,
+        proposal_version=parse_result.proposal_version,
+        execution_mode=parse_result.execution_mode,
+        task_id=parse_result.task_id,
+        change_type=parse_result.change_type,
+        allowed_files=allowed_files,
+        forbidden_files=forbidden_files,
+        target_files=parse_result.target_files,
+        proposed_commands=parse_result.proposed_commands,
+        expected_reports=parse_result.expected_reports,
+        allowed_scope_pass=allowed_scope_pass,
+        forbidden_scope_pass=forbidden_scope_pass,
+        safety_declarations_pass=safety_declarations_pass,
+        human_review_required_pass=human_review_required_pass,
+        auto_continue_pass=auto_continue_pass,
+        auto_git_backup_pass=auto_git_backup_pass,
+        command_execution_blocked=True,
+        patch_apply_blocked=True,
+        real_task_execution="no",
+        run_project_task_full_called="no",
+        claude_code_called="no",
+        business_code_changed="no",
+        framework_code_changed="no",
+        violations=violations,
+        check_result=check_result,
+        message=message,
+    )
+
+
+# ---------------------------------------------------------------------------
+# T118: 内置 validator dry-run samples
+# ---------------------------------------------------------------------------
+
+_VALIDATOR_SAMPLE_PASS = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T118"
+  title: "Implement allowed scope validator dry-run"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Implement scope validator for no-tool-use proposals"
+  expected_outcome: "Validator checks allowed_files, forbidden_files, path safety, and safety declarations"
+
+scope:
+  allowed_files:
+    - "tools/continuous_task_planner.py"
+    - "runner.py"
+    - "reports/dev/T118-dev-report.md"
+    - "reports/checks/T118-validator-dry-run-check.md"
+  forbidden_files:
+    - "projects/**"
+    - "tools/rework_manager.py"
+  business_code_change: "no"
+  framework_code_change: "yes"
+
+changes:
+  type: "mixed_safe_proposal"
+  target_files:
+    - path: "tools/continuous_task_planner.py"
+      change_type: "modify"
+      reason: "Add validator dataclass and function"
+    - path: "runner.py"
+      change_type: "modify"
+      reason: "Add validator dry-run CLI command"
+    - path: "reports/dev/T118-dev-report.md"
+      change_type: "create"
+      reason: "Development report"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "pass"
+  success_criteria:
+    - "Validator checks 9 scenarios pass/fail"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_VALIDATOR_SAMPLE_TARGET_OUTSIDE_ALLOWED = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T118"
+  title: "Test target outside allowed scope"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test that target files must be in allowed scope"
+  expected_outcome: "Validator should reject target outside allowed_files"
+
+scope:
+  allowed_files:
+    - "docs/**"
+  forbidden_files:
+    - "runner.py"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "doc_only"
+  target_files:
+    - path: "reports/checks/T118-check.md"
+      change_type: "create"
+      reason: "This file is NOT in allowed_files (only docs/** allowed)"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "fail"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_VALIDATOR_SAMPLE_FORBIDDEN_FILE = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T118"
+  title: "Test forbidden file detection"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test that target files must not match forbidden_files"
+  expected_outcome: "Validator should reject forbidden target file"
+
+scope:
+  allowed_files:
+    - "runner.py"
+    - "tools/**"
+  forbidden_files:
+    - "runner.py"
+    - "projects/**"
+  business_code_change: "no"
+  framework_code_change: "yes"
+
+changes:
+  type: "patch_proposal"
+  target_files:
+    - path: "runner.py"
+      change_type: "modify"
+      reason: "This file is in both allowed and forbidden lists"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "fail"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_VALIDATOR_SAMPLE_PATH_TRAVERSAL = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T118"
+  title: "Test path traversal detection"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test that path traversal (..) is detected and blocked"
+  expected_outcome: "Validator should reject path traversal"
+
+scope:
+  allowed_files:
+    - "../../etc/**"
+    - "docs/**"
+  forbidden_files:
+    - "projects/**"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "doc_only"
+  target_files:
+    - path: "../../etc/passwd"
+      change_type: "read"
+      reason: "Path traversal attempt"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "fail"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_VALIDATOR_SAMPLE_ABSOLUTE_PATH = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T118"
+  title: "Test absolute path detection"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test that absolute paths are detected and blocked"
+  expected_outcome: "Validator should reject absolute path"
+
+scope:
+  allowed_files:
+    - "/etc/**"
+    - "docs/**"
+  forbidden_files:
+    - "projects/**"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "doc_only"
+  target_files:
+    - path: "/etc/passwd"
+      change_type: "read"
+      reason: "Absolute path attempt"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "fail"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_VALIDATOR_SAMPLE_MISSING_HUMAN_REVIEW = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T118"
+  title: "Test missing human review detection"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test that human_review_required must be yes"
+  expected_outcome: "Validator should reject when human_review_required is not yes"
+
+scope:
+  allowed_files:
+    - "docs/**"
+  forbidden_files:
+    - "projects/**"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "doc_only"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "create"
+      reason: "Test file"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "no"
+
+validation:
+  expected_check_result: "fail"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_VALIDATOR_SAMPLE_AUTO_CONTINUE_REQUESTED = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T118"
+  title: "Test auto-continue detection"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test that auto_continue_to_next_task must be no"
+  expected_outcome: "Validator should reject when auto_continue is yes"
+
+scope:
+  allowed_files:
+    - "docs/**"
+  forbidden_files:
+    - "projects/**"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "doc_only"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "create"
+      reason: "Test file"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "yes"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "fail"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_VALIDATOR_SAMPLE_AUTO_GIT_BACKUP_REQUESTED = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T118"
+  title: "Test auto-git-backup detection"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test that auto_git_backup must be no"
+  expected_outcome: "Validator should reject when auto_git_backup is yes"
+
+scope:
+  allowed_files:
+    - "docs/**"
+  forbidden_files:
+    - "projects/**"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "doc_only"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "create"
+      reason: "Test file"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "yes"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "fail"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_VALIDATOR_SAMPLE_PARSE_FAIL = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: no_tool_use_single_task_proposal
+task:
+  id: "T118"
+  title: Test parse failure
+  this is not valid yaml: [
+    unclosed bracket
+```
+"""
+
+_VALIDATOR_SAMPLES: dict[str, str] = {
+    "pass": _VALIDATOR_SAMPLE_PASS,
+    "target-outside-allowed": _VALIDATOR_SAMPLE_TARGET_OUTSIDE_ALLOWED,
+    "forbidden-file": _VALIDATOR_SAMPLE_FORBIDDEN_FILE,
+    "path-traversal": _VALIDATOR_SAMPLE_PATH_TRAVERSAL,
+    "absolute-path": _VALIDATOR_SAMPLE_ABSOLUTE_PATH,
+    "missing-human-review": _VALIDATOR_SAMPLE_MISSING_HUMAN_REVIEW,
+    "auto-continue-requested": _VALIDATOR_SAMPLE_AUTO_CONTINUE_REQUESTED,
+    "auto-git-backup-requested": _VALIDATOR_SAMPLE_AUTO_GIT_BACKUP_REQUESTED,
+    "parse-fail": _VALIDATOR_SAMPLE_PARSE_FAIL,
+}
+
+
+def run_no_tool_use_allowed_scope_validator_dry_run(
+    sample: str = "pass",
+) -> NoToolUseAllowedScopeValidationResult:
+    """运行 allowed scope validator dry-run。
+
+    使用内置 sample 文本作为 validator 输入，不读取任何外部文件。
+    不执行命令、不应用 patch、不修改任何文件。
+
+    Args:
+        sample: 样本类型名称，必须在 _VALIDATOR_SAMPLES 中存在。
+    """
+    if sample not in _VALIDATOR_SAMPLES:
+        available = ", ".join(sorted(_VALIDATOR_SAMPLES.keys()))
+        return NoToolUseAllowedScopeValidationResult(
+            parse_status="failed_to_parse",
+            parse_check_result="fail",
+            validation_status="failed_parse",
+            proposal_version=None,
+            execution_mode=None,
+            task_id=None,
+            change_type=None,
+            allowed_files=[],
+            forbidden_files=[],
+            target_files=[],
+            proposed_commands=[],
+            expected_reports=[],
+            allowed_scope_pass=False,
+            forbidden_scope_pass=False,
+            safety_declarations_pass=False,
+            human_review_required_pass=False,
+            auto_continue_pass=False,
+            auto_git_backup_pass=False,
+            command_execution_blocked=True,
+            patch_apply_blocked=True,
+            real_task_execution="no",
+            run_project_task_full_called="no",
+            claude_code_called="no",
+            business_code_changed="no",
+            framework_code_changed="no",
+            violations=[f"Unknown validator sample: {sample}"],
+            check_result="fail",
+            message=f"未知 validator sample '{sample}'。可用样本：{available}",
+        )
+
+    text = _VALIDATOR_SAMPLES[sample]
+    return validate_no_tool_use_allowed_scope_dry_run(text)

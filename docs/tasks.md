@@ -3307,7 +3307,7 @@ Designed no-tool-use safe execution fallback strategy after Layer 2 timeout.
 Direct tool-use real execution remains blocked.
 Stage 7 continues through runner-controlled no-tool-use path.
 
-<!-- NEXT_PENDING=T118 -->
+<!-- NEXT_PENDING=T119 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ---
@@ -3359,7 +3359,7 @@ Validator, scope gate, and patch apply are deferred to T118+.
 
 ## T118 实现 allowed scope validator dry-run
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 scope validator，检查 proposal 中的文件路径和命令是否在允许范围内。
 
@@ -3372,6 +3372,11 @@ Validator, scope gate, and patch apply are deferred to T118+.
 - dry-run 模式使用样例数据验证
 - 不调用 Claude Code
 - 不执行真实任务
+
+Implemented no-tool-use allowed scope validator dry-run.
+Validator checks allowed_files, forbidden_files, path safety, safety declarations, and blocks command execution / patch apply.
+9/9 dry-run scenarios verified (pass, target-outside-allowed, forbidden-file, path-traversal, absolute-path, missing-human-review, auto-continue-requested, auto-git-backup-requested, parse-fail).
+Patch apply is deferred to T119.
 
 ---
 

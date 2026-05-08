@@ -569,3 +569,9 @@
 - 不要把 parser 实现与 allowed scope validation 或 patch application 混在一起。parser 只负责解析和报告结构，scope/patch 校验是 T118+ 的职责。
 - 不要在 parser 中引入重型依赖。PyYAML 已在环境中可用，直接使用 safe_load 即可。
 - 不要忽略 YAML 提取的回退策略。模型输出可能不包含 ```proposal fenced block，需要支持 ```yaml 和纯 YAML 文本。
+
+## T118 allowed scope validator 避坑
+
+- 不要把 scope validation 与 patch application 或 command execution 混在一起。validator 只做校验，不做执行。
+- 不要在校验顺序上搞错：路径逃逸和绝对路径检查必须先于 allowed/forbidden 检查，否则可能被 `../` 或绝对路径绕过。
+- 不要在路径匹配中引入复杂 glob 库，stdlib fnmatch 已足够支持 `*` 和 `/**` 模式。

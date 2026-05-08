@@ -795,3 +795,7 @@ G006 已完成完整闭环：
 
 - **Proposal parser dry-run should only parse and report structure; safety decisions belong to later validator tasks.** Why: parser 职责是提取字段和检测缺失，如果把 scope validation 和 patch validation 混入 parser，会导致职责不清且难以独立测试。How to apply: parser 只做 YAML 解析 + required fields 检查 + execution_mode 检查；safety 字段值校验、scope 校验、patch 校验由 T118+ validator 负责。
 - **auto-continue 和 auto-git-backup 样本在 parser 层面可以解析成功但仍标记 fail，因为字段值违反安全约束。** Why: parser 需要让用户知道这些字段值不安全，但 parser 不应拒绝解析——拒绝是 validator 的职责。How to apply: parser 标记 parse_status=parsed 但 check_result=fail，由 validator 做最终拒绝决策。
+
+### T118 no-tool-use allowed scope validator dry-run 经验
+
+- **Allowed scope validator dry-run should fail closed when file scope or safety declarations are ambiguous.** Why: 保守原则是安全校验的核心——不确定就 fail。路径逃逸、绝对路径、空 allowed_files 都应被视为不安全。How to apply: validator 校验顺序为路径逃逸 → 绝对路径 → allowed 覆盖 → forbidden 命中 → safety 字段值，任何一步失败即标记 fail 并收集 violation。
