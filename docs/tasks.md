@@ -3282,30 +3282,153 @@ T054 原始目标已经由以下任务前置完成：
 
 ---
 
-## T115 执行 Layer 3 runner-level minimal Claude call validation
+## T115 设计 Stage 7 no-tool-use safe real single-task execution fallback strategy
 
-状态：pending
-角色：Tester
-目标：执行 Layer 3 runner 封装最小调用验证（runner 封装调用 Claude Code，不进入 full loop）。
+状态：done
+角色：Architect
+目标：Layer 2 tool-use validation 失败后，设计不依赖 Claude Code tool-use 的安全真实单任务执行 fallback strategy。
 
 ### 验收标准
 
-- 通过 runner 封装调用 Claude Code
-- 不进入 Developer → Tester → Reviewer → Decision 完整闭环
-- 任务内容极小（如创建一个临时文件）
-- 不使用 run-project-task-full
+- 分析 T114 timeout 对 Stage 7 的影响
+- 确认不直接进入 tool-use 真实执行
+- 设计 no-tool-use fallback strategy
+- 明确模型只输出结构化文本、计划或 patch
+- 明确 runner 负责可控执行、验证、报告和状态更新
+- 定义安全边界、输入输出格式、失败停止条件
+- 拆解 T116 以后的后续任务
+- 不实现代码
+- 不真实执行任务
+- 不调用 run-project-task-full
+
+### 完成说明
+
+Designed no-tool-use safe execution fallback strategy after Layer 2 timeout.
+Direct tool-use real execution remains blocked.
+Stage 7 continues through runner-controlled no-tool-use path.
+
+<!-- NEXT_PENDING=T116 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ---
 
-## T116 人工决策是否恢复 G008/G009 run-project-task-full smoke test
+## T116 设计 no-tool-use execution proposal schema
 
 状态：pending
-角色：Human
-目标：基于 T113-T115 Layer 1-3 验证结果，人工决策是否恢复 G008/G009 run-project-task-full smoke test。
+角色：Architect
+目标：设计 no-tool-use 执行管线中模型输出的 proposal 结构化 schema（JSON/YAML），定义字段、类型、约束和默认值。
 
 ### 验收标准
 
-- 审查 Layer 1-3 验证结果
-- 决定是否恢复 Layer 4 (run-project-task-full smoke)
-- 决定使用哪条路线（继续路线 A / 切换路线 B / 启动路线 C）
-- 不自动恢复 run-project-task-full
+- 定义 proposal 完整 schema（字段、类型、约束）
+- 定义 proposal 解析规则
+- 定义 proposal 验证规则
+- 设计 schema 版本号机制
+- 不实现代码
+- 不调用 Claude Code
+- 不执行真实任务
+
+---
+
+## T117 实现 proposal parser dry-run
+
+状态：pending
+角色：Developer
+目标：实现 proposal parser，解析模型返回的结构化文本为可执行的内部数据结构。
+
+### 验收标准
+
+- 实现 proposal 解析函数
+- 支持从模型原始输出提取 proposal
+- 支持 unified diff 格式解析
+- dry-run 模式使用样例数据验证
+- 不调用 Claude Code
+- 不执行真实任务
+
+---
+
+## T118 实现 allowed scope validator dry-run
+
+状态：pending
+角色：Developer
+目标：实现 scope validator，检查 proposal 中的文件路径和命令是否在允许范围内。
+
+### 验收标准
+
+- 实现 allowed_files 检查
+- 实现 blocked_files 检查
+- 实现命令 allowlist 检查
+- 实现安全声明验证
+- dry-run 模式使用样例数据验证
+- 不调用 Claude Code
+- 不执行真实任务
+
+---
+
+## T119 实现 controlled patch apply dry-run
+
+状态：pending
+角色：Developer
+目标：实现 controlled patch apply，使用 Python 直接操作文件应用 unified diff patch。
+
+### 验收标准
+
+- 实现 unified diff patch 应用函数
+- 支持单文件和多文件 patch
+- 支持 dry-run 模式（只预览不实际修改）
+- 支持回滚（应用前备份）
+- dry-run 模式使用样例数据验证
+- 不调用 Claude Code
+- 不修改真实业务代码
+
+---
+
+## T120 执行 first no-tool-use real single-task dry-run
+
+状态：pending
+角色：Tester
+目标：使用 no-tool-use pipeline dry-run 执行第一个真实单任务，验证完整流程。
+
+### 验收标准
+
+- 选择一个真实单任务进行 dry-run
+- 验证 prompt 生成正确
+- 验证 proposal 解析正确
+- 验证 scope 检查正确
+- 验证 patch 预览正确
+- 不实际修改文件
+- 不调用 Claude Code tool-use
+- 不进入 run-project-task-full
+
+---
+
+## T121 验证 first no-tool-use execution pass/fail 场景
+
+状态：pending
+角色：Tester
+目标：验证 no-tool-use pipeline 在 pass 和 fail 场景下的行为正确性。
+
+### 验收标准
+
+- 验证 pass 场景：proposal 合法、scope 通过、patch 可应用
+- 验证 fail 场景：proposal 格式错误、scope 越权、patch 格式错误
+- 验证 timeout 场景：模型超时处理
+- 验证 dirty workspace 场景
+- 不实际修改文件
+- 不调用 Claude Code tool-use
+
+---
+
+## T122 提交并推送 Stage 7 no-tool-use execution reports
+
+状态：pending
+角色：Developer
+目标：提交并推送 T116-T121 no-tool-use execution pipeline 成果。
+
+### 验收标准
+
+- git status 已检查
+- 当前改动已提交
+- commit message 清晰
+- 已成功 push 到远程仓库
+- push 后工作区 clean

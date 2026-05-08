@@ -780,3 +780,9 @@ G006 已完成完整闭环：
 - **text-only pass 只能说明文本输出链路稳定，不能说明 tool-use 或 run-project-task-full 已可恢复。** 需继续 T114 Layer 2 验证 tool-use，T115 Layer 3 验证 runner-level。
 - **"好的" 也是等价确认。** 协议允许 "OK 或等价极简确认"，"好的" 属于等价确认。
 - **先跑 dry-run plan 再执行真实调用是安全的。** dry-run 确认 COMMAND_COUNT=6 和所有安全字段正确后，再逐步执行 6 次真实调用。
+
+### T115 no-tool-use safe execution fallback strategy 经验
+
+- **When text-only calls are stable but tool-use calls timeout, Stage 7 should continue through a no-tool-use fallback strategy instead of forcing direct tool-use real execution.** Why: T113 text-only 6/6 pass 但 T114 tool-use 0/3 pass（timeout），强行依赖 tool-use 进入真实执行会导致不可控的卡住和超时。How to apply: 后续所有真实任务执行应通过 runner 控制的 no-tool-use pipeline，模型只输出 structured proposal，runner 负责解析、验证和应用。
+- **模型角色应从"直接执行者"转变为"结构化输出提供者"。** Why: tool-use 不稳定时让模型直接修改文件风险过高，runner 无法精确控制修改范围。How to apply: Claude Code / 国内模型使用 default 模式只输出 text-only proposal（patch、计划、命令提案），runner 用 Python 代码直接操作文件。
+- **Layer 2 失败不代表 Stage 7 失败。** Why: text-only 链路稳定，可以通过 no-tool-use fallback 继续推进真实任务执行。How to apply: 不跳过 Stage 7，不暂停项目，改用 runner-controlled no-tool-use execution path。

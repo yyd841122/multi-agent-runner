@@ -550,3 +550,10 @@
 - 不要合并 6 次调用为一次执行。协议要求逐条执行，以便在任意一次 timeout/failed 时立即停止。
 - 不要忽略 "好的" 等非 "OK" 输出。协议允许 "OK 或等价极简确认"。
 - 不要在 Layer 1 pass 后自动进入 Layer 2。需人工确认后才允许进入下一层。
+
+## T115 no-tool-use fallback strategy 避坑
+
+- 不要把 Layer 2 tool-use timeout 当作 Stage 7 必须暂停的理由。text-only 链路稳定，可以通过 no-tool-use fallback 继续推进。
+- 不要在 tool-use unstable 时强行进入真实执行。应先设计 no-tool-use pipeline，模型只输出 structured proposal，runner 控制实际执行。
+- 不要让模型直接执行文件修改。模型 proposal 必须经过 runner 解析、范围检查后才由 runner 应用 patch。
+- 不要把 no-tool-use fallback 当作临时方案。这是长期路线 C 的起点，应设计为可持续演进的 pipeline。
