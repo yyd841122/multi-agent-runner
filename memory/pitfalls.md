@@ -589,3 +589,8 @@
 - 不要在 unsafe-command 样本中只依赖 command 内容触发失败。当前 pipeline 不包含 command allowlist 检查，需要同时在 scope 层面制造违规。
 - 不要在 pipeline 串联中跳过任何一层。即使 parser 和 validator 的 fail 路径已被 T117/T119 独立验证，T120 pipeline 仍需正确转发每层的失败状态。
 - 不要假设所有 fail 样本都在同一层被拦截。8 个样本中有 4 个在 T118 层拦截、2 个在 T119 层拦截、1 个在 T117 层拦截，需要明确每个样本的预期拦截层。
+
+## T121 no-tool-use pass/fail 验证避坑
+
+- 不要把 dry-run ready_for_human_review 当作自动真实执行的许可。ready_for_human_review 只代表 pipeline 校验通过，真实执行仍需人工确认。
+- 不要在验证任务中修改 pipeline 逻辑或业务代码。T121 只验证 T120 已有实现的 pass/fail 行为。

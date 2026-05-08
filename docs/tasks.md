@@ -3307,7 +3307,7 @@ Designed no-tool-use safe execution fallback strategy after Layer 2 timeout.
 Direct tool-use real execution remains blocked.
 Stage 7 continues through runner-controlled no-tool-use path.
 
-<!-- NEXT_PENDING=T121 -->
+<!-- NEXT_PENDING=T122 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ---
@@ -3425,7 +3425,7 @@ No real patch applied, no command executed, no Claude Code called, and human rev
 
 ## T121 验证 first no-tool-use execution pass/fail 场景
 
-状态：pending
+状态：done
 角色：Tester
 目标：验证 no-tool-use pipeline 在 pass 和 fail 场景下的行为正确性。
 
@@ -3437,6 +3437,14 @@ No real patch applied, no command executed, no Claude Code called, and human rev
 - 验证 dirty workspace 场景
 - 不实际修改文件
 - 不调用 Claude Code tool-use
+
+### 完成说明
+
+Validated first no-tool-use execution pass/fail scenarios.
+8/8 scenarios verified: 1 pass (ready_for_human_review) + 7 fail (all fail closed).
+Pass path reaches ready_for_human_review.
+Failure paths fail closed and never enter real execution.
+No real patch applied, no command executed, no Claude Code called.
 
 ---
 

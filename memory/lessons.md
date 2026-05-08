@@ -809,3 +809,7 @@ G006 已完成完整闭环：
 
 - **Single-task dry-run pipeline should integrate parser, validator, and patch dry-run as sequential stages; each stage failure immediately terminates the pipeline.** Why: 串联三层已验证的独立校验能力比重新实现更安全，而且每一层的 fail 路径已经被 T117-T119 独立验证过。How to apply: run_first_no_tool_use_single_task_dry_run() 按顺序调用 T117 parse → T118 validate → T119 patch apply，任何一层 fail 直接返回 pipeline_status 对应值，不继续后续检查。
 - **unsafe-command 样本需要同时在 scope 层面触发违规才能被当前 pipeline 拦截。** Why: 当前 pipeline 三层（parse/validate/patch）不包含 command allowlist 检查，dangerous command 本身不会被拦截。How to apply: 要让 unsafe-command 样本在 T118 层面失败，需同时包含 scope 违规（如 target_file 在 forbidden_files 中）。Command allowlist 检查是 T121+ 的范围。
+
+### T121 no-tool-use pass/fail 验证经验
+
+- **Pass/fail validation should verify both success path and fail-closed behavior before any real execution is allowed.** Why: 单独验证 pass 或单独验证 fail 都不够，必须同时确认 pass 正确到达 ready_for_human_review 且所有 fail 路径都 fail closed，才能信任 pipeline 的安全性。How to apply: 验证 8 个场景覆盖 1 个 pass + 7 个 fail，确认 layer interception 正确（T117 拦截 1 个、T118 拦截 4 个、T119 拦截 2 个），所有安全字段在 8/8 场景中均为安全值。
