@@ -799,3 +799,8 @@ G006 已完成完整闭环：
 ### T118 no-tool-use allowed scope validator dry-run 经验
 
 - **Allowed scope validator dry-run should fail closed when file scope or safety declarations are ambiguous.** Why: 保守原则是安全校验的核心——不确定就 fail。路径逃逸、绝对路径、空 allowed_files 都应被视为不安全。How to apply: validator 校验顺序为路径逃逸 → 绝对路径 → allowed 覆盖 → forbidden 命中 → safety 字段值，任何一步失败即标记 fail 并收集 violation。
+
+### T119 controlled patch apply dry-run 经验
+
+- **Patch apply dry-run must reuse parser and validator as prerequisite gates; only proposals passing both parse and scope validation should enter patch-level checks.** Why: 跳过 parser/validator 直接检查 patch 格式会遗漏 scope 逃逸和 safety 声明违规，而且会造成三层校验逻辑重复。How to apply: 三层流水线（T117 parse → T118 validate → T119 patch apply），每一层失败直接返回对应状态，不继续后续检查。
+- **Patch samples must be designed so that earlier-layer failures (parse fail, scope fail) are caught at the correct layer.** Why: 如果 patch-outside-allowed sample 不把违规文件同时列为 target_file，T118 就不会拦截，测试不到"validation 层拦截"这一路径。How to apply: 每个失败样本必须明确它在哪一层被拦截（parse / validation / patch），确保样本设计与预期拦截层一致。

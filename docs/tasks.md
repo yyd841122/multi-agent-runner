@@ -3307,7 +3307,7 @@ Designed no-tool-use safe execution fallback strategy after Layer 2 timeout.
 Direct tool-use real execution remains blocked.
 Stage 7 continues through runner-controlled no-tool-use path.
 
-<!-- NEXT_PENDING=T119 -->
+<!-- NEXT_PENDING=T120 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ---
@@ -3382,7 +3382,7 @@ Patch apply is deferred to T119.
 
 ## T119 实现 controlled patch apply dry-run
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 controlled patch apply，使用 Python 直接操作文件应用 unified diff patch。
 

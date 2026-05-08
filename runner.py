@@ -55,6 +55,7 @@ from tools.continuous_task_planner import run_first_real_run_executor_simulated_
 from tools.claude_stability_validator import build_stability_plan_for_layer, build_stability_report_skeleton
 from tools.continuous_task_planner import run_no_tool_use_proposal_parser_dry_run
 from tools.continuous_task_planner import run_no_tool_use_allowed_scope_validator_dry_run
+from tools.continuous_task_planner import run_no_tool_use_controlled_patch_apply_sample_dry_run
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -2295,6 +2296,49 @@ def main():
         print(f"CHECK_RESULT={result.check_result}")
         print()
         print(f"Message：{result.message}")
+    elif args[0] == "no-tool-use-patch-apply-dry-run":
+        # T119: no-tool-use controlled patch apply dry-run
+        sample_type = "pass"
+        if len(args) >= 3 and args[1] == "--sample":
+            sample_type = args[2]
+        elif len(args) >= 2 and not args[1].startswith("-"):
+            sample_type = args[1]
+
+        result = run_no_tool_use_controlled_patch_apply_sample_dry_run(sample=sample_type)
+
+        print()
+        print(f"EXECUTION_MODE=no_tool_use_controlled_patch_apply_dry_run")
+        print(f"PATCH_APPLY_SAMPLE={sample_type}")
+        print(f"PARSE_STATUS={result.parse_status}")
+        print(f"PARSE_CHECK_RESULT={result.parse_check_result}")
+        print(f"VALIDATION_STATUS={result.validation_status}")
+        print(f"VALIDATION_CHECK_RESULT={result.validation_check_result}")
+        print(f"PATCH_DRY_RUN_STATUS={result.patch_dry_run_status}")
+        print(f"TASK_ID={result.task_id or 'missing'}")
+        print(f"CHANGE_TYPE={result.change_type or 'missing'}")
+        print(f"TARGET_FILES_COUNT={len(result.target_files)}")
+        print(f"PATCH_FILES_COUNT={len(result.patch_files)}")
+        print(f"PATCH_COUNT={result.patch_count}")
+        print(f"EMPTY_PATCH={'yes' if result.empty_patch else 'no'}")
+        print(f"ALLOWED_SCOPE_PASS={'yes' if result.allowed_scope_pass else 'no'}")
+        print(f"FORBIDDEN_SCOPE_PASS={'yes' if result.forbidden_scope_pass else 'no'}")
+        print(f"PATCH_PARSE_PASS={'yes' if result.patch_parse_pass else 'no'}")
+        print(f"PATCH_FILE_CONSISTENCY_PASS={'yes' if result.patch_file_consistency_pass else 'no'}")
+        print(f"PATCH_APPLY_BLOCKED={'yes' if result.patch_apply_blocked else 'no'}")
+        print(f"COMMAND_EXECUTION_BLOCKED={'yes' if result.command_execution_blocked else 'no'}")
+        print(f"REAL_PATCH_APPLIED={result.real_patch_applied}")
+        print(f"REAL_TASK_EXECUTION={result.real_task_execution}")
+        print(f"RUN_PROJECT_TASK_FULL_CALLED={result.run_project_task_full_called}")
+        print(f"CLAUDE_CODE_CALLED={result.claude_code_called}")
+        print(f"BUSINESS_CODE_CHANGED={result.business_code_changed}")
+        print(f"FRAMEWORK_CODE_CHANGED={result.framework_code_changed}")
+        print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required}")
+        print(f"READY_FOR_FUTURE_CONTROLLED_APPLY={'yes' if result.ready_for_future_controlled_apply else 'no'}")
+        violations_str = "; ".join(result.violations) if result.violations else "NONE"
+        print(f"VIOLATIONS={violations_str}")
+        print(f"CHECK_RESULT={result.check_result}")
+        print()
+        print(f"Message：{result.message}")
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")
         print("  python runner.py complete <T编号>          将任务状态改为 done")
@@ -2324,6 +2368,7 @@ def main():
         print("  python runner.py claude-stability-plan --layer <1|2|3|all> [--skeleton]  Claude Code 稳定性验证 dry-run 计划")
         print("  python runner.py no-tool-use-parse-proposal [--sample <name>]  No-tool-use proposal parser dry-run")
         print("  python runner.py no-tool-use-validate-scope [--sample <name>]  No-tool-use allowed scope validator dry-run")
+        print("  python runner.py no-tool-use-patch-apply-dry-run [--sample <name>]  No-tool-use controlled patch apply dry-run")
 
 
 if __name__ == "__main__":

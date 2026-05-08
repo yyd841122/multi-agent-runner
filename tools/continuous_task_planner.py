@@ -5,6 +5,7 @@ T059 实现 dry-run 计划生成，T060 实现 loop dry-run 模拟推进。
 T065 实现 execute mode safety gate（确认协议、前置检查、execute 硬限制）。
 T117 实现 no-tool-use proposal parser dry-run。
 T118 实现 no-tool-use allowed scope validator dry-run。
+T119 实现 no-tool-use controlled patch apply dry-run。
 不执行任务，不调用 Claude Code。
 """
 
@@ -4993,3 +4994,910 @@ def run_no_tool_use_allowed_scope_validator_dry_run(
 
     text = _VALIDATOR_SAMPLES[sample]
     return validate_no_tool_use_allowed_scope_dry_run(text)
+
+
+# ---------------------------------------------------------------------------
+# T119: No-Tool-Use Controlled Patch Apply Dry-Run
+# ---------------------------------------------------------------------------
+
+def _extract_diff_file(diff_text: str) -> str | None:
+    """从 unified diff 文本中提取目标文件路径。"""
+    # Try +++ b/<file> pattern
+    match = re.search(r"^\+\+\+ b/(.+)$", diff_text, re.MULTILINE)
+    if match:
+        return match.group(1).strip()
+    # Try diff --git a/<file> b/<file> pattern
+    match = re.search(r"^diff --git a/.+ b/(.+)$", diff_text, re.MULTILINE)
+    if match:
+        return match.group(1).strip()
+    return None
+
+
+def _is_patch_empty(diff_text: str) -> bool:
+    """检查 patch 是否为空（无实际变更行）。"""
+    for line in diff_text.split("\n"):
+        if line.startswith("+") and not line.startswith("+++"):
+            return False
+        if line.startswith("-") and not line.startswith("---"):
+            return False
+    return True
+
+
+def _is_valid_unified_diff(diff_text: str) -> bool:
+    """检查文本是否是有效的 unified diff 格式。"""
+    has_minus = bool(re.search(r"^--- ", diff_text, re.MULTILINE))
+    has_plus = bool(re.search(r"^\+\+\+ ", diff_text, re.MULTILINE))
+    has_hunk = bool(re.search(r"^@@ ", diff_text, re.MULTILINE))
+    return has_minus and has_plus and has_hunk
+
+
+@dataclass
+class NoToolUseControlledPatchApplyDryRunResult:
+    """No-tool-use controlled patch apply dry-run result。
+
+    只解析、分类和预览 patch，不真实应用。
+    """
+    # Parse + Validation 状态
+    parse_status: str
+    parse_check_result: str
+    validation_status: str
+    validation_check_result: str
+    patch_dry_run_status: str  # ready_for_future_apply / failed_parse / failed_validation / no_patch / unsafe_patch
+
+    # Proposal 基本信息
+    proposal_version: str | None
+    execution_mode: str | None
+    task_id: str | None
+    change_type: str | None
+
+    # 文件信息
+    target_files: list[str]
+    patch_files: list[str]       # patches[].file 声明的文件
+    patch_count: int             # patches 数量
+    empty_patch: bool            # 是否有空 patch
+
+    # Scope 校验（patch 层面）
+    allowed_scope_pass: bool
+    forbidden_scope_pass: bool
+
+    # Patch 解析
+    patch_parse_pass: bool       # unified diff 格式是否正确
+    patch_file_consistency_pass: bool  # patch file 是否与 target_files 一致
+
+    # 安全保证（dry-run 硬编码）
+    patch_apply_blocked: bool    # 始终 True
+    command_execution_blocked: bool  # 始终 True
+    real_patch_applied: str      # 始终 "no"
+    real_task_execution: str     # 始终 "no"
+    run_project_task_full_called: str
+    claude_code_called: str
+    business_code_changed: str
+    framework_code_changed: str
+
+    # 人工审查
+    human_review_required: str   # 始终 "yes"
+
+    # 是否准备就绪进入 future controlled apply
+    ready_for_future_controlled_apply: bool
+
+    # 违规列表
+    violations: list[str]
+
+    # 最终结果
+    check_result: str  # pass / fail
+    message: str
+
+
+def run_no_tool_use_controlled_patch_apply_dry_run(
+    proposal_text: str,
+) -> NoToolUseControlledPatchApplyDryRunResult:
+    """模拟 controlled patch apply dry-run。
+
+    职责：
+    1. 复用 T118 validator 校验 parse 和 scope
+    2. 如果 parse fail 或 validation fail，立即返回
+    3. 读取 patches 列表
+    4. 检查 patch 是否存在（patch_proposal / mixed_safe_proposal 类型需要）
+    5. 检查每个 patch 的格式、文件一致性和 scope
+    6. 输出 ready_for_future_controlled_apply
+    7. 不真实 apply patch，不执行 command
+
+    不修改任何文件。
+    """
+    import yaml
+
+    # Step 1: 复用 T118 validator
+    validation = validate_no_tool_use_allowed_scope_dry_run(proposal_text)
+
+    # Step 2: Parse 失败
+    if validation.parse_status != "parsed":
+        return NoToolUseControlledPatchApplyDryRunResult(
+            parse_status=validation.parse_status,
+            parse_check_result=validation.parse_check_result,
+            validation_status=validation.validation_status,
+            validation_check_result=validation.check_result,
+            patch_dry_run_status="failed_parse",
+            proposal_version=validation.proposal_version,
+            execution_mode=validation.execution_mode,
+            task_id=validation.task_id,
+            change_type=validation.change_type,
+            target_files=validation.target_files,
+            patch_files=[],
+            patch_count=0,
+            empty_patch=False,
+            allowed_scope_pass=False,
+            forbidden_scope_pass=False,
+            patch_parse_pass=False,
+            patch_file_consistency_pass=False,
+            patch_apply_blocked=True,
+            command_execution_blocked=True,
+            real_patch_applied="no",
+            real_task_execution="no",
+            run_project_task_full_called="no",
+            claude_code_called="no",
+            business_code_changed="no",
+            framework_code_changed="no",
+            human_review_required="yes",
+            ready_for_future_controlled_apply=False,
+            violations=[f"Proposal parse failed: {validation.message}"],
+            check_result="fail",
+            message=f"Proposal 解析失败，无法进行 patch apply dry-run：{validation.message}",
+        )
+
+    # Step 3: Validation 失败
+    if validation.check_result != "pass":
+        return NoToolUseControlledPatchApplyDryRunResult(
+            parse_status=validation.parse_status,
+            parse_check_result=validation.parse_check_result,
+            validation_status=validation.validation_status,
+            validation_check_result=validation.check_result,
+            patch_dry_run_status="failed_validation",
+            proposal_version=validation.proposal_version,
+            execution_mode=validation.execution_mode,
+            task_id=validation.task_id,
+            change_type=validation.change_type,
+            target_files=validation.target_files,
+            patch_files=[],
+            patch_count=0,
+            empty_patch=False,
+            allowed_scope_pass=False,
+            forbidden_scope_pass=False,
+            patch_parse_pass=False,
+            patch_file_consistency_pass=False,
+            patch_apply_blocked=True,
+            command_execution_blocked=True,
+            real_patch_applied="no",
+            real_task_execution="no",
+            run_project_task_full_called="no",
+            claude_code_called="no",
+            business_code_changed="no",
+            framework_code_changed="no",
+            human_review_required="yes",
+            ready_for_future_controlled_apply=False,
+            violations=[f"Scope validation failed: {validation.message}"],
+            check_result="fail",
+            message=f"Scope 校验失败，无法进行 patch apply dry-run：{validation.message}",
+        )
+
+    # Step 4: 从原始 YAML 提取 patches
+    yaml_text = _extract_yaml_from_text(proposal_text)
+    data = yaml.safe_load(yaml_text)
+
+    patches_data = data.get("patches")
+    change_type = validation.change_type or ""
+    requires_patches = change_type in ("patch_proposal", "mixed_safe_proposal")
+
+    # Step 5: 检查 patches 是否存在
+    if not isinstance(patches_data, list) or len(patches_data) == 0:
+        if requires_patches:
+            return NoToolUseControlledPatchApplyDryRunResult(
+                parse_status=validation.parse_status,
+                parse_check_result=validation.parse_check_result,
+                validation_status=validation.validation_status,
+                validation_check_result=validation.check_result,
+                patch_dry_run_status="no_patch",
+                proposal_version=validation.proposal_version,
+                execution_mode=validation.execution_mode,
+                task_id=validation.task_id,
+                change_type=validation.change_type,
+                target_files=validation.target_files,
+                patch_files=[],
+                patch_count=0,
+                empty_patch=False,
+                allowed_scope_pass=True,
+                forbidden_scope_pass=True,
+                patch_parse_pass=True,
+                patch_file_consistency_pass=True,
+                patch_apply_blocked=True,
+                command_execution_blocked=True,
+                real_patch_applied="no",
+                real_task_execution="no",
+                run_project_task_full_called="no",
+                claude_code_called="no",
+                business_code_changed="no",
+                framework_code_changed="no",
+                human_review_required="yes",
+                ready_for_future_controlled_apply=False,
+                violations=[f"Proposal type '{change_type}' requires patches but none found"],
+                check_result="fail",
+                message=f"Proposal 类型 '{change_type}' 需要 patches 但未提供",
+            )
+        else:
+            # doc_only, report_only, command_only — no patches needed
+            return NoToolUseControlledPatchApplyDryRunResult(
+                parse_status=validation.parse_status,
+                parse_check_result=validation.parse_check_result,
+                validation_status=validation.validation_status,
+                validation_check_result=validation.check_result,
+                patch_dry_run_status="ready_for_future_apply",
+                proposal_version=validation.proposal_version,
+                execution_mode=validation.execution_mode,
+                task_id=validation.task_id,
+                change_type=validation.change_type,
+                target_files=validation.target_files,
+                patch_files=[],
+                patch_count=0,
+                empty_patch=False,
+                allowed_scope_pass=True,
+                forbidden_scope_pass=True,
+                patch_parse_pass=True,
+                patch_file_consistency_pass=True,
+                patch_apply_blocked=True,
+                command_execution_blocked=True,
+                real_patch_applied="no",
+                real_task_execution="no",
+                run_project_task_full_called="no",
+                claude_code_called="no",
+                business_code_changed="no",
+                framework_code_changed="no",
+                human_review_required="yes",
+                ready_for_future_controlled_apply=True,
+                violations=[],
+                check_result="pass",
+                message=f"Proposal 类型 '{change_type}' 不需要 patches，scope 校验通过，可进入 future controlled apply",
+            )
+
+    # Step 6: 逐个检查 patches
+    violations: list[str] = []
+    patch_files: list[str] = []
+    has_empty = False
+    all_valid_format = True
+    all_consistent = True
+    all_in_allowed = True
+    all_not_forbidden = True
+
+    allowed_files = validation.allowed_files
+    forbidden_files = validation.forbidden_files
+    target_files = validation.target_files
+
+    for i, patch_entry in enumerate(patches_data):
+        if not isinstance(patch_entry, dict):
+            violations.append(f"Patch entry {i}: not a valid mapping")
+            all_valid_format = False
+            continue
+
+        patch_file = patch_entry.get("file", "")
+        patch_content = patch_entry.get("content", "")
+        patch_format = patch_entry.get("format", "")
+
+        if not patch_file:
+            violations.append(f"Patch entry {i}: missing 'file' field")
+            all_valid_format = False
+            continue
+
+        patch_files.append(patch_file)
+
+        # 检查 format
+        if patch_format != "unified_diff":
+            violations.append(f"Patch '{patch_file}': unsupported format '{patch_format}', expected 'unified_diff'")
+            all_valid_format = False
+            continue
+
+        # 检查空 patch
+        if not patch_content or not patch_content.strip():
+            violations.append(f"Patch '{patch_file}': empty patch content")
+            has_empty = True
+            continue
+
+        # 检查 unified diff 格式
+        if not _is_valid_unified_diff(patch_content):
+            violations.append(f"Patch '{patch_file}': invalid unified diff format")
+            all_valid_format = False
+            continue
+
+        # 检查空变更
+        if _is_patch_empty(patch_content):
+            violations.append(f"Patch '{patch_file}': patch has no actual changes")
+            has_empty = True
+            continue
+
+        # 检查 patch file 与 target_files 一致性
+        if patch_file not in target_files:
+            violations.append(f"Patch '{patch_file}': not in target_files list")
+            all_consistent = False
+
+        # 检查 patch file 是否在 allowed scope
+        if not _is_path_in_scope(patch_file, allowed_files):
+            violations.append(f"Patch '{patch_file}': not in allowed scope")
+            all_in_allowed = False
+
+        # 检查 patch file 是否 forbidden
+        if _is_path_forbidden(patch_file, forbidden_files):
+            violations.append(f"Patch '{patch_file}': in forbidden scope")
+            all_not_forbidden = False
+
+    # Step 7: 确定 patch_dry_run_status
+    if has_empty or not all_valid_format or not all_consistent or not all_in_allowed or not all_not_forbidden:
+        patch_dry_run_status = "unsafe_patch"
+    else:
+        patch_dry_run_status = "ready_for_future_apply"
+
+    ready = (
+        patch_dry_run_status == "ready_for_future_apply"
+        and not has_empty
+        and all_valid_format
+        and all_consistent
+        and all_in_allowed
+        and all_not_forbidden
+    )
+
+    check_result = "pass" if ready else "fail"
+
+    message = (
+        "Patch apply dry-run passed, ready for future controlled apply" if ready
+        else f"Patch apply dry-run failed: {'; '.join(violations)}"
+    )
+
+    return NoToolUseControlledPatchApplyDryRunResult(
+        parse_status=validation.parse_status,
+        parse_check_result=validation.parse_check_result,
+        validation_status=validation.validation_status,
+        validation_check_result=validation.check_result,
+        patch_dry_run_status=patch_dry_run_status,
+        proposal_version=validation.proposal_version,
+        execution_mode=validation.execution_mode,
+        task_id=validation.task_id,
+        change_type=validation.change_type,
+        target_files=validation.target_files,
+        patch_files=patch_files,
+        patch_count=len(patches_data),
+        empty_patch=has_empty,
+        allowed_scope_pass=all_in_allowed,
+        forbidden_scope_pass=all_not_forbidden,
+        patch_parse_pass=all_valid_format,
+        patch_file_consistency_pass=all_consistent,
+        patch_apply_blocked=True,
+        command_execution_blocked=True,
+        real_patch_applied="no",
+        real_task_execution="no",
+        run_project_task_full_called="no",
+        claude_code_called="no",
+        business_code_changed="no",
+        framework_code_changed="no",
+        human_review_required="yes",
+        ready_for_future_controlled_apply=ready,
+        violations=violations,
+        check_result=check_result,
+        message=message,
+    )
+
+
+# ---------------------------------------------------------------------------
+# T119: 内置 patch apply dry-run samples
+# ---------------------------------------------------------------------------
+
+_PATCH_SAMPLE_PASS = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T119"
+  title: "Implement controlled patch apply dry-run"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Implement patch apply dry-run for no-tool-use proposals"
+  expected_outcome: "Dry-run parses patch, checks consistency, blocks real apply"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+    - "reports/checks/T119-check.md"
+  forbidden_files:
+    - "runner.py"
+    - "tools/rework_manager.py"
+    - "projects/**"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "patch_proposal"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "modify"
+      reason: "Test patch target"
+
+patches:
+  - file: "docs/test.md"
+    format: "unified_diff"
+    content: |
+      --- a/docs/test.md
+      +++ b/docs/test.md
+      @@ -1,3 +1,4 @@
+       line 1
+       line 2
+      +new line added by patch
+       line 3
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "pass"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_PATCH_SAMPLE_NO_PATCH = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T119"
+  title: "Test no patch provided"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test patch_proposal without patches section"
+  expected_outcome: "Should fail - patches required"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+  forbidden_files:
+    - "runner.py"
+    - "projects/**"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "patch_proposal"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "modify"
+      reason: "Test"
+
+# patches section is missing
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "fail"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_PATCH_SAMPLE_EMPTY_PATCH = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T119"
+  title: "Test empty patch content"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test that empty patch content is rejected"
+  expected_outcome: "Should fail - patch content is empty"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+  forbidden_files:
+    - "runner.py"
+    - "projects/**"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "patch_proposal"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "modify"
+      reason: "Test"
+
+patches:
+  - file: "docs/test.md"
+    format: "unified_diff"
+    content: ""
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "fail"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_PATCH_SAMPLE_FILE_MISMATCH = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T119"
+  title: "Test patch file mismatch"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test that patch file must match target_files"
+  expected_outcome: "Should fail - patch file differs from target"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+    - "docs/other.md"
+  forbidden_files:
+    - "runner.py"
+    - "projects/**"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "patch_proposal"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "modify"
+      reason: "Target file"
+
+patches:
+  - file: "docs/other.md"
+    format: "unified_diff"
+    content: |
+      --- a/docs/other.md
+      +++ b/docs/other.md
+      @@ -1,2 +1,3 @@
+       line 1
+      +added line
+       line 2
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "fail"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_PATCH_SAMPLE_OUTSIDE_ALLOWED = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T119"
+  title: "Test patch outside allowed scope"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test that patch file must be in allowed scope"
+  expected_outcome: "Should fail - patch file outside allowed_files"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+  forbidden_files:
+    - "runner.py"
+    - "projects/**"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "patch_proposal"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "modify"
+      reason: "Target"
+    - path: "reports/other.md"
+      change_type: "create"
+      reason: "Additional target outside allowed"
+
+patches:
+  - file: "reports/other.md"
+    format: "unified_diff"
+    content: |
+      --- /dev/null
+      +++ b/reports/other.md
+      @@ -0,0 +1,2 @@
+      +# Test
+      +content
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "fail"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_PATCH_SAMPLE_FORBIDDEN_FILE = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T119"
+  title: "Test patch targets forbidden file"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test that patch file must not be forbidden"
+  expected_outcome: "Should fail - patch file is forbidden"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+    - "runner.py"
+  forbidden_files:
+    - "runner.py"
+    - "projects/**"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "patch_proposal"
+  target_files:
+    - path: "runner.py"
+      change_type: "modify"
+      reason: "Target is forbidden"
+
+patches:
+  - file: "runner.py"
+    format: "unified_diff"
+    content: |
+      --- a/runner.py
+      +++ b/runner.py
+      @@ -1,3 +1,4 @@
+       line 1
+      +# injected
+       line 2
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "fail"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_PATCH_SAMPLE_INVALID_FORMAT = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T119"
+  title: "Test invalid patch format"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test that patch must be valid unified diff"
+  expected_outcome: "Should fail - invalid diff format"
+
+scope:
+  allowed_files:
+    - "docs/test.md"
+  forbidden_files:
+    - "runner.py"
+    - "projects/**"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "patch_proposal"
+  target_files:
+    - path: "docs/test.md"
+      change_type: "modify"
+      reason: "Test"
+
+patches:
+  - file: "docs/test.md"
+    format: "unified_diff"
+    content: |
+      This is not a valid unified diff.
+      Just some random text.
+      No --- or +++ or @@ markers.
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "no"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "fail"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_PATCH_SAMPLE_VALIDATION_FAIL = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: "no_tool_use_single_task_proposal"
+
+task:
+  id: "T119"
+  title: "Test validation failure before patch check"
+  source: "docs/tasks.md"
+
+intent:
+  summary: "Test that validation failure blocks patch dry-run"
+  expected_outcome: "Should fail validation first"
+
+scope:
+  allowed_files:
+    - "docs/**"
+  forbidden_files:
+    - "runner.py"
+    - "projects/**"
+  business_code_change: "no"
+  framework_code_change: "no"
+
+changes:
+  type: "patch_proposal"
+  target_files:
+    - path: "reports/other.md"
+      change_type: "create"
+      reason: "Not in allowed scope"
+
+safety:
+  real_task_execution: "no"
+  run_project_task_full_called: "no"
+  claude_code_tool_use_used: "no"
+  auto_continue_to_next_task: "yes"
+  auto_git_backup: "no"
+  bypass_permissions_used: "no"
+  human_review_required: "yes"
+
+validation:
+  expected_check_result: "fail"
+
+next_action:
+  recommendation: "human_review"
+```
+"""
+
+_PATCH_SAMPLE_PARSE_FAIL = """\
+```yaml
+proposal_version: "1.0"
+execution_mode: no_tool_use_single_task_proposal
+task:
+  id: "T119"
+  title: Test parse failure
+  this is not valid yaml: [
+    unclosed bracket
+```
+"""
+
+_PATCH_APPLY_SAMPLES: dict[str, str] = {
+    "pass": _PATCH_SAMPLE_PASS,
+    "no-patch": _PATCH_SAMPLE_NO_PATCH,
+    "empty-patch": _PATCH_SAMPLE_EMPTY_PATCH,
+    "patch-file-mismatch": _PATCH_SAMPLE_FILE_MISMATCH,
+    "patch-outside-allowed": _PATCH_SAMPLE_OUTSIDE_ALLOWED,
+    "patch-forbidden-file": _PATCH_SAMPLE_FORBIDDEN_FILE,
+    "invalid-patch-format": _PATCH_SAMPLE_INVALID_FORMAT,
+    "validation-fail": _PATCH_SAMPLE_VALIDATION_FAIL,
+    "parse-fail": _PATCH_SAMPLE_PARSE_FAIL,
+}
+
+
+def run_no_tool_use_controlled_patch_apply_sample_dry_run(
+    sample: str = "pass",
+) -> NoToolUseControlledPatchApplyDryRunResult:
+    """运行 controlled patch apply dry-run 样本。
+
+    使用内置 sample 文本作为输入，不读取任何外部文件。
+    不应用 patch、不执行命令、不修改任何文件。
+
+    Args:
+        sample: 样本类型名称，必须在 _PATCH_APPLY_SAMPLES 中存在。
+    """
+    if sample not in _PATCH_APPLY_SAMPLES:
+        available = ", ".join(sorted(_PATCH_APPLY_SAMPLES.keys()))
+        return NoToolUseControlledPatchApplyDryRunResult(
+            parse_status="failed_to_parse",
+            parse_check_result="fail",
+            validation_status="failed_parse",
+            validation_check_result="fail",
+            patch_dry_run_status="failed_parse",
+            proposal_version=None,
+            execution_mode=None,
+            task_id=None,
+            change_type=None,
+            target_files=[],
+            patch_files=[],
+            patch_count=0,
+            empty_patch=False,
+            allowed_scope_pass=False,
+            forbidden_scope_pass=False,
+            patch_parse_pass=False,
+            patch_file_consistency_pass=False,
+            patch_apply_blocked=True,
+            command_execution_blocked=True,
+            real_patch_applied="no",
+            real_task_execution="no",
+            run_project_task_full_called="no",
+            claude_code_called="no",
+            business_code_changed="no",
+            framework_code_changed="no",
+            human_review_required="yes",
+            ready_for_future_controlled_apply=False,
+            violations=[f"Unknown patch apply sample: {sample}"],
+            check_result="fail",
+            message=f"未知 patch apply sample '{sample}'。可用样本：{available}",
+        )
+
+    text = _PATCH_APPLY_SAMPLES[sample]
+    return run_no_tool_use_controlled_patch_apply_dry_run(text)

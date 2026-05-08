@@ -575,3 +575,10 @@
 - 不要把 scope validation 与 patch application 或 command execution 混在一起。validator 只做校验，不做执行。
 - 不要在校验顺序上搞错：路径逃逸和绝对路径检查必须先于 allowed/forbidden 检查，否则可能被 `../` 或绝对路径绕过。
 - 不要在路径匹配中引入复杂 glob 库，stdlib fnmatch 已足够支持 `*` 和 `/**` 模式。
+
+## T119 controlled patch apply dry-run 避坑
+
+- 不要跳过 T118 validator 直接进入 patch 检查。parse fail 和 validation fail 必须在对应层拦截，不继续后续检查。
+- 不要在 patch apply dry-run 中真实 apply patch 或执行 command。dry-run 只解析、分类和预览，不修改任何文件。
+- 不要假设 patch file 与 target_files 一定一致。必须显式检查 patch file 是否在 target_files 列表中。
+- 不要在 proposal type 不需要 patches 时（doc_only, report_only, command_only）标记为 fail。只有 patch_proposal 和 mixed_safe_proposal 缺少 patches 才是 fail。
