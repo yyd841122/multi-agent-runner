@@ -57,6 +57,8 @@ from tools.continuous_task_planner import run_no_tool_use_proposal_parser_dry_ru
 from tools.continuous_task_planner import run_no_tool_use_allowed_scope_validator_dry_run
 from tools.continuous_task_planner import run_no_tool_use_controlled_patch_apply_sample_dry_run
 from tools.continuous_task_planner import run_first_no_tool_use_single_task_sample_dry_run
+from tools.continuous_task_planner import run_controlled_apply_approval_model_sample_dry_run
+from tools.continuous_task_planner import run_controlled_apply_approval_model_dry_run
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -2380,6 +2382,58 @@ def main():
         print(f"READY_FOR_REAL_EXECUTION={result.ready_for_real_execution}")
         violations_str = "; ".join(result.violations) if result.violations else "NONE"
         print(f"VIOLATIONS={violations_str}")
+        print(f"CHECK_RESULT={result.check_result}")
+        print()
+        print(f"Message：{result.message}")
+    elif args[0] == "controlled-apply-approval-dry-run":
+        # T124: controlled apply approval model dry-run
+        sample_type = None
+        approval_token_arg = None
+        i = 1
+        while i < len(args):
+            if args[i] == "--sample" and i + 1 < len(args):
+                sample_type = args[i + 1]
+                i += 2
+            elif args[i] == "--approval-token" and i + 1 < len(args):
+                approval_token_arg = args[i + 1]
+                i += 2
+            else:
+                i += 1
+
+        if sample_type:
+            # 使用内置 sample
+            result = run_controlled_apply_approval_model_sample_dry_run(sample=sample_type)
+            sample_display = sample_type
+        elif approval_token_arg is not None:
+            # 使用自定义 token（模拟 clean pipeline pass）
+            result = run_controlled_apply_approval_model_dry_run(approval_token=approval_token_arg)
+            sample_display = "custom"
+        else:
+            # 默认 pass sample
+            result = run_controlled_apply_approval_model_sample_dry_run(sample="pass")
+            sample_display = "pass"
+
+        print()
+        print(f"EXECUTION_MODE={result.approval_mode}")
+        print(f"APPROVAL_SAMPLE={sample_display}")
+        print(f"APPROVAL_TOKEN_PRESENT={result.approval_token_present}")
+        print(f"APPROVAL_TOKEN_VALID={result.approval_token_valid}")
+        print(f"WORKTREE_CLEAN_PASS={result.worktree_clean_pass}")
+        print(f"PREVIOUS_PIPELINE_PASS={result.previous_pipeline_pass}")
+        print(f"HUMAN_REVIEW_REQUIRED_PASS={result.human_review_required_pass}")
+        print(f"READY_FOR_REAL_APPLY_PASS={result.ready_for_real_apply_pass}")
+        print(f"AUTO_CONTINUE_PASS={result.auto_continue_pass}")
+        print(f"AUTO_GIT_BACKUP_PASS={result.auto_git_backup_pass}")
+        print(f"READY_FOR_CONTROLLED_APPLY_DRY_RUN={result.ready_for_controlled_apply_dry_run}")
+        print(f"READY_FOR_REAL_APPLY_AFTER_APPROVAL={result.ready_for_real_apply_after_approval}")
+        print(f"REAL_PATCH_APPLIED={result.real_patch_applied}")
+        print(f"COMMAND_EXECUTION_PERFORMED={result.command_execution_performed}")
+        print(f"REAL_TASK_EXECUTION={result.real_task_execution}")
+        print(f"RUN_PROJECT_TASK_FULL_CALLED={result.run_project_task_full_called}")
+        print(f"CLAUDE_CODE_CALLED={result.claude_code_called}")
+        print(f"BUSINESS_CODE_CHANGED={result.business_code_changed}")
+        rejection_str = ", ".join(result.rejection_reasons) if result.rejection_reasons else "NONE"
+        print(f"REJECTION_REASONS={rejection_str}")
         print(f"CHECK_RESULT={result.check_result}")
         print()
         print(f"Message：{result.message}")

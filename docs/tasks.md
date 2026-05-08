@@ -3307,7 +3307,7 @@ Designed no-tool-use safe execution fallback strategy after Layer 2 timeout.
 Direct tool-use real execution remains blocked.
 Stage 7 continues through runner-controlled no-tool-use path.
 
-<!-- NEXT_PENDING=T124 -->
+<!-- NEXT_PENDING=T125 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ---
@@ -3494,9 +3494,16 @@ No real apply, no command execution, no business code modification.
 
 ## T124 实现 controlled apply approval model dry-run
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现人工审查通过后的 controlled apply approval model dry-run。
+
+### 完成说明
+
+Implemented controlled apply approval model dry-run.
+Approval token APPROVE_CONTROLLED_APPLY_DRY_RUN is required and only enables controlled apply dry-run readiness.
+Real apply, command execution, auto-continue, and auto Git backup remain blocked.
+10/10 scenarios validated (1 pass + 9 fail closed).
 
 ---
 

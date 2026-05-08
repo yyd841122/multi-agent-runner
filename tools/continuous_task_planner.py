@@ -6535,3 +6535,351 @@ def run_first_no_tool_use_single_task_sample_dry_run(
 
     text = _SINGLE_TASK_SAMPLES[sample]
     return run_first_no_tool_use_single_task_dry_run(text)
+
+
+# ---------------------------------------------------------------------------
+# T124: Controlled Apply Approval Model Dry-Run
+# ---------------------------------------------------------------------------
+
+APPROVAL_TOKEN_EXPECTED = "APPROVE_CONTROLLED_APPLY_DRY_RUN"
+
+
+@dataclass
+class ControlledApplyApprovalDryRunResult:
+    """Controlled apply approval model dry-run 结果。"""
+
+    # 模式标识
+    approval_mode: str                           # controlled_apply_approval_model_dry_run
+
+    # Token 检查
+    approval_token_expected: str                 # APPROVE_CONTROLLED_APPLY_DRY_RUN
+    approval_token_provided: str                 # 实际提供的 token 或 ""
+    approval_token_present: str                  # yes / no
+    approval_token_valid: str                    # yes / no / not_applicable
+
+    # 前置条件检查
+    worktree_status: str                         # 输入的 worktree status
+    worktree_clean_required: str                 # yes（始终要求 clean）
+    worktree_clean_pass: str                     # yes / no
+
+    previous_pipeline_status: str                # 输入的 pipeline status
+    previous_pipeline_check_result: str          # 输入的 pipeline check result
+    previous_pipeline_pass: str                  # yes / no
+
+    human_review_required: str                   # 输入值
+    human_review_required_pass: str              # yes / no
+
+    ready_for_real_apply: str                    # 输入值
+    ready_for_real_apply_pass: str               # yes（必须为 no） / no
+
+    auto_continue_to_next_task: str              # 输入值
+    auto_continue_pass: str                      # yes / no
+
+    auto_git_backup: str                         # 输入值
+    auto_git_backup_pass: str                    # yes / no
+
+    # 安全保证字段（始终为安全值）
+    real_patch_applied: str                      # no
+    command_execution_performed: str             # no
+    real_task_execution: str                     # no
+    run_project_task_full_called: str            # no
+    claude_code_called: str                      # no
+    business_code_changed: str                   # no
+    framework_code_changed: str                  # no
+
+    # Gate 结果
+    ready_for_controlled_apply_dry_run: str      # yes / no
+    ready_for_real_apply_after_approval: str     # no（始终）
+    rejection_reasons: list[str]
+    check_result: str                            # pass / fail
+    message: str
+
+
+def run_controlled_apply_approval_model_dry_run(
+    approval_token: str | None = None,
+    worktree_status: str = "clean",
+    previous_pipeline_status: str = "ready_for_human_review",
+    previous_pipeline_check_result: str = "pass",
+    human_review_required: str = "yes",
+    ready_for_real_apply: str = "no",
+    auto_continue_to_next_task: str = "no",
+    auto_git_backup: str = "no",
+) -> ControlledApplyApprovalDryRunResult:
+    """执行 controlled apply approval model dry-run。
+
+    只做 approval token 和前置条件检查，不真实 apply patch，不执行 command。
+    函数只根据传入参数 dry-run，不检查真实 git status。
+
+    Args:
+        approval_token: 用户提供的 approval token，None 表示未提供。
+        worktree_status: 工作区状态，应为 "clean" 或 "dirty"。
+        previous_pipeline_status: 前一步 pipeline 状态。
+        previous_pipeline_check_result: 前一步 pipeline check result。
+        human_review_required: 是否需要人工审查。
+        ready_for_real_apply: 是否准备好真实 apply（应为 no）。
+        auto_continue_to_next_task: 是否自动继续下一任务（应为 no）。
+        auto_git_backup: 是否自动 Git 备份（应为 no）。
+
+    Returns:
+        ControlledApplyApprovalDryRunResult
+    """
+    rejection_reasons: list[str] = []
+
+    # Token 检查
+    token_provided = approval_token or ""
+    token_present = "yes" if approval_token is not None and approval_token != "" else "no"
+    token_valid = "not_applicable"
+    if token_present == "yes":
+        token_valid = "yes" if token_provided == APPROVAL_TOKEN_EXPECTED else "no"
+
+    if token_present == "no":
+        rejection_reasons.append("missing_approval_token")
+    elif token_valid == "no":
+        rejection_reasons.append("invalid_approval_token")
+
+    # Worktree 检查
+    worktree_clean_pass = "yes" if worktree_status == "clean" else "no"
+    if worktree_clean_pass == "no":
+        rejection_reasons.append("dirty_worktree")
+
+    # Previous pipeline 检查
+    pipeline_pass = "yes" if (
+        previous_pipeline_status == "ready_for_human_review"
+        and previous_pipeline_check_result == "pass"
+    ) else "no"
+    if previous_pipeline_status != "ready_for_human_review":
+        rejection_reasons.append("previous_pipeline_not_ready_for_human_review")
+    if previous_pipeline_check_result != "pass":
+        rejection_reasons.append("previous_pipeline_check_failed")
+
+    # Human review 检查
+    hr_pass = "yes" if human_review_required == "yes" else "no"
+    if hr_pass == "no":
+        rejection_reasons.append("human_review_not_required")
+
+    # Ready for real apply 必须为 no
+    rra_pass = "yes" if ready_for_real_apply == "no" else "no"
+    if rra_pass == "no":
+        rejection_reasons.append("ready_for_real_apply_unexpected")
+
+    # Auto continue 检查
+    ac_pass = "yes" if auto_continue_to_next_task == "no" else "no"
+    if ac_pass == "no":
+        rejection_reasons.append("auto_continue_requested")
+
+    # Auto git backup 检查
+    agb_pass = "yes" if auto_git_backup == "no" else "no"
+    if agb_pass == "no":
+        rejection_reasons.append("auto_git_backup_requested")
+
+    # 综合判断
+    all_pass = (
+        token_present == "yes"
+        and token_valid == "yes"
+        and worktree_clean_pass == "yes"
+        and pipeline_pass == "yes"
+        and hr_pass == "yes"
+        and rra_pass == "yes"
+        and ac_pass == "yes"
+        and agb_pass == "yes"
+    )
+
+    check_result = "pass" if all_pass else "fail"
+    ready = "yes" if all_pass else "no"
+
+    if all_pass:
+        msg = "Controlled apply approval model dry-run: all preconditions passed. Ready for controlled apply dry-run."
+    else:
+        reasons_str = ", ".join(rejection_reasons)
+        msg = f"Controlled apply approval model dry-run: rejected. Reasons: {reasons_str}"
+
+    return ControlledApplyApprovalDryRunResult(
+        approval_mode="controlled_apply_approval_model_dry_run",
+        approval_token_expected=APPROVAL_TOKEN_EXPECTED,
+        approval_token_provided=token_provided,
+        approval_token_present=token_present,
+        approval_token_valid=token_valid,
+        worktree_status=worktree_status,
+        worktree_clean_required="yes",
+        worktree_clean_pass=worktree_clean_pass,
+        previous_pipeline_status=previous_pipeline_status,
+        previous_pipeline_check_result=previous_pipeline_check_result,
+        previous_pipeline_pass=pipeline_pass,
+        human_review_required=human_review_required,
+        human_review_required_pass=hr_pass,
+        ready_for_real_apply=ready_for_real_apply,
+        ready_for_real_apply_pass=rra_pass,
+        auto_continue_to_next_task=auto_continue_to_next_task,
+        auto_continue_pass=ac_pass,
+        auto_git_backup=auto_git_backup,
+        auto_git_backup_pass=agb_pass,
+        real_patch_applied="no",
+        command_execution_performed="no",
+        real_task_execution="no",
+        run_project_task_full_called="no",
+        claude_code_called="no",
+        business_code_changed="no",
+        framework_code_changed="no",
+        ready_for_controlled_apply_dry_run=ready,
+        ready_for_real_apply_after_approval="no",
+        rejection_reasons=rejection_reasons,
+        check_result=check_result,
+        message=msg,
+    )
+
+
+def run_controlled_apply_approval_model_sample_dry_run(
+    sample: str = "pass",
+) -> ControlledApplyApprovalDryRunResult:
+    """运行 controlled apply approval model dry-run 样本。
+
+    使用内置参数，不读取外部文件，不检查真实 git status。
+    不应用 patch、不执行命令、不修改任何文件、不调用 Claude Code。
+
+    Args:
+        sample: 样本类型名称。
+
+    Returns:
+        ControlledApplyApprovalDryRunResult
+    """
+    _APPROVAL_SAMPLES: dict[str, dict] = {
+        "pass": {
+            "approval_token": APPROVAL_TOKEN_EXPECTED,
+            "worktree_status": "clean",
+            "previous_pipeline_status": "ready_for_human_review",
+            "previous_pipeline_check_result": "pass",
+            "human_review_required": "yes",
+            "ready_for_real_apply": "no",
+            "auto_continue_to_next_task": "no",
+            "auto_git_backup": "no",
+        },
+        "missing-token": {
+            "approval_token": None,
+            "worktree_status": "clean",
+            "previous_pipeline_status": "ready_for_human_review",
+            "previous_pipeline_check_result": "pass",
+            "human_review_required": "yes",
+            "ready_for_real_apply": "no",
+            "auto_continue_to_next_task": "no",
+            "auto_git_backup": "no",
+        },
+        "wrong-token": {
+            "approval_token": "WRONG_TOKEN",
+            "worktree_status": "clean",
+            "previous_pipeline_status": "ready_for_human_review",
+            "previous_pipeline_check_result": "pass",
+            "human_review_required": "yes",
+            "ready_for_real_apply": "no",
+            "auto_continue_to_next_task": "no",
+            "auto_git_backup": "no",
+        },
+        "dirty-worktree": {
+            "approval_token": APPROVAL_TOKEN_EXPECTED,
+            "worktree_status": "dirty",
+            "previous_pipeline_status": "ready_for_human_review",
+            "previous_pipeline_check_result": "pass",
+            "human_review_required": "yes",
+            "ready_for_real_apply": "no",
+            "auto_continue_to_next_task": "no",
+            "auto_git_backup": "no",
+        },
+        "pipeline-not-ready": {
+            "approval_token": APPROVAL_TOKEN_EXPECTED,
+            "worktree_status": "clean",
+            "previous_pipeline_status": "failed_validation",
+            "previous_pipeline_check_result": "pass",
+            "human_review_required": "yes",
+            "ready_for_real_apply": "no",
+            "auto_continue_to_next_task": "no",
+            "auto_git_backup": "no",
+        },
+        "pipeline-failed": {
+            "approval_token": APPROVAL_TOKEN_EXPECTED,
+            "worktree_status": "clean",
+            "previous_pipeline_status": "ready_for_human_review",
+            "previous_pipeline_check_result": "fail",
+            "human_review_required": "yes",
+            "ready_for_real_apply": "no",
+            "auto_continue_to_next_task": "no",
+            "auto_git_backup": "no",
+        },
+        "human-review-missing": {
+            "approval_token": APPROVAL_TOKEN_EXPECTED,
+            "worktree_status": "clean",
+            "previous_pipeline_status": "ready_for_human_review",
+            "previous_pipeline_check_result": "pass",
+            "human_review_required": "no",
+            "ready_for_real_apply": "no",
+            "auto_continue_to_next_task": "no",
+            "auto_git_backup": "no",
+        },
+        "ready-for-real-apply-unexpected": {
+            "approval_token": APPROVAL_TOKEN_EXPECTED,
+            "worktree_status": "clean",
+            "previous_pipeline_status": "ready_for_human_review",
+            "previous_pipeline_check_result": "pass",
+            "human_review_required": "yes",
+            "ready_for_real_apply": "yes",
+            "auto_continue_to_next_task": "no",
+            "auto_git_backup": "no",
+        },
+        "auto-continue-requested": {
+            "approval_token": APPROVAL_TOKEN_EXPECTED,
+            "worktree_status": "clean",
+            "previous_pipeline_status": "ready_for_human_review",
+            "previous_pipeline_check_result": "pass",
+            "human_review_required": "yes",
+            "ready_for_real_apply": "no",
+            "auto_continue_to_next_task": "yes",
+            "auto_git_backup": "no",
+        },
+        "auto-git-backup-requested": {
+            "approval_token": APPROVAL_TOKEN_EXPECTED,
+            "worktree_status": "clean",
+            "previous_pipeline_status": "ready_for_human_review",
+            "previous_pipeline_check_result": "pass",
+            "human_review_required": "yes",
+            "ready_for_real_apply": "no",
+            "auto_continue_to_next_task": "no",
+            "auto_git_backup": "yes",
+        },
+    }
+
+    if sample not in _APPROVAL_SAMPLES:
+        available = ", ".join(sorted(_APPROVAL_SAMPLES.keys()))
+        return ControlledApplyApprovalDryRunResult(
+            approval_mode="controlled_apply_approval_model_dry_run",
+            approval_token_expected=APPROVAL_TOKEN_EXPECTED,
+            approval_token_provided="",
+            approval_token_present="no",
+            approval_token_valid="not_applicable",
+            worktree_status="unknown",
+            worktree_clean_required="yes",
+            worktree_clean_pass="no",
+            previous_pipeline_status="unknown",
+            previous_pipeline_check_result="unknown",
+            previous_pipeline_pass="no",
+            human_review_required="yes",
+            human_review_required_pass="no",
+            ready_for_real_apply="no",
+            ready_for_real_apply_pass="no",
+            auto_continue_to_next_task="no",
+            auto_continue_pass="no",
+            auto_git_backup="no",
+            auto_git_backup_pass="no",
+            real_patch_applied="no",
+            command_execution_performed="no",
+            real_task_execution="no",
+            run_project_task_full_called="no",
+            claude_code_called="no",
+            business_code_changed="no",
+            framework_code_changed="no",
+            ready_for_controlled_apply_dry_run="no",
+            ready_for_real_apply_after_approval="no",
+            rejection_reasons=[f"unknown_sample:{sample}"],
+            check_result="fail",
+            message=f"未知 approval sample '{sample}'。可用样本：{available}",
+        )
+
+    params = _APPROVAL_SAMPLES[sample]
+    return run_controlled_apply_approval_model_dry_run(**params)

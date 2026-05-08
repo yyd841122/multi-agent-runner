@@ -821,3 +821,7 @@ G006 已完成完整闭环：
 ### T123 human-reviewed controlled apply gate 设计经验
 
 - **Human-reviewed controlled apply gate must distinguish ready_for_human_review from ready_for_real_apply.** Why: ready_for_human_review 只代表 dry-run pipeline 校验通过，不等于可以真实 apply。如果把两者混淆，dry-run pass 后会直接跳到真实执行，跳过人工审查。How to apply: gate 设计了 12 个前置条件和 17 个拒绝条件，只有全部通过且用户提供 APPROVE_CONTROLLED_APPLY_DRY_RUN token 后才允许进入 controlled apply dry-run，且仍然不等于真实 apply。
+
+### T124 controlled apply approval model dry-run 经验
+
+- **Approval model dry-run should allow only controlled apply dry-run readiness, never real apply readiness.** Why: approval token 只验证前置条件是否满足，不授予任何真实执行权限。如果 approval pass 后允许 real apply，就绕过了后续 safety gate。How to apply: ready_for_real_apply_after_approval 始终为 no，即使所有前置条件通过。real patch apply、command execution、auto-continue 和 auto Git backup 在 approval model 中始终被阻止。

@@ -604,3 +604,8 @@
 
 - 不要允许 approval token for dry-run 暗示 permission for real apply, commit, push, 或 Stage 8 continuation。APPROVE_CONTROLLED_APPLY_DRY_RUN 只允许进入 T124 dry-run，不等于任何真实执行许可。
 - 不要把 gate pass 误认为可以自动继续执行。gate pass 后仍需要人工审查 apply preview，不自动进入下一个任务。
+
+## T124 controlled apply approval model dry-run 避坑
+
+- 不要让 valid approval token bypass clean worktree、previous pipeline pass、human review、auto-continue 或 auto-git-backup gates。Token 只是前置条件之一，不是万能通行证。
+- 不要在 approval model dry-run 中检查真实 git status。函数只根据传入参数 dry-run，真实 git status 检查在执行步骤中做。
