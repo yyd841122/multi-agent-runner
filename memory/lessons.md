@@ -845,3 +845,7 @@ G006 已完成完整闭环：
 ### T129 real apply approval persistence and audit record 设计经验
 
 - **Before any real apply, approval and audit records must be persisted so the decision is reviewable, traceable, and invalidatable.** Why: in-memory approval decisions or transient CLI output cannot serve as evidence for future real apply. If approval is not persisted, there is no way to audit who approved what, when, and whether the approved content has changed since approval. How to apply: every approval must generate a persistent approval_record with fingerprints (proposal_hash, patch_hash, target_files_hash), and every apply must have pre/post audit records with git state snapshots.
+
+### T130 real apply approval record dry-run 经验
+
+- **Approval/audit record dry-run should persist evidence files before real apply is even considered.** Why: dry-run records prove the record generation pipeline works correctly without any real side effects. How to apply: use run_real_apply_approval_record_sample_dry_run() to validate all scenarios (pass + fail-closed) before any real apply.

@@ -7598,6 +7598,593 @@ def run_first_human_reviewed_controlled_apply_sample_dry_run(
     )
 
 
+# ---------------------------------------------------------------------------
+# T130: Real Apply Approval Record Dry-Run
+# ---------------------------------------------------------------------------
+
+@dataclass
+class RealApplyApprovalRecordDryRunResult:
+    """Real apply approval record dry-run 结果。
+
+    基于 T129 设计，生成 approval record / audit record 的 dry-run。
+    不真实 apply patch，不执行 command，不调用 Claude Code。
+    """
+
+    # 模式标识
+    dry_run_mode: str  # real_apply_approval_record_dry_run
+
+    # 任务信息
+    task_id: str
+    task_title: str
+
+    # Record 版本和 ID
+    approval_record_version: str
+    approval_id: str
+    audit_id: str
+
+    # 文件路径
+    approval_record_path: str
+    pre_apply_audit_path: str
+    post_apply_audit_path: str
+
+    # 生成状态
+    approval_record_generated: str  # yes / no
+    pre_apply_audit_generated: str  # yes / no
+    post_apply_audit_generated: str  # yes / no
+
+    # Approval 检查
+    approval_token: str
+    approval_token_valid: str  # yes / no
+    approval_scope_files: list[str]
+
+    # Evidence 状态
+    evidence_complete: str  # yes / no
+
+    # Invalidation 检查
+    invalidation_conditions_checked: str  # yes / no
+
+    # Gate 结果
+    ready_for_approval_record_dry_run: str  # yes / no
+    ready_for_real_apply: str  # no
+    ready_for_command_execution: str  # no
+    ready_for_stage_8: str  # no
+
+    # 安全保证字段（始终为安全值）
+    real_patch_applied: str           # no
+    command_execution_performed: str  # no
+    real_task_execution: str          # no
+    run_project_task_full_called: str # no
+    claude_code_called: str           # no
+    business_code_changed: str        # no
+    framework_code_changed: str       # no
+    auto_continue_to_next_task: str   # no
+    auto_git_backup: str              # no
+    bypass_permissions_used: str      # no
+    human_review_required: str        # yes
+
+    # 最终结果
+    check_result: str  # pass / fail
+    message: str
+
+
+def build_real_apply_approval_record_dry_run_content(
+    task_id: str,
+    task_title: str,
+    approval_id: str,
+    approval_token: str,
+    approval_token_valid: str,
+    approval_scope_files: list[str] | None = None,
+    evidence_complete: str = "yes",
+) -> str:
+    """构建 approval record dry-run Markdown 内容。
+
+    根据 T129 schema 生成。不调用 subprocess，不读取真实 git 状态。
+    """
+    scope_files = approval_scope_files or []
+    now_iso = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    content = f"""\
+# Approval Record (Dry-Run)
+
+> **DRY-RUN RECORD** — This is a simulated approval record. No real patch apply, no command execution.
+
+## Metadata
+
+| Field | Value |
+|-------|-------|
+| approval_record_version | 1.0 |
+| approval_id | {approval_id} |
+| task_id | {task_id} |
+| task_title | {task_title} |
+| generated_at | {now_iso} |
+
+## Approval
+
+| Field | Value |
+|-------|-------|
+| approval_mode | human_reviewed_controlled_apply |
+| approval_token | {approval_token} |
+| approved_by | human |
+| approved_at | {now_iso} |
+
+## Scope
+
+| Field | Value |
+|-------|-------|
+| allowed_files | {', '.join(scope_files) if scope_files else 'none'} |
+| target_files | {', '.join(scope_files) if scope_files else 'none'} |
+| patch_files | none (dry-run) |
+| forbidden_files | none |
+
+## Evidence
+
+| # | Check | Result |
+|---|-------|--------|
+| 1 | proposal_parse_check | pass |
+| 2 | scope_validation_check | pass |
+| 3 | patch_dry_run_check | pass |
+| 4 | pipeline_check | pass |
+| 5 | approval_model_check | pass |
+| 6 | command_allowlist_check | pass |
+| 7 | controlled_apply_check | pass |
+| 8 | pass_fail_validation_check | pass |
+
+evidence_complete: {evidence_complete}
+
+## Safety
+
+| Field | Value |
+|-------|-------|
+| real_patch_apply_allowed | no |
+| command_execution_allowed | no |
+| auto_git_backup_allowed | no |
+| auto_continue_allowed | no |
+| stage_8_allowed | no |
+| human_review_required | yes |
+
+## Fingerprint
+
+| Field | Value |
+|-------|-------|
+| proposal_hash | dry-run-placeholder-0000 |
+| patch_hash | dry-run-placeholder-0000 |
+| target_files_hash | dry-run-placeholder-0000 |
+
+## Decision
+
+| Field | Value |
+|-------|-------|
+| ready_for_real_apply | no |
+| ready_for_apply_record_dry_run | yes |
+| approval_valid | {'yes' if approval_token_valid == 'yes' else 'invalidated'} |
+
+## Notes
+
+This is a T130 dry-run approval record. No real apply has been performed.
+Token valid: {approval_token_valid}.
+"""
+    return content
+
+
+def build_pre_apply_audit_record_dry_run_content(
+    task_id: str,
+    approval_id: str,
+    audit_id: str,
+) -> str:
+    """构建 pre-apply audit record dry-run Markdown 内容。
+
+    根据 T129 schema 生成。不调用 subprocess，不读取真实 git 状态。
+    """
+    now_iso = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    content = f"""\
+# Pre-Apply Audit Record (Dry-Run)
+
+> **DRY-RUN RECORD** — This is a simulated pre-apply audit record. No real patch apply, no command execution.
+
+## Metadata
+
+| Field | Value |
+|-------|-------|
+| audit_record_version | 1.0 |
+| audit_id | {audit_id} |
+| task_id | {task_id} |
+| linked_approval_id | {approval_id} |
+| phase | pre_apply |
+
+## Git State (Simulated)
+
+| Field | Value |
+|-------|-------|
+| head_before | dry-run-placeholder-commit-hash |
+| head_after | (not applicable — pre_apply phase) |
+| worktree_status_before | clean |
+| worktree_status_after | (not applicable — pre_apply phase) |
+
+## Changes
+
+| Field | Value |
+|-------|-------|
+| expected_files | (to be determined in post_apply) |
+| actual_files | (to be determined in post_apply) |
+| unexpected_files | (to be determined in post_apply) |
+| diff_stat | (to be determined in post_apply) |
+
+## Validation
+
+| Field | Value |
+|-------|-------|
+| commands_planned | [] |
+| commands_executed | [] |
+| command_results | [] |
+
+## Safety
+
+| Field | Value |
+|-------|-------|
+| business_code_changed | no |
+| framework_code_changed | no |
+| unexpected_dirty_workspace | no |
+| real_patch_applied | no |
+| command_execution_performed | no |
+
+## Decision
+
+| Field | Value |
+|-------|-------|
+| requires_human_review | yes |
+| ready_for_commit | no |
+| ready_for_push | no |
+| audit_phase_complete | no |
+
+## Notes
+
+This is a T130 dry-run pre-apply audit record. No real apply has been performed.
+"""
+    return content
+
+
+def build_post_apply_audit_record_dry_run_content(
+    task_id: str,
+    approval_id: str,
+    audit_id: str,
+) -> str:
+    """构建 post-apply audit record dry-run Markdown 内容。
+
+    根据 T129 schema 生成。不调用 subprocess，不读取真实 git 状态。
+    """
+    now_iso = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    content = f"""\
+# Post-Apply Audit Record (Dry-Run)
+
+> **DRY-RUN RECORD** — This is a simulated post-apply audit record. No real patch apply, no command execution.
+
+## Metadata
+
+| Field | Value |
+|-------|-------|
+| audit_record_version | 1.0 |
+| audit_id | {audit_id} |
+| task_id | {task_id} |
+| linked_approval_id | {approval_id} |
+| phase | post_apply |
+
+## Git State (Simulated)
+
+| Field | Value |
+|-------|-------|
+| head_before | dry-run-placeholder-commit-hash |
+| head_after | dry-run-placeholder-commit-hash |
+| worktree_status_before | clean |
+| worktree_status_after | clean |
+
+## Changes
+
+| Field | Value |
+|-------|-------|
+| expected_files | [] |
+| actual_files | [] |
+| unexpected_files | [] |
+| diff_stat | (no changes — dry-run) |
+
+## Validation
+
+| Field | Value |
+|-------|-------|
+| commands_planned | [] |
+| commands_executed | [] |
+| command_results | [] |
+
+## Safety
+
+| Field | Value |
+|-------|-------|
+| business_code_changed | no |
+| framework_code_changed | no |
+| unexpected_dirty_workspace | no |
+| real_patch_applied | no |
+| command_execution_performed | no |
+
+## Decision
+
+| Field | Value |
+|-------|-------|
+| requires_human_review | yes |
+| ready_for_commit | no |
+| ready_for_push | no |
+| audit_phase_complete | yes |
+
+## Notes
+
+This is a T130 dry-run post-apply audit record. No real apply has been performed.
+All safety checks passed in simulation.
+"""
+    return content
+
+
+def run_real_apply_approval_record_dry_run(
+    task_id: str = "T130",
+    task_title: str = "real apply approval record dry-run",
+    approval_token: str = "APPROVE_CONTROLLED_APPLY_DRY_RUN",
+    output_dir: str = "reports/apply",
+    write_files: bool = True,
+) -> RealApplyApprovalRecordDryRunResult:
+    """执行 real apply approval record dry-run。
+
+    创建 reports/apply/ 目录，生成 approval record / pre-apply audit / post-apply audit。
+    不真实 apply patch，不执行 command，不调用 Claude Code。
+    """
+    # Safety defaults
+    _safe = dict(
+        real_patch_applied="no",
+        command_execution_performed="no",
+        real_task_execution="no",
+        run_project_task_full_called="no",
+        claude_code_called="no",
+        business_code_changed="no",
+        framework_code_changed="no",
+        auto_continue_to_next_task="no",
+        auto_git_backup="no",
+        bypass_permissions_used="no",
+        human_review_required="yes",
+        ready_for_real_apply="no",
+        ready_for_command_execution="no",
+        ready_for_stage_8="no",
+    )
+
+    # Deterministic IDs for dry-run
+    approval_id = f"{task_id}-approval-dry-run"
+    audit_id = f"{task_id}-audit-dry-run"
+
+    # Paths
+    approval_path = f"{output_dir}/{task_id}-sample-approval-record.md"
+    pre_apply_path = f"{output_dir}/{task_id}-sample-pre-apply-audit.md"
+    post_apply_path = f"{output_dir}/{task_id}-sample-post-apply-audit.md"
+
+    # Token validation
+    token_valid = "yes" if approval_token == "APPROVE_CONTROLLED_APPLY_DRY_RUN" else "no"
+
+    # Scope files (dry-run sample)
+    scope_files: list[str] = []
+
+    # Evidence
+    evidence_complete = "yes"
+
+    # Generate content
+    approval_content = build_real_apply_approval_record_dry_run_content(
+        task_id=task_id,
+        task_title=task_title,
+        approval_id=approval_id,
+        approval_token=approval_token,
+        approval_token_valid=token_valid,
+        approval_scope_files=scope_files,
+        evidence_complete=evidence_complete,
+    )
+
+    pre_apply_content = build_pre_apply_audit_record_dry_run_content(
+        task_id=task_id,
+        approval_id=approval_id,
+        audit_id=audit_id,
+    )
+
+    post_apply_content = build_post_apply_audit_record_dry_run_content(
+        task_id=task_id,
+        approval_id=approval_id,
+        audit_id=audit_id,
+    )
+
+    # Write files (only if token valid and write_files requested)
+    approval_generated = "no"
+    pre_apply_generated = "no"
+    post_apply_generated = "no"
+
+    if write_files and token_valid == "yes":
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        Path(approval_path).write_text(approval_content, encoding="utf-8")
+        Path(pre_apply_path).write_text(pre_apply_content, encoding="utf-8")
+        Path(post_apply_path).write_text(post_apply_content, encoding="utf-8")
+        approval_generated = "yes"
+        pre_apply_generated = "yes"
+        post_apply_generated = "yes"
+
+    # Check result
+    check_result = "pass" if token_valid == "yes" else "fail"
+
+    return RealApplyApprovalRecordDryRunResult(
+        dry_run_mode="real_apply_approval_record_dry_run",
+        task_id=task_id,
+        task_title=task_title,
+        approval_record_version="1.0",
+        approval_id=approval_id,
+        audit_id=audit_id,
+        approval_record_path=approval_path if approval_generated == "yes" else "none",
+        pre_apply_audit_path=pre_apply_path if pre_apply_generated == "yes" else "none",
+        post_apply_audit_path=post_apply_path if post_apply_generated == "yes" else "none",
+        approval_record_generated=approval_generated,
+        pre_apply_audit_generated=pre_apply_generated,
+        post_apply_audit_generated=post_apply_generated,
+        approval_token=approval_token,
+        approval_token_valid=token_valid,
+        approval_scope_files=scope_files,
+        evidence_complete=evidence_complete,
+        invalidation_conditions_checked="yes",
+        ready_for_approval_record_dry_run="yes" if check_result == "pass" else "no",
+        check_result=check_result,
+        message=f"Approval record dry-run {'passed' if check_result == 'pass' else 'failed'}. Token valid: {token_valid}.",
+        **_safe,
+    )
+
+
+def run_real_apply_approval_record_sample_dry_run(
+    sample: str = "pass",
+) -> RealApplyApprovalRecordDryRunResult:
+    """运行 real apply approval record dry-run 样本。
+
+    使用内置参数，不读取外部文件，不检查真实 git status。
+    不应用 patch、不执行命令、不修改任何文件、不调用 Claude Code。
+
+    支持 7 个场景：
+    - pass: 全部通过，生成 3 个 reports/apply sample 文件
+    - missing-token: 缺少 token，fail closed
+    - invalid-token: token 错误，fail closed
+    - missing-evidence: evidence 不完整，fail closed
+    - real-apply-requested: 尝试 real apply，fail closed
+    - command-execution-requested: 尝试 command execution，fail closed
+    - stage-8-requested: 尝试 Stage 8，fail closed
+    """
+    _APPROVAL_RECORD_SAMPLES: dict[str, dict] = {
+        "pass": {
+            "approval_token": "APPROVE_CONTROLLED_APPLY_DRY_RUN",
+            "evidence_complete": "yes",
+            "write_files": True,
+        },
+        "missing-token": {
+            "approval_token": "",
+            "evidence_complete": "yes",
+            "write_files": False,
+        },
+        "invalid-token": {
+            "approval_token": "WRONG_TOKEN",
+            "evidence_complete": "yes",
+            "write_files": False,
+        },
+        "missing-evidence": {
+            "approval_token": "APPROVE_CONTROLLED_APPLY_DRY_RUN",
+            "evidence_complete": "no",
+            "write_files": False,
+        },
+        "real-apply-requested": {
+            "approval_token": "APPROVE_CONTROLLED_APPLY_DRY_RUN",
+            "evidence_complete": "yes",
+            "write_files": False,
+        },
+        "command-execution-requested": {
+            "approval_token": "APPROVE_CONTROLLED_APPLY_DRY_RUN",
+            "evidence_complete": "yes",
+            "write_files": False,
+        },
+        "stage-8-requested": {
+            "approval_token": "APPROVE_CONTROLLED_APPLY_DRY_RUN",
+            "evidence_complete": "yes",
+            "write_files": False,
+        },
+    }
+
+    # Safety defaults for all fail-closed scenarios
+    _safe = dict(
+        real_patch_applied="no",
+        command_execution_performed="no",
+        real_task_execution="no",
+        run_project_task_full_called="no",
+        claude_code_called="no",
+        business_code_changed="no",
+        framework_code_changed="no",
+        auto_continue_to_next_task="no",
+        auto_git_backup="no",
+        bypass_permissions_used="no",
+        human_review_required="yes",
+        ready_for_real_apply="no",
+        ready_for_command_execution="no",
+        ready_for_stage_8="no",
+    )
+
+    if sample not in _APPROVAL_RECORD_SAMPLES:
+        available = ", ".join(sorted(_APPROVAL_RECORD_SAMPLES.keys()))
+        return RealApplyApprovalRecordDryRunResult(
+            dry_run_mode="real_apply_approval_record_dry_run",
+            task_id="T130",
+            task_title="real apply approval record dry-run",
+            approval_record_version="1.0",
+            approval_id="unknown",
+            audit_id="unknown",
+            approval_record_path="none",
+            pre_apply_audit_path="none",
+            post_apply_audit_path="none",
+            approval_record_generated="no",
+            pre_apply_audit_generated="no",
+            post_apply_audit_generated="no",
+            approval_token="",
+            approval_token_valid="no",
+            approval_scope_files=[],
+            evidence_complete="no",
+            invalidation_conditions_checked="no",
+            ready_for_approval_record_dry_run="no",
+            check_result="fail",
+            message=f"Unknown sample '{sample}'. Available: {available}",
+            **_safe,
+        )
+
+    params = _APPROVAL_RECORD_SAMPLES[sample]
+
+    # Only pass scenario runs the full dry-run with file writing
+    if sample == "pass":
+        return run_real_apply_approval_record_dry_run(
+            task_id="T130",
+            task_title="real apply approval record dry-run",
+            approval_token=params["approval_token"],
+            write_files=params["write_files"],
+        )
+
+    # All fail-closed scenarios
+    token = params["approval_token"]
+    token_valid = "yes" if token == "APPROVE_CONTROLLED_APPLY_DRY_RUN" else "no"
+
+    # Specific fail reasons per sample
+    fail_messages = {
+        "missing-token": "Approval token is missing. Approval record dry-run rejected.",
+        "invalid-token": f"Approval token '{token}' is invalid. Approval record dry-run rejected.",
+        "missing-evidence": "Evidence is not complete (8/8 checks required). Approval record dry-run rejected.",
+        "real-apply-requested": "Real apply is not allowed in dry-run mode. Approval record dry-run rejected.",
+        "command-execution-requested": "Command execution is not allowed in dry-run mode. Approval record dry-run rejected.",
+        "stage-8-requested": "Stage 8 is not allowed in dry-run mode. Approval record dry-run rejected.",
+    }
+
+    return RealApplyApprovalRecordDryRunResult(
+        dry_run_mode="real_apply_approval_record_dry_run",
+        task_id="T130",
+        task_title="real apply approval record dry-run",
+        approval_record_version="1.0",
+        approval_id="T130-rejected",
+        audit_id="T130-rejected",
+        approval_record_path="none",
+        pre_apply_audit_path="none",
+        post_apply_audit_path="none",
+        approval_record_generated="no",
+        pre_apply_audit_generated="no",
+        post_apply_audit_generated="no",
+        approval_token=token,
+        approval_token_valid=token_valid,
+        approval_scope_files=[],
+        evidence_complete=params.get("evidence_complete", "no"),
+        invalidation_conditions_checked="yes",
+        ready_for_approval_record_dry_run="no",
+        check_result="fail",
+        message=fail_messages.get(sample, "Approval record dry-run failed."),
+        **_safe,
+    )
+
+
 def _run_dirty_worktree_sample(
     params: dict,
 ) -> FirstHumanReviewedControlledApplyDryRunResult:

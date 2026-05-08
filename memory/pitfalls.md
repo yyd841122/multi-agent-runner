@@ -637,3 +637,8 @@
 - 不要让 in-memory approval decision 或 transient CLI output 成为 future real apply 的唯一 evidence。必须持久化 approval record。
 - 不要忽略 proposal fingerprint 检查。approval 后如果 proposal 内容变化，approval record 必须标记为 invalidated。
 - 不要把 approval record 的 existence 等同于 approval 的 validity。approval 可能已被 invalidated 或 expired。
+
+## T130 real apply approval record dry-run 避坑
+
+- 不要把生成的 approval/audit dry-run records 当作 real patch apply 或 command execution 的许可。它们只是证明 record generation pipeline 正确。
+- 不要在 fail-closed 场景中生成 record 文件。只有 pass 场景才写入文件，避免混淆。
