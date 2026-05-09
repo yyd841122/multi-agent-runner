@@ -857,3 +857,7 @@ G006 已完成完整闭环：
 ### T132 guarded real patch apply dry-run 经验
 
 - **Guarded real patch apply dry-run must validate post-apply state before any Git backup, commit, push, or Stage 8 transition is considered.** Why: guarded dry-run 串联 approval record + pre/post audit + post-apply validation gate，确保完整安全链路。How to apply: run_first_real_patch_apply_guarded_dry_run() 先检查 record existence，再验证 file scope，最后分类 workspace，任何一步 fail 都阻止后续。
+
+### T133 guarded apply pass/fail validation 经验
+
+- **Guarded apply pass/fail validation must confirm that even the pass path only reaches Git backup dry-run readiness, not commit or push readiness.** Why: pass 场景 ready_for_git_backup_dry_run=yes 是下一步验证的入口，不是 commit/push 的许可。独立验证确保 pipeline 行为稳定。How to apply: 使用 CLI 逐场景执行，确认 pass 场景只有 git_backup_dry_run 为 yes，fail 场景全部 fail closed。

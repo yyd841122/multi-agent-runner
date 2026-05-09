@@ -9,7 +9,7 @@
 | dry_run_mode | first_real_patch_apply_guarded_dry_run |
 | task_id | T132 |
 | task_title | first real patch apply guarded dry-run |
-| generated_at | 2026-05-09T08:07:00Z |
+| generated_at | 2026-05-09T08:24:36Z |
 
 ## Approval & Audit Records
 

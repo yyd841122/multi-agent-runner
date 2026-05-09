@@ -3595,9 +3595,17 @@ Dry-run validates approval/audit records, expected vs actual files, diff stat, p
 
 ## T133 验证 first real patch apply guarded dry-run pass/fail 场景
 
-状态：pending
+状态：done
 角色：Verifier
 目标：验证 T132 guarded dry-run 的 pass/fail 场景覆盖完整性。
+
+Validated first real patch apply guarded dry-run pass/fail scenarios.
+Pass path reaches only ready_for_git_backup_dry_run.
+Failure paths fail closed and never enter real apply, command execution, commit, push, or Stage 8.
+No real patch applied, no command executed, no Claude Code called.
+
+<!-- NEXT_PENDING=T134 -->
+<!-- NEXT_STAGE=Stage 7 -->
 
 ## T134 归档 Stage 7 guarded real patch apply dry-run 成果
 

@@ -651,3 +651,7 @@
 ## T132 guarded real patch apply dry-run 避坑
 
 - 不要把 ready_for_git_backup_dry_run 当成 commit 或 push 的许可。ready_for_git_backup_dry_run=yes 只表示可以进入 Git backup dry-run 阶段，不是 commit/push 的授权。
+
+## T133 guarded apply pass/fail validation 避坑
+
+- 不要把 guarded dry-run pass 当成 real patch apply、commit、push 或 Stage 8 的许可。pass 只确认 pipeline 安全链路完整，ready_for_real_apply 始终为 no。
