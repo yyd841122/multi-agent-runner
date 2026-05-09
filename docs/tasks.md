@@ -3604,9 +3604,6 @@ Pass path reaches only ready_for_git_backup_dry_run.
 Failure paths fail closed and never enter real apply, command execution, commit, push, or Stage 8.
 No real patch applied, no command executed, no Claude Code called.
 
-<!-- NEXT_PENDING=T142 -->
-<!-- NEXT_STAGE=Stage 7 -->
-
 ## T134 归档 Stage 7 guarded real patch apply dry-run 成果
 
 状态：done
@@ -3669,6 +3666,11 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T142 归档 Stage 7 Git commit dry-run 成果
 
-状态：pending
+状态：done
 角色：Archiver
 目标：归档 Stage 7 Git commit dry-run 链路成果。
+
+完成说明：Archived Stage 7 Git commit dry-run chain. Confirmed T139-T141 design, implementation, approval record generation, pass/fail validation, and fail-closed behavior are complete. Verified no real git add, commit, push, staged changes, continuous auto-advance, or Stage 8 continuation occurred. Next safe step is Stage 7 final status review, not direct Stage 8 execution.
+
+<!-- NEXT_PENDING=Stage 7 final status review -->
+<!-- NEXT_STAGE=Stage 7 -->
