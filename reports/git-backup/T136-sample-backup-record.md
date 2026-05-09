@@ -6,7 +6,7 @@ backup_id: "T136-backup-dry-run"
 task_id: "T136"
 task_title: "实现 guarded Git backup dry-run"
 backup_mode: "guarded_git_backup_dry_run"
-generated_at: "2026-05-09T10:04:56"
+generated_at: "2026-05-09T10:20:29"
 
 git:
   head_before_backup: "281f30f"

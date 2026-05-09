@@ -670,3 +670,8 @@
 
 - 不要把生成的 backup dry-run record 当成真实 Git 操作的许可。Record 只证明 generation pipeline 正确，不授权 git add/commit/push。
 - 不要在 fail 场景中写入 backup record 文件。只有 pass 场景才写入，避免混淆 dry-run record 和真实备份。
+
+## T137 guarded Git backup dry-run pass/fail 验证避坑
+
+- 不要把 backup record generation 当成 permission for git add, commit, push, or Stage 8。Record 只是 dry-run 产物，不授权任何真实操作。
+- 不要在验证任务中修改 pipeline 逻辑或业务代码。T137 只验证 T136 已有实现的 pass/fail 行为。

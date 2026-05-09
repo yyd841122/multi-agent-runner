@@ -3604,7 +3604,7 @@ Pass path reaches only ready_for_git_backup_dry_run.
 Failure paths fail closed and never enter real apply, command execution, commit, push, or Stage 8.
 No real patch applied, no command executed, no Claude Code called.
 
-<!-- NEXT_PENDING=T137 -->
+<!-- NEXT_PENDING=T138 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ## T134 归档 Stage 7 guarded real patch apply dry-run 成果
@@ -3630,9 +3630,10 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T137 验证 guarded Git backup dry-run pass/fail 场景
 
-状态：pending
+状态：done
 角色：Validator
 目标：验证 guarded Git backup dry-run pass/fail 场景。
+完成说明：Validated guarded Git backup dry-run pass/fail scenarios. Pass path generates backup dry-run record only. Failure paths fail closed and never execute git add, git commit, git push, or Stage 8. No business code modification, no command execution, no Claude Code call. 14/14 scenarios validated.
 
 ## T138 归档 Stage 7 Git backup dry-run 成果
 

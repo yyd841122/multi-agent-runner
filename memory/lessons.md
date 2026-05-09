@@ -873,3 +873,7 @@ G006 已完成完整闭环：
 ### T136 guarded Git backup dry-run 实现经验
 
 - **Guarded Git backup dry-run should generate backup records and staged-file previews without performing git add, commit, or push.** Why: backup dry-run 只预览将要 staged 的文件和 commit message，不执行任何 Git 操作。How to apply: run_guarded_git_backup_dry_run() 实现 22 gate checks，pass 场景生成 sample backup record 并写入 reports/git-backup/，fail 场景只返回 result 不写入文件。
+
+### T137 guarded Git backup dry-run pass/fail 验证经验
+
+- **Guarded Git backup pass/fail validation must prove that even the pass path only generates backup dry-run records, not real git operations.** Why: pass 场景 BACKUP_RECORD_GENERATED=yes 只代表 dry-run record 已生成，不等于 git add/commit/push 已执行或被授权。独立验证确保 pipeline 行为稳定。How to apply: 使用 CLI 逐场景执行 14 个样本，确认 pass 场景只有 BACKUP_RECORD_GENERATED=yes 和 READY_FOR_GIT_BACKUP_DRY_RUN=yes，fail 场景全部 fail closed，所有安全字段在 14/14 场景中均为安全值。
