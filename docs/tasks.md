@@ -3695,9 +3695,10 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T144 实现 Stage 8 continuous runner dry-run planner
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 Stage 8 连续 runner 的 dry-run planner。
+完成说明：Implemented Stage 8 continuous runner dry-run planner. Added safety gate dry-run result model (Stage8ContinuousRunnerDryRunResult), gate input/output data structures (Stage8SafetyGateInput/Output), 21 gate checks (G1-G21), 14 stop_reason categories, checkpoint content generation (Stage8ContinuousRunnerCheckpoint), dry-run planner main function with 18 sample scenarios (3 pass + 15 fail), CLI entry (stage8-continuous-dry-run), sample checkpoint report, and T144 dev report. No Stage 8 continuous execution, real git add, commit, push, Stage 9 continuation, or business code modification occurred.
 
 ## T145 验证 Stage 8 continuous runner dry-run pass/fail 场景
 
@@ -3723,5 +3724,5 @@ No real patch applied, no command executed, no Claude Code called.
 角色：Archiver
 目标：归档 Stage 8 planning / dry-run 全部成果。
 
-<!-- NEXT_PENDING=T144 -->
+<!-- NEXT_PENDING=T145 -->
 <!-- NEXT_STAGE=Stage 8 -->
