@@ -3604,11 +3604,36 @@ Pass path reaches only ready_for_git_backup_dry_run.
 Failure paths fail closed and never enter real apply, command execution, commit, push, or Stage 8.
 No real patch applied, no command executed, no Claude Code called.
 
-<!-- NEXT_PENDING=T134 -->
+<!-- NEXT_PENDING=T135 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ## T134 归档 Stage 7 guarded real patch apply dry-run 成果
 
-状态：pending
+状态：done
 角色：Archiver
 目标：归档 Stage 7 guarded real patch apply dry-run 全部成果。
+完成说明：Archived Stage 7 guarded real patch apply dry-run chain. Confirmed T129-T133 reports and apply dry-run records are present. Next safe step remains Stage 7 guarded Git backup dry-run gate, not real apply, commit, push, or Stage 8.
+
+## T135 设计 guarded Git backup dry-run gate
+
+状态：pending
+角色：Designer
+目标：设计 guarded Git backup dry-run gate。
+
+## T136 实现 guarded Git backup dry-run
+
+状态：pending
+角色：Developer
+目标：实现 guarded Git backup dry-run。
+
+## T137 验证 guarded Git backup dry-run pass/fail 场景
+
+状态：pending
+角色：Validator
+目标：验证 guarded Git backup dry-run pass/fail 场景。
+
+## T138 归档 Stage 7 Git backup dry-run 成果
+
+状态：pending
+角色：Archiver
+目标：归档 Stage 7 Git backup dry-run 成果。

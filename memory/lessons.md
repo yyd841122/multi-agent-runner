@@ -861,3 +861,7 @@ G006 已完成完整闭环：
 ### T133 guarded apply pass/fail validation 经验
 
 - **Guarded apply pass/fail validation must confirm that even the pass path only reaches Git backup dry-run readiness, not commit or push readiness.** Why: pass 场景 ready_for_git_backup_dry_run=yes 是下一步验证的入口，不是 commit/push 的许可。独立验证确保 pipeline 行为稳定。How to apply: 使用 CLI 逐场景执行，确认 pass 场景只有 git_backup_dry_run 为 yes，fail 场景全部 fail closed。
+
+### T134 Stage 7 guarded real patch apply dry-run archive 经验
+
+- **After guarded real patch apply dry-run validation, the next safe step is Git backup dry-run design, not commit or push.** Why: T129-T133 validated the complete guarded dry-run chain (approval record → pre/post audit → post-apply validation → pass/fail), but this only proves the dry-run pipeline, not real apply safety. How to apply: continue Stage 7 with guarded Git backup dry-run gate design, still no real apply, commit, push, or Stage 8.
