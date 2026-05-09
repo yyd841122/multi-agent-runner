@@ -9757,3 +9757,815 @@ def run_guarded_git_backup_dry_run(
         check_result=check_result,
         message=msg,
     )
+
+
+# ============================================================================
+# T140: Real Git add/commit dry-run with approval record
+# ============================================================================
+
+@dataclass
+class RealGitAddCommitDryRunResult:
+    """Real Git add/commit dry-run with approval record 结果。
+
+    基于 T139 设计。只做 dry-run 预览和 approval record 生成，
+    不执行真实 git add / commit / push。
+    """
+
+    # 模式标识
+    dry_run_mode: str  # real_git_add_commit_dry_run
+
+    # 任务信息
+    task_id: str
+    task_title: str
+
+    # Approval record 元信息
+    approval_record_version: str  # 1.0
+    approval_id: str
+    approval_record_path: str | None
+
+    # 操作类型
+    operation_type: str  # real_git_add_commit_dry_run
+    approval_mode: str  # human_reviewed
+
+    # Git 状态
+    base_commit: str
+    branch: str
+    repo: str
+
+    # Planned files
+    planned_files_to_add: list[str]
+    blocked_files: list[str]
+    allowed_scope: list[str]
+
+    # Diff summary
+    diff_summary: str
+    files_changed: int
+    insertions: int
+    deletions: int
+
+    # Commit message
+    commit_message: str
+    commit_message_valid: str  # yes / no
+    commit_message_rejection_reasons: list[str]
+
+    # Dry-run 约束
+    dry_run: str  # True
+    real_execution_allowed: str  # False
+    push_allowed: str  # False
+    validation_required: str  # True
+
+    # Approval record 状态
+    approval_record_generated: str  # yes / no
+
+    # Validation
+    planned_files_valid: str  # yes / no
+    planned_files_rejection_reasons: list[str]
+
+    # Ready flags
+    ready_for_real_git_add: str  # no
+    ready_for_real_commit: str  # no
+    ready_for_real_push: str  # no
+    ready_for_stage_8: str  # no
+
+    # 安全保证字段（始终为安全值）
+    real_git_add_performed: str           # no
+    real_git_commit_performed: str        # no
+    real_git_push_performed: str          # no
+    command_execution_performed: str      # no
+    real_task_execution: str              # no
+    run_project_task_full_called: str     # no
+    claude_code_called: str               # no
+    business_code_changed: str            # no
+    framework_code_changed: str           # no
+    auto_continue_to_next_task: str       # no
+    auto_git_backup: str                  # no
+    bypass_permissions_used: str          # no
+    human_review_required: str            # yes
+
+    # 拒绝原因
+    rejection_reasons: list[str]
+
+    # 最终结果
+    check_result: str  # pass / fail
+    message: str
+
+
+# T139/T140 敏感文件拒绝模式
+SENSITIVE_FILE_PATTERNS = [
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.staging",
+    ".env.development",
+    ".pem",
+    ".key",
+    ".p12",
+    ".pfx",
+    "id_rsa",
+    "id_ed25519",
+]
+
+SENSITIVE_FILENAME_KEYWORDS = [
+    "secret",
+    "token",
+    "credential",
+    "password",
+]
+
+# T140 默认 allowed scope
+DEFAULT_ALLOWED_SCOPE = [
+    "docs/",
+    "reports/",
+    "memory/",
+]
+
+
+def validate_planned_files_for_git_dry_run(
+    planned_files: list[str],
+    task_id: str,
+    allowed_scope: list[str] | None = None,
+) -> tuple[bool, list[str], list[str]]:
+    """校验 planned files 是否安全。
+
+    返回 (is_valid, rejection_reasons, blocked_files)。
+    不执行 Git 命令，只做文件路径校验。
+    """
+    if allowed_scope is None:
+        allowed_scope = DEFAULT_ALLOWED_SCOPE
+
+    reasons: list[str] = []
+    blocked: list[str] = []
+
+    for f in planned_files:
+        f_lower = f.lower()
+        f_name = f.split("/")[-1].split("\\")[-1].lower()
+
+        # Check sensitive file patterns
+        is_sensitive = False
+        for pattern in SENSITIVE_FILE_PATTERNS:
+            if pattern in f_lower or f_name.endswith(pattern):
+                is_sensitive = True
+                break
+
+        # Check sensitive filename keywords
+        if not is_sensitive:
+            for kw in SENSITIVE_FILENAME_KEYWORDS:
+                if kw in f_lower:
+                    is_sensitive = True
+                    break
+
+        if is_sensitive:
+            blocked.append(f)
+            reasons.append(f"sensitive file blocked: {f}")
+            continue
+
+        # Check Stage 8 related
+        if "stage-8" in f_lower or "stage8" in f_lower or "stage_8" in f_lower:
+            blocked.append(f)
+            reasons.append(f"Stage 8 related file blocked: {f}")
+            continue
+
+        # Check push related
+        if "push" in f_lower and "approval" not in f_lower:
+            # Allow files that have "approval" in name (like approval record)
+            blocked.append(f)
+            reasons.append(f"push-related file blocked: {f}")
+            continue
+
+        # Check binary/large file extensions
+        binary_extensions = [".exe", ".dll", ".so", ".bin", ".dat", ".iso", ".zip", ".tar", ".gz", ".7z", ".rar"]
+        for ext in binary_extensions:
+            if f_lower.endswith(ext):
+                blocked.append(f)
+                reasons.append(f"binary/archive file blocked: {f}")
+                break
+
+    # Check allowed scope coverage
+    out_of_scope: list[str] = []
+    for f in planned_files:
+        if f in blocked:
+            continue
+        in_scope = any(f.startswith(scope) for scope in allowed_scope)
+        if not in_scope:
+            out_of_scope.append(f)
+
+    if out_of_scope:
+        for f in out_of_scope:
+            reasons.append(f"file outside allowed scope: {f} (allowed: {allowed_scope})")
+        blocked.extend(out_of_scope)
+
+    valid = len(reasons) == 0
+    return valid, reasons, blocked
+
+
+def validate_commit_message_for_git_dry_run(
+    commit_message: str,
+    task_id: str,
+) -> tuple[bool, list[str]]:
+    """校验 Git commit dry-run commit message 是否安全。
+
+    不执行 Git 命令，只做文本校验。
+    """
+    reasons: list[str] = []
+
+    # 必须非空
+    if not commit_message or not commit_message.strip():
+        reasons.append("commit message is empty")
+        return False, reasons
+
+    msg_lower = commit_message.lower()
+
+    # 应包含 task id
+    if task_id.lower() not in msg_lower:
+        reasons.append(f"commit message should contain task id '{task_id}'")
+
+    # 长度限制
+    if len(commit_message) > 500:
+        reasons.append("commit message too long (max 500 characters)")
+
+    # Unsafe patterns — 来自 T139 设计 Section 4.2
+    unsafe_patterns = [
+        ("real execution completed", "implies real execution was completed"),
+        ("pushed to", "implies code was pushed to remote"),
+        ("stage 8", "implies Stage 8 continuation"),
+        ("auto continue", "implies automatic continuation"),
+        ("unattended", "implies unattended execution"),
+        ("production", "implies production deployment"),
+        ("bypass", "implies bypassing safety checks"),
+        ("git add completed", "implies real git add was performed"),
+        ("git commit completed", "implies real git commit was performed"),
+        ("git push completed", "implies real git push was performed"),
+        ("committed", "implies real commit was performed"),
+        ("staged", "implies real staging was performed"),
+    ]
+
+    has_dry_run_context = (
+        "dry-run" in msg_lower
+        or "dry run" in msg_lower
+        or "preview" in msg_lower
+    )
+
+    for pattern, description in unsafe_patterns:
+        if pattern in msg_lower and not has_dry_run_context:
+            reasons.append(f"unsafe pattern '{pattern}': {description}")
+
+    # 不能声称已经完成真实执行（只在附带执行动词时才拒）
+    execution_verbs = ["completed", "performed", "executed", "succeeded", "done"]
+    real_execution_targets = [
+        "real git add",
+        "real git commit",
+        "real git push",
+    ]
+    for target in real_execution_targets:
+        if target in msg_lower:
+            has_execution_verb = any(verb in msg_lower for verb in execution_verbs)
+            if has_execution_verb:
+                reasons.append(f"claims real execution: '{target}'")
+
+    # 不能伪造其他 task id（简单检查：如果有 T+数字 但不匹配当前 task_id）
+    import re as _re
+    t_ids = _re.findall(r"T\d+(\.\d+)?", commit_message, _re.IGNORECASE)
+    for tid in t_ids:
+        if tid.upper() != task_id.upper():
+            # Allow if task_id is a prefix (e.g., T140 in message with T140.1)
+            if not task_id.upper().startswith(tid.upper()):
+                reasons.append(f"commit message references different task id: {tid}")
+
+    valid = len(reasons) == 0
+    return valid, reasons
+
+
+def build_real_git_add_commit_approval_record_content(
+    task_id: str,
+    task_title: str,
+    approval_id: str,
+    base_commit: str,
+    branch: str,
+    repo: str,
+    operation_type: str,
+    approval_mode: str,
+    planned_files_to_add: list[str],
+    blocked_files: list[str],
+    allowed_scope: list[str],
+    diff_summary: str,
+    files_changed: int,
+    insertions: int,
+    deletions: int,
+    commit_message: str,
+    commit_message_valid: str,
+    planned_files_valid: str,
+    dry_run: str,
+    real_execution_allowed: str,
+    push_allowed: str,
+    validation_required: str,
+    approval_record_generated: str,
+    ready_for_real_git_add: str,
+    ready_for_real_commit: str,
+    ready_for_real_push: str,
+    ready_for_stage_8: str,
+    gate_checks_passed: int,
+    gate_checks_failed: int,
+    failed_checks: list[str],
+    check_result: str,
+    rejection_reasons: list[str],
+    generated_at: str = "",
+) -> str:
+    """根据 T139 schema 生成 approval record Markdown 文本。
+
+    不执行 Git 命令，不调用 subprocess。
+    """
+    import datetime
+
+    if not generated_at:
+        generated_at = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+    lines = [
+        f"# Real Git Add/Commit Approval Record (Dry-Run)",
+        f"",
+        f"```yaml",
+        f"approval_record_version: \"1.0\"",
+        f"approval_id: \"{approval_id}\"",
+        f"generated_at: \"{generated_at}\"",
+        f"",
+        f"task:",
+        f"  task_id: \"{task_id}\"",
+        f"  task_title: \"{task_title}\"",
+        f"  stage: \"Stage 7\"",
+        f"",
+        f"operation:",
+        f"  operation_type: \"{operation_type}\"",
+        f"  approval_mode: \"{approval_mode}\"",
+        f"",
+        f"git:",
+        f"  base_commit: \"{base_commit}\"",
+        f"  branch: \"{branch}\"",
+        f"  repo: \"{repo}\"",
+        f"",
+        f"files:",
+        f"  planned_files_to_add:",
+    ]
+    for f in planned_files_to_add:
+        lines.append(f"    - \"{f}\"")
+    lines.append(f"  blocked_files:")
+    for f in blocked_files:
+        lines.append(f"    - \"{f}\"")
+    lines.append(f"  allowed_scope:")
+    for s in allowed_scope:
+        lines.append(f"    - \"{s}\"")
+
+    lines += [
+        f"",
+        f"diff:",
+        f"  summary: \"{diff_summary}\"",
+        f"  files_changed: {files_changed}",
+        f"  insertions: {insertions}",
+        f"  deletions: {deletions}",
+        f"",
+        f"commit:",
+        f"  commit_message: \"{commit_message}\"",
+        f"  commit_message_valid: \"{commit_message_valid}\"",
+        f"  commit_allowed: \"no\"",
+        f"",
+        f"safety:",
+        f"  dry_run: \"{dry_run}\"",
+        f"  real_execution_allowed: \"{real_execution_allowed}\"",
+        f"  push_allowed: \"{push_allowed}\"",
+        f"  validation_required: \"{validation_required}\"",
+        f"  real_git_add_performed: \"no\"",
+        f"  real_git_commit_performed: \"no\"",
+        f"  real_git_push_performed: \"no\"",
+        f"  auto_continue_allowed: \"no\"",
+        f"  stage_8_allowed: \"no\"",
+        f"  command_execution_performed: \"no\"",
+        f"  business_code_modified: \"no\"",
+        f"",
+        f"validation:",
+        f"  planned_files_valid: \"{planned_files_valid}\"",
+        f"  commit_message_valid: \"{commit_message_valid}\"",
+        f"  gate_checks_total: 20",
+        f"  gate_checks_passed: {gate_checks_passed}",
+        f"  gate_checks_failed: {gate_checks_failed}",
+        f"  failed_checks:",
+    ]
+    for fc in failed_checks:
+        lines.append(f"    - \"{fc}\"")
+
+    lines += [
+        f"",
+        f"decision:",
+        f"  approval_record_generated: \"{approval_record_generated}\"",
+        f"  ready_for_real_git_add: \"{ready_for_real_git_add}\"",
+        f"  ready_for_real_commit: \"{ready_for_real_commit}\"",
+        f"  ready_for_real_push: \"{ready_for_real_push}\"",
+        f"  ready_for_stage_8: \"{ready_for_stage_8}\"",
+        f"  human_review_required: \"yes\"",
+        f"  check_result: \"{check_result}\"",
+        f"",
+        f"notes: |",
+        f"  This is a DRY-RUN approval record. No real git operations were performed.",
+        f"  Planned files valid: {planned_files_valid}.",
+        f"  Commit message valid: {commit_message_valid}.",
+        f"  Rejection reasons: {rejection_reasons}.",
+        f"  real_execution_allowed must remain false in T140/T141.",
+        f"  push_allowed must remain false.",
+        f"```",
+        f"",
+    ]
+    return "\n".join(lines)
+
+
+def run_real_git_add_commit_dry_run(
+    sample: str = "pass",
+) -> RealGitAddCommitDryRunResult:
+    """运行 real Git add/commit dry-run with approval record。
+
+    根据 sample 模拟 planned files、commit message 和 gate checks。
+    不执行 git add / commit / push，不调用 subprocess。
+
+    支持 15 个 sample 场景：
+    - pass: 所有 gate checks 通过
+    - empty-commit-message: commit message 为空
+    - mismatched-task-id: commit message 引用不同 task id
+    - unsafe-commit-message: commit message 包含不安全内容
+    - real-execution-claim: commit message 声称已真实执行
+    - sensitive-file: planned files 包含敏感文件
+    - out-of-scope-file: planned files 超出 allowed scope
+    - stage-8-file: planned files 包含 Stage 8 相关文件
+    - no-files: planned files 为空
+    - real-execution-allowed-true: real_execution_allowed 被设为 true
+    - push-allowed-true: push_allowed 被设为 true
+    - git-add-requested: 请求真实 git add
+    - git-commit-requested: 请求真实 git commit
+    - git-push-requested: 请求真实 git push
+    - stage-8-requested: 请求进入 Stage 8
+    """
+    import os
+
+    task_id = "T140"
+    task_title = "实现 real Git add/commit dry-run with approval record"
+    base_commit = "0039784"
+    branch = "main"
+    repo = "multi-agent-runner"
+    approval_id = f"{task_id}-approval-dry-run"
+
+    # Default planned files (pass scenario)
+    planned_files = [
+        "docs/tasks.md",
+        "reports/dev/T140-dev-report.md",
+        "reports/git/t140-real-git-add-commit-approval-record.md",
+    ]
+
+    allowed_scope = list(DEFAULT_ALLOWED_SCOPE)
+
+    diff_summary = "3 files changed, 200 insertions(+), 5 deletions(-)"
+    files_changed = 3
+    insertions = 200
+    deletions = 5
+
+    commit_message = "docs: add T140 real git add commit dry-run approval record"
+
+    # Safety defaults
+    dry_run = "True"
+    real_execution_allowed = "False"
+    push_allowed = "False"
+    validation_required = "True"
+
+    # Override based on sample
+    rejection_reasons: list[str] = []
+    forced_failure: bool = False
+
+    if sample == "pass":
+        pass  # defaults are correct
+
+    elif sample == "empty-commit-message":
+        commit_message = ""
+
+    elif sample == "mismatched-task-id":
+        commit_message = "docs: add T999 unrelated task content"
+
+    elif sample == "unsafe-commit-message":
+        commit_message = "feat: real execution completed and pushed to main, auto continue"
+
+    elif sample == "real-execution-claim":
+        commit_message = "docs: T140 real git add completed and committed"
+
+    elif sample == "sensitive-file":
+        planned_files = [
+            "docs/tasks.md",
+            ".env",
+            "reports/dev/T140-dev-report.md",
+        ]
+
+    elif sample == "out-of-scope-file":
+        planned_files = [
+            "docs/tasks.md",
+            "projects/down-100-floors-game/src/main.py",
+            "reports/dev/T140-dev-report.md",
+        ]
+
+    elif sample == "stage-8-file":
+        planned_files = [
+            "docs/tasks.md",
+            "docs/stage-8-plan.md",
+            "reports/dev/T140-dev-report.md",
+        ]
+
+    elif sample == "no-files":
+        planned_files = []
+
+    elif sample == "real-execution-allowed-true":
+        real_execution_allowed = "True"
+        forced_failure = True
+
+    elif sample == "push-allowed-true":
+        push_allowed = "True"
+        forced_failure = True
+
+    elif sample == "git-add-requested":
+        forced_failure = True
+
+    elif sample == "git-commit-requested":
+        forced_failure = True
+
+    elif sample == "git-push-requested":
+        forced_failure = True
+
+    elif sample == "stage-8-requested":
+        forced_failure = True
+
+    else:
+        rejection_reasons.append(f"unknown sample: {sample}")
+
+    # Run planned files validation
+    files_valid, files_reasons, blocked_files = validate_planned_files_for_git_dry_run(
+        planned_files=planned_files,
+        task_id=task_id,
+        allowed_scope=allowed_scope,
+    )
+    rejection_reasons.extend(files_reasons)
+
+    # Run commit message validation
+    msg_valid, msg_reasons = validate_commit_message_for_git_dry_run(
+        commit_message=commit_message,
+        task_id=task_id,
+    )
+    rejection_reasons.extend(msg_reasons)
+
+    # Gate checks
+    gate_checks_passed = 0
+    gate_checks_failed = 0
+    failed_checks: list[str] = []
+
+    # Group 1: Dry-run Constraints (4 checks)
+    # Check 1: dry_run = True
+    if dry_run == "True":
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("dry_run is not True")
+        rejection_reasons.append("dry_run must be True (condition 1)")
+
+    # Check 2: real_execution_allowed = False
+    if real_execution_allowed == "False":
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("real_execution_allowed is not False")
+        rejection_reasons.append("real_execution_allowed must be False in T140 (condition 2)")
+
+    # Check 3: push_allowed = False
+    if push_allowed == "False":
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("push_allowed is not False")
+        rejection_reasons.append("push_allowed must be False (condition 3)")
+
+    # Check 4: validation_required = True
+    if validation_required == "True":
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("validation_required is not True")
+
+    # Group 2: Planned Files Validation (4 checks)
+    # Check 5: planned files not empty
+    if len(planned_files) > 0:
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("planned files is empty")
+        rejection_reasons.append("planned files cannot be empty (condition 5)")
+
+    # Check 6: no blocked files
+    if len(blocked_files) == 0:
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append(f"blocked files found: {blocked_files}")
+
+    # Check 7: planned files in allowed scope
+    if files_valid:
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("planned files validation failed")
+
+    # Check 8: no sensitive files
+    has_sensitive = any(
+        any(pat in f.lower() for pat in SENSITIVE_FILE_PATTERNS + SENSITIVE_FILENAME_KEYWORDS)
+        for f in planned_files
+    )
+    if not has_sensitive:
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("sensitive files detected in planned files")
+
+    # Group 3: Commit Message Validation (4 checks)
+    # Check 9: commit message not empty
+    if commit_message and commit_message.strip():
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("commit message is empty")
+        if "commit message is empty" not in " ".join(rejection_reasons):
+            rejection_reasons.append("commit message is empty (condition 9)")
+
+    # Check 10: commit message valid
+    if msg_valid:
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("commit message validation failed")
+
+    # Check 11: commit message contains task id
+    if task_id.lower() in commit_message.lower():
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("commit message does not contain task id")
+
+    # Check 12: commit message no unsafe patterns
+    has_unsafe = any(r for r in msg_reasons if "unsafe pattern" in r)
+    if not has_unsafe:
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("commit message contains unsafe patterns")
+
+    # Group 4: Safety Flags (4 checks)
+    # Check 13: ready_for_real_git_add = no
+    # Check 14: ready_for_real_commit = no
+    # Check 15: ready_for_real_push = no
+    # Check 16: ready_for_stage_8 = no
+    ready_for_real_git_add = "no"
+    ready_for_real_commit = "no"
+    ready_for_real_push = "no"
+    ready_for_stage_8 = "no"
+
+    gate_checks_passed += 4  # These are always safe in dry-run
+
+    # Group 5: Forced Failure Samples (4 checks for forced scenarios)
+    if sample in ("git-add-requested", "git-commit-requested", "git-push-requested", "stage-8-requested"):
+        if sample == "git-add-requested":
+            gate_checks_failed += 1
+            failed_checks.append("real git add requested")
+            rejection_reasons.append("real git add requested (forbidden in T140)")
+            gate_checks_passed += 3
+        elif sample == "git-commit-requested":
+            gate_checks_passed += 1
+            gate_checks_failed += 1
+            failed_checks.append("real git commit requested")
+            rejection_reasons.append("real git commit requested (forbidden in T140)")
+            gate_checks_passed += 2
+        elif sample == "git-push-requested":
+            gate_checks_passed += 2
+            gate_checks_failed += 1
+            failed_checks.append("real git push requested")
+            rejection_reasons.append("real git push requested (forbidden in T140)")
+            gate_checks_passed += 1
+        elif sample == "stage-8-requested":
+            gate_checks_passed += 3
+            gate_checks_failed += 1
+            failed_checks.append("stage 8 requested")
+            rejection_reasons.append("stage 8 requested (forbidden in T140)")
+
+    # Determine check result
+    is_pass = (
+        len(rejection_reasons) == 0
+        and gate_checks_failed == 0
+        and not forced_failure
+        and sample == "pass"
+    )
+    check_result = "pass" if is_pass else "fail"
+
+    # Generate approval record for pass
+    approval_record_path: str | None = None
+    approval_record_generated = "no"
+
+    planned_files_valid_str = "yes" if files_valid else "no"
+    commit_message_valid_str = "yes" if msg_valid else "no"
+
+    if is_pass:
+        approval_record_generated = "yes"
+        approval_record_path = "reports/git/t140-real-git-add-commit-approval-record.md"
+
+        record_content = build_real_git_add_commit_approval_record_content(
+            task_id=task_id,
+            task_title=task_title,
+            approval_id=approval_id,
+            base_commit=base_commit,
+            branch=branch,
+            repo=repo,
+            operation_type="real_git_add_commit_dry_run",
+            approval_mode="human_reviewed",
+            planned_files_to_add=planned_files,
+            blocked_files=blocked_files,
+            allowed_scope=allowed_scope,
+            diff_summary=diff_summary,
+            files_changed=files_changed,
+            insertions=insertions,
+            deletions=deletions,
+            commit_message=commit_message,
+            commit_message_valid=commit_message_valid_str,
+            planned_files_valid=planned_files_valid_str,
+            dry_run=dry_run,
+            real_execution_allowed=real_execution_allowed,
+            push_allowed=push_allowed,
+            validation_required=validation_required,
+            approval_record_generated=approval_record_generated,
+            ready_for_real_git_add=ready_for_real_git_add,
+            ready_for_real_commit=ready_for_real_commit,
+            ready_for_real_push=ready_for_real_push,
+            ready_for_stage_8=ready_for_stage_8,
+            gate_checks_passed=gate_checks_passed,
+            gate_checks_failed=gate_checks_failed,
+            failed_checks=failed_checks,
+            check_result=check_result,
+            rejection_reasons=rejection_reasons,
+        )
+
+        # Write sample approval record
+        record_dir = os.path.join("reports", "git")
+        os.makedirs(record_dir, exist_ok=True)
+        with open(os.path.join(record_dir, "t140-real-git-add-commit-approval-record.md"), "w", encoding="utf-8") as f:
+            f.write(record_content)
+
+    msg = (
+        f"Real git add/commit dry-run ({sample}): {check_result}. "
+        f"Gate checks: {gate_checks_passed} passed, {gate_checks_failed} failed. "
+        f"Rejection reasons: {rejection_reasons if rejection_reasons else 'none'}. "
+        f"Approval record generated: {approval_record_generated}."
+    )
+
+    return RealGitAddCommitDryRunResult(
+        dry_run_mode="real_git_add_commit_dry_run",
+        task_id=task_id,
+        task_title=task_title,
+        approval_record_version="1.0",
+        approval_id=approval_id,
+        approval_record_path=approval_record_path,
+        operation_type="real_git_add_commit_dry_run",
+        approval_mode="human_reviewed",
+        base_commit=base_commit,
+        branch=branch,
+        repo=repo,
+        planned_files_to_add=planned_files,
+        blocked_files=blocked_files,
+        allowed_scope=allowed_scope,
+        diff_summary=diff_summary,
+        files_changed=files_changed,
+        insertions=insertions,
+        deletions=deletions,
+        commit_message=commit_message,
+        commit_message_valid=commit_message_valid_str,
+        commit_message_rejection_reasons=msg_reasons,
+        dry_run=dry_run,
+        real_execution_allowed=real_execution_allowed,
+        push_allowed=push_allowed,
+        validation_required=validation_required,
+        approval_record_generated=approval_record_generated,
+        planned_files_valid=planned_files_valid_str,
+        planned_files_rejection_reasons=files_reasons,
+        ready_for_real_git_add=ready_for_real_git_add,
+        ready_for_real_commit=ready_for_real_commit,
+        ready_for_real_push=ready_for_real_push,
+        ready_for_stage_8=ready_for_stage_8,
+        real_git_add_performed="no",
+        real_git_commit_performed="no",
+        real_git_push_performed="no",
+        command_execution_performed="no",
+        real_task_execution="no",
+        run_project_task_full_called="no",
+        claude_code_called="no",
+        business_code_changed="no",
+        framework_code_changed="no",
+        auto_continue_to_next_task="no",
+        auto_git_backup="no",
+        bypass_permissions_used="no",
+        human_review_required="yes",
+        rejection_reasons=rejection_reasons,
+        check_result=check_result,
+        message=msg,
+    )

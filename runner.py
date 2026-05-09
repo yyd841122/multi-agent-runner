@@ -62,6 +62,7 @@ from tools.continuous_task_planner import run_controlled_apply_approval_model_dr
 from tools.continuous_task_planner import run_command_allowlist_validation_dry_run
 from tools.continuous_task_planner import run_first_human_reviewed_controlled_apply_sample_dry_run
 from tools.continuous_task_planner import run_first_human_reviewed_controlled_apply_dry_run
+from tools.continuous_task_planner import run_real_git_add_commit_dry_run
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -2690,6 +2691,60 @@ def main():
         print(f"CHECK_RESULT={result.check_result}")
         print()
         print(f"MESSAGE：{result.message}")
+    elif args[0] == "git-commit-dry-run":
+        # T140: real Git add/commit dry-run with approval record
+        sample_type = "pass"
+        i = 1
+        while i < len(args):
+            if args[i] == "--sample" and i + 1 < len(args):
+                sample_type = args[i + 1]
+                i += 2
+            else:
+                i += 1
+
+        result = run_real_git_add_commit_dry_run(sample=sample_type)
+
+        print()
+        print(f"EXECUTION_MODE={result.dry_run_mode}")
+        print(f"TASK_ID={result.task_id}")
+        print(f"APPROVAL_RECORD_GENERATED={result.approval_record_generated}")
+        print(f"APPROVAL_RECORD_PATH={result.approval_record_path or 'none'}")
+        print(f"OPERATION_TYPE={result.operation_type}")
+        print(f"APPROVAL_MODE={result.approval_mode}")
+        print(f"BASE_COMMIT={result.base_commit}")
+        print(f"BRANCH={result.branch}")
+        print(f"REPO={result.repo}")
+        print(f"PLANNED_FILES_TO_ADD={result.planned_files_to_add}")
+        print(f"BLOCKED_FILES={result.blocked_files}")
+        print(f"ALLOWED_SCOPE={result.allowed_scope}")
+        print(f"DIFF_SUMMARY={result.diff_summary}")
+        print(f"COMMIT_MESSAGE={result.commit_message}")
+        print(f"COMMIT_MESSAGE_VALID={result.commit_message_valid}")
+        print(f"COMMIT_MESSAGE_REJECTION_REASONS={result.commit_message_rejection_reasons}")
+        print(f"DRY_RUN={result.dry_run}")
+        print(f"REAL_EXECUTION_ALLOWED={result.real_execution_allowed}")
+        print(f"PUSH_ALLOWED={result.push_allowed}")
+        print(f"VALIDATION_REQUIRED={result.validation_required}")
+        print(f"PLANNED_FILES_VALID={result.planned_files_valid}")
+        print(f"PLANNED_FILES_REJECTION_REASONS={result.planned_files_rejection_reasons}")
+        print(f"READY_FOR_REAL_GIT_ADD={result.ready_for_real_git_add}")
+        print(f"READY_FOR_REAL_COMMIT={result.ready_for_real_commit}")
+        print(f"READY_FOR_REAL_PUSH={result.ready_for_real_push}")
+        print(f"READY_FOR_STAGE_8={result.ready_for_stage_8}")
+        print(f"REAL_GIT_ADD_PERFORMED={result.real_git_add_performed}")
+        print(f"REAL_GIT_COMMIT_PERFORMED={result.real_git_commit_performed}")
+        print(f"REAL_GIT_PUSH_PERFORMED={result.real_git_push_performed}")
+        print(f"COMMAND_EXECUTION_PERFORMED={result.command_execution_performed}")
+        print(f"REAL_TASK_EXECUTION={result.real_task_execution}")
+        print(f"CLAUDE_CODE_CALLED={result.claude_code_called}")
+        print(f"BUSINESS_CODE_CHANGED={result.business_code_changed}")
+        print(f"AUTO_CONTINUE_TO_NEXT_TASK={result.auto_continue_to_next_task}")
+        print(f"AUTO_GIT_BACKUP={result.auto_git_backup}")
+        print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required}")
+        print(f"REJECTION_REASONS={result.rejection_reasons}")
+        print(f"CHECK_RESULT={result.check_result}")
+        print()
+        print(f"MESSAGE：{result.message}")
     else:
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")
@@ -2728,6 +2783,7 @@ def main():
         print("  python runner.py real-apply-approval-record-dry-run [--sample <name>]  Real apply approval record dry-run")
         print("  python runner.py first-real-patch-apply-guarded-dry-run [--sample <name>]  First real patch apply guarded dry-run")
         print("  python runner.py guarded-git-backup-dry-run [--sample <name>]  Guarded Git backup dry-run")
+        print("  python runner.py git-commit-dry-run [--sample <name>]  Real Git add/commit dry-run with approval record")
 
 
 if __name__ == "__main__":
