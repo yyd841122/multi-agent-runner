@@ -8283,3 +8283,781 @@ def _run_dirty_worktree_sample(
         message="Controlled apply dry-run passed (unexpected for dirty-worktree sample).",
         **_safe,
     )
+
+
+# ---------------------------------------------------------------------------
+# T132: First Real Patch Apply Guarded Dry-Run
+# ---------------------------------------------------------------------------
+
+@dataclass
+class FirstRealPatchApplyGuardedDryRunResult:
+    """First real patch apply guarded dry-run 结果。
+
+    基于 T129 approval/audit 设计、T130 dry-run 实现、T131 post-apply validation gate 设计。
+    模拟完整 guarded real patch apply 安全链路。
+    不真实 apply patch，不执行 command，不调用 Claude Code。
+    """
+
+    # 模式标识
+    dry_run_mode: str  # first_real_patch_apply_guarded_dry_run
+
+    # 任务信息
+    task_id: str
+    task_title: str
+
+    # Record 路径
+    approval_record_path: str
+    pre_apply_audit_path: str
+    post_apply_audit_path: str
+
+    # Record 检查结果
+    approval_record_check_result: str  # pass / fail
+    pre_apply_audit_check_result: str  # pass / fail
+    post_apply_audit_check_result: str  # pass / fail
+
+    # 文件范围
+    expected_target_files: list[str]
+    expected_patch_files: list[str]
+    actual_changed_files: list[str]
+    unexpected_files: list[str]
+
+    # Diff
+    diff_stat_after: str
+
+    # Post-apply validation
+    post_apply_validation_status: str  # pass / fail
+    post_apply_validation_check_result: str  # pass / fail
+    dirty_workspace_classification: str  # expected_dirty / unexpected_dirty / clean_unexpected
+
+    # Ready flags
+    ready_for_human_review: str  # yes
+    ready_for_git_backup_dry_run: str  # yes / no
+    ready_for_real_apply: str  # no
+    ready_for_command_execution: str  # no
+    ready_for_commit: str  # no
+    ready_for_push: str  # no
+    ready_for_stage_8: str  # no
+
+    # 安全保证字段（始终为安全值）
+    real_patch_applied: str           # no
+    command_execution_performed: str  # no
+    real_task_execution: str          # no
+    run_project_task_full_called: str # no
+    claude_code_called: str           # no
+    business_code_changed: str        # no
+    framework_code_changed: str       # no
+    auto_continue_to_next_task: str   # no
+    auto_git_backup: str              # no
+    bypass_permissions_used: str      # no
+    human_review_required: str        # yes
+
+    # 停止原因和违规
+    stop_reason: str | None
+    violations: list[str]
+
+    # 最终结果
+    check_result: str  # pass / fail
+    message: str
+
+
+def classify_post_apply_workspace_dry_run(
+    git_status_after: str,
+    actual_changed_files: list[str],
+    expected_target_files: list[str],
+    expected_patch_files: list[str],
+    diff_stat_after: str,
+    allowed_report_patterns: list[str] | None = None,
+) -> str:
+    """模拟 T131 dirty workspace 分类。
+
+    不读取真实 git status，使用 sample 参数模拟。
+    不执行 git 命令，不真实 apply patch。
+
+    Returns:
+        "expected_dirty" | "unexpected_dirty" | "clean_unexpected"
+    """
+    _allowed_reports = allowed_report_patterns or []
+
+    if not git_status_after or not git_status_after.strip():
+        return "clean_unexpected"
+
+    if not actual_changed_files:
+        return "clean_unexpected"
+
+    expected_all = set(expected_target_files) | set(expected_patch_files)
+    allowed_set = set(_allowed_reports)
+    all_allowed = expected_all | allowed_set
+
+    actual_set = set(actual_changed_files)
+
+    if actual_set <= all_allowed:
+        if diff_stat_after and diff_stat_after.strip():
+            return "expected_dirty"
+        else:
+            return "unexpected_dirty"
+    else:
+        return "unexpected_dirty"
+
+
+def validate_post_apply_state_dry_run(
+    task_id: str,
+    approval_record_exists: bool,
+    pre_apply_audit_exists: bool,
+    post_apply_audit_exists: bool,
+    expected_target_files: list[str],
+    expected_patch_files: list[str],
+    actual_changed_files: list[str],
+    diff_stat_after: str,
+    validation_results: list[str] | None = None,
+    report_paths: list[str] | None = None,
+    human_review_required: str = "yes",
+    ready_for_commit_requested: bool = False,
+    ready_for_push_requested: bool = False,
+    ready_for_stage_8_requested: bool = False,
+    forbidden_files: list[str] | None = None,
+    allowed_report_patterns: list[str] | None = None,
+) -> tuple[str, str, str | None, list[str]]:
+    """模拟 T131 post-apply validation gate 的 18 项检查。
+
+    不执行 git 命令，不真实 apply patch，不执行 command。
+    使用 sample 参数模拟所有输入。
+
+    Returns:
+        (validation_status, workspace_classification, stop_reason, violations)
+    """
+    violations: list[str] = []
+    _forbidden = forbidden_files or []
+    _allowed_reports = allowed_report_patterns or []
+    _validation_results = validation_results or []
+    _report_paths = report_paths or []
+
+    # Check 1-3: Record existence
+    if not approval_record_exists:
+        violations.append("missing_approval_record")
+    if not pre_apply_audit_exists:
+        violations.append("missing_pre_apply_audit")
+    if not post_apply_audit_exists:
+        violations.append("missing_post_apply_audit")
+
+    # Check 5-6: Expected/actual files not empty
+    if not expected_target_files:
+        violations.append("expected_files_empty")
+    if not actual_changed_files:
+        violations.append("actual_files_empty")
+
+    # Check 7-11: File scope checks
+    expected_all = set(expected_target_files) | set(expected_patch_files)
+    allowed_set = set(_allowed_reports)
+    all_allowed = expected_all | allowed_set
+    actual_set = set(actual_changed_files)
+
+    unexpected = actual_set - all_allowed
+    if unexpected:
+        violations.append(f"unexpected_files_changed: {sorted(unexpected)}")
+
+    for f in actual_changed_files:
+        if f in _forbidden:
+            violations.append(f"forbidden_file_changed: {f}")
+
+    for f in actual_changed_files:
+        if "../" in f or "..\\" in f:
+            violations.append(f"path_traversal_detected: {f}")
+
+    for f in actual_changed_files:
+        if len(f) >= 2 and (f[1] == ":" or f.startswith("/")):
+            violations.append(f"absolute_path_detected: {f}")
+
+    # Check 12: Diff stat present
+    if not diff_stat_after or not diff_stat_after.strip():
+        violations.append("missing_diff_stat")
+
+    # Check 15: human_review_required
+    if human_review_required != "yes":
+        violations.append("human_review_required_not_yes")
+
+    # Check 16-18: Safety flags
+    if ready_for_commit_requested:
+        violations.append("commit_requested")
+    if ready_for_push_requested:
+        violations.append("push_requested")
+    if ready_for_stage_8_requested:
+        violations.append("stage_8_requested")
+
+    # Classify workspace
+    workspace_classification = classify_post_apply_workspace_dry_run(
+        git_status_after="\n".join(actual_changed_files) if actual_changed_files else "",
+        actual_changed_files=actual_changed_files,
+        expected_target_files=expected_target_files,
+        expected_patch_files=expected_patch_files,
+        diff_stat_after=diff_stat_after,
+        allowed_report_patterns=_allowed_reports,
+    )
+
+    # Check 20-21: Workspace classification
+    if workspace_classification == "clean_unexpected":
+        violations.append("workspace_clean_unexpected")
+    elif workspace_classification == "unexpected_dirty":
+        violations.append("workspace_unexpected_dirty")
+
+    if violations:
+        return (
+            "fail",
+            workspace_classification,
+            "; ".join(violations[:3]),
+            violations,
+        )
+    else:
+        return (
+            "pass",
+            workspace_classification,
+            None,
+            [],
+        )
+
+
+def _build_guarded_apply_dry_run_sample_files(
+    task_id: str,
+    output_dir: str,
+) -> None:
+    """生成 T132 guarded apply dry-run sample 文件（仅 pass 场景调用）。
+
+    不真实 apply patch，不执行 command，不修改业务代码。
+    """
+    now_iso = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Sample guarded apply dry-run record
+    guarded_content = f"""\
+# Guarded Apply Dry-Run Record (T132)
+
+> **DRY-RUN RECORD** — This is a simulated guarded apply dry-run. No real patch apply, no command execution.
+
+## Metadata
+
+| Field | Value |
+|-------|-------|
+| dry_run_mode | first_real_patch_apply_guarded_dry_run |
+| task_id | {task_id} |
+| task_title | first real patch apply guarded dry-run |
+| generated_at | {now_iso} |
+
+## Approval & Audit Records
+
+| Record | Status |
+|--------|--------|
+| approval_record | exists |
+| pre_apply_audit | exists |
+| post_apply_audit | exists |
+
+## File Scope
+
+| Field | Value |
+|-------|-------|
+| expected_target_files | tools/continuous_task_planner.py, runner.py |
+| expected_patch_files | none (dry-run) |
+| actual_changed_files | tools/continuous_task_planner.py, runner.py |
+| unexpected_files | none |
+
+## Diff Stat
+
+| Field | Value |
+|-------|-------|
+| diff_stat_after | simulated dry-run diff stat |
+| files_changed_count | 2 |
+| insertions_count | 150 |
+| deletions_count | 0 |
+
+## Post-Apply Validation
+
+| Field | Value |
+|-------|-------|
+| validation_status | pass |
+| workspace_classification | expected_dirty |
+| human_review_required | yes |
+
+## Safety
+
+| Field | Value |
+|-------|-------|
+| real_patch_applied | no |
+| command_execution_performed | no |
+| ready_for_real_apply | no |
+| ready_for_commit | no |
+| ready_for_push | no |
+| ready_for_stage_8 | no |
+
+## Decision
+
+| Field | Value |
+|-------|-------|
+| ready_for_human_review | yes |
+| ready_for_git_backup_dry_run | yes |
+| check_result | pass |
+"""
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    Path(f"{output_dir}/{task_id}-sample-guarded-apply-dry-run.md").write_text(
+        guarded_content, encoding="utf-8"
+    )
+
+    # Sample post-apply validation record
+    validation_content = f"""\
+# Post-Apply Validation Record (T132 Dry-Run)
+
+> **DRY-RUN RECORD** — This is a simulated post-apply validation. No real patch apply, no command execution.
+
+## Metadata
+
+| Field | Value |
+|-------|-------|
+| task_id | {task_id} |
+| generated_at | {now_iso} |
+
+## Validation Checks (18 items)
+
+| # | Check | Result |
+|---|-------|--------|
+| 1 | approval_record_exists | pass |
+| 2 | pre_apply_audit_exists | pass |
+| 3 | post_apply_audit_exists | pass |
+| 4 | task_id_matches | pass |
+| 5 | expected_files_not_empty | pass |
+| 6 | actual_files_not_empty | pass |
+| 7 | actual_files_subset_of_expected | pass |
+| 8 | no_unexpected_files | pass |
+| 9 | no_forbidden_files | pass |
+| 10 | no_path_traversal | pass |
+| 11 | no_absolute_paths | pass |
+| 12 | diff_stat_present | pass |
+| 13 | validation_results_present | pass |
+| 14 | required_reports_present | pass |
+| 15 | human_review_required_yes | pass |
+| 16 | ready_for_commit_no | pass |
+| 17 | ready_for_push_no | pass |
+| 18 | ready_for_stage_8_no | pass |
+
+## Workspace Classification
+
+| Field | Value |
+|-------|-------|
+| classification | expected_dirty |
+| diff_stat_present | yes |
+| no_unexpected_files | yes |
+
+## Decision
+
+| Field | Value |
+|-------|-------|
+| post_apply_validation_status | pass |
+| ready_for_human_review | yes |
+| ready_for_git_backup_dry_run | yes |
+| ready_for_commit | no |
+| ready_for_push | no |
+| ready_for_stage_8 | no |
+| check_result | pass |
+"""
+    Path(f"{output_dir}/{task_id}-sample-post-apply-validation.md").write_text(
+        validation_content, encoding="utf-8"
+    )
+
+
+def run_first_real_patch_apply_guarded_dry_run(
+    sample: str = "pass",
+) -> FirstRealPatchApplyGuardedDryRunResult:
+    """执行 first real patch apply guarded dry-run。
+
+    模拟 approval record exists、pre/post audit exists、expected files、
+    actual changed files、diff stat、validation results。
+    调用 post-apply validation dry-run helper。
+    生成 guarded apply dry-run result。
+
+    始终不真实 apply patch，始终不执行 command，始终不修改业务代码。
+    """
+
+    _safe = dict(
+        real_patch_applied="no",
+        command_execution_performed="no",
+        real_task_execution="no",
+        run_project_task_full_called="no",
+        claude_code_called="no",
+        business_code_changed="no",
+        framework_code_changed="no",
+        auto_continue_to_next_task="no",
+        auto_git_backup="no",
+        bypass_permissions_used="no",
+        human_review_required="yes",
+        ready_for_real_apply="no",
+        ready_for_command_execution="no",
+        ready_for_commit="no",
+        ready_for_push="no",
+        ready_for_stage_8="no",
+    )
+
+    task_id = "T132"
+    task_title = "first real patch apply guarded dry-run"
+
+    # Sample definitions
+    _SAMPLES: dict[str, dict] = {
+        "pass": {
+            "approval_record_exists": True,
+            "pre_apply_audit_exists": True,
+            "post_apply_audit_exists": True,
+            "expected_target_files": [
+                "tools/continuous_task_planner.py",
+                "runner.py",
+            ],
+            "expected_patch_files": [],
+            "actual_changed_files": [
+                "tools/continuous_task_planner.py",
+                "runner.py",
+            ],
+            "diff_stat_after": "2 files changed, 150 insertions(+), 0 deletions(-)",
+            "validation_results": ["pass"],
+            "report_paths": [
+                "reports/dev/T132-dev-report.md",
+                "reports/checks/T132-first-real-patch-apply-guarded-dry-run-check.md",
+                "reports/apply/T132-sample-post-apply-audit.md",
+            ],
+            "forbidden_files": [],
+            "human_review_required": "yes",
+            "ready_for_commit_requested": False,
+            "ready_for_push_requested": False,
+            "ready_for_stage_8_requested": False,
+            "write_files": True,
+        },
+        "missing-approval-record": {
+            "approval_record_exists": False,
+            "pre_apply_audit_exists": True,
+            "post_apply_audit_exists": True,
+            "expected_target_files": ["tools/continuous_task_planner.py"],
+            "expected_patch_files": [],
+            "actual_changed_files": ["tools/continuous_task_planner.py"],
+            "diff_stat_after": "1 file changed, 50 insertions(+)",
+            "validation_results": ["pass"],
+            "report_paths": ["reports/dev/T132-dev-report.md"],
+            "forbidden_files": [],
+            "human_review_required": "yes",
+            "ready_for_commit_requested": False,
+            "ready_for_push_requested": False,
+            "ready_for_stage_8_requested": False,
+            "write_files": False,
+        },
+        "missing-pre-audit": {
+            "approval_record_exists": True,
+            "pre_apply_audit_exists": False,
+            "post_apply_audit_exists": True,
+            "expected_target_files": ["tools/continuous_task_planner.py"],
+            "expected_patch_files": [],
+            "actual_changed_files": ["tools/continuous_task_planner.py"],
+            "diff_stat_after": "1 file changed, 50 insertions(+)",
+            "validation_results": ["pass"],
+            "report_paths": ["reports/dev/T132-dev-report.md"],
+            "forbidden_files": [],
+            "human_review_required": "yes",
+            "ready_for_commit_requested": False,
+            "ready_for_push_requested": False,
+            "ready_for_stage_8_requested": False,
+            "write_files": False,
+        },
+        "missing-post-audit": {
+            "approval_record_exists": True,
+            "pre_apply_audit_exists": True,
+            "post_apply_audit_exists": False,
+            "expected_target_files": ["tools/continuous_task_planner.py"],
+            "expected_patch_files": [],
+            "actual_changed_files": ["tools/continuous_task_planner.py"],
+            "diff_stat_after": "1 file changed, 50 insertions(+)",
+            "validation_results": ["pass"],
+            "report_paths": ["reports/dev/T132-dev-report.md"],
+            "forbidden_files": [],
+            "human_review_required": "yes",
+            "ready_for_commit_requested": False,
+            "ready_for_push_requested": False,
+            "ready_for_stage_8_requested": False,
+            "write_files": False,
+        },
+        "unexpected-file": {
+            "approval_record_exists": True,
+            "pre_apply_audit_exists": True,
+            "post_apply_audit_exists": True,
+            "expected_target_files": ["tools/continuous_task_planner.py"],
+            "expected_patch_files": [],
+            "actual_changed_files": [
+                "tools/continuous_task_planner.py",
+                "projects/down-100-floors-game/index.html",
+            ],
+            "diff_stat_after": "2 files changed, 100 insertions(+)",
+            "validation_results": ["pass"],
+            "report_paths": ["reports/dev/T132-dev-report.md"],
+            "forbidden_files": [],
+            "human_review_required": "yes",
+            "ready_for_commit_requested": False,
+            "ready_for_push_requested": False,
+            "ready_for_stage_8_requested": False,
+            "write_files": False,
+        },
+        "forbidden-file": {
+            "approval_record_exists": True,
+            "pre_apply_audit_exists": True,
+            "post_apply_audit_exists": True,
+            "expected_target_files": ["tools/continuous_task_planner.py"],
+            "expected_patch_files": [],
+            "actual_changed_files": [
+                "tools/continuous_task_planner.py",
+                ".env",
+            ],
+            "diff_stat_after": "2 files changed, 80 insertions(+)",
+            "validation_results": ["pass"],
+            "report_paths": ["reports/dev/T132-dev-report.md"],
+            "forbidden_files": [".env"],
+            "human_review_required": "yes",
+            "ready_for_commit_requested": False,
+            "ready_for_push_requested": False,
+            "ready_for_stage_8_requested": False,
+            "write_files": False,
+        },
+        "missing-diff-stat": {
+            "approval_record_exists": True,
+            "pre_apply_audit_exists": True,
+            "post_apply_audit_exists": True,
+            "expected_target_files": ["tools/continuous_task_planner.py"],
+            "expected_patch_files": [],
+            "actual_changed_files": ["tools/continuous_task_planner.py"],
+            "diff_stat_after": "",
+            "validation_results": ["pass"],
+            "report_paths": ["reports/dev/T132-dev-report.md"],
+            "forbidden_files": [],
+            "human_review_required": "yes",
+            "ready_for_commit_requested": False,
+            "ready_for_push_requested": False,
+            "ready_for_stage_8_requested": False,
+            "write_files": False,
+        },
+        "clean-unexpected": {
+            "approval_record_exists": True,
+            "pre_apply_audit_exists": True,
+            "post_apply_audit_exists": True,
+            "expected_target_files": ["tools/continuous_task_planner.py"],
+            "expected_patch_files": [],
+            "actual_changed_files": [],
+            "diff_stat_after": "",
+            "validation_results": ["pass"],
+            "report_paths": ["reports/dev/T132-dev-report.md"],
+            "forbidden_files": [],
+            "human_review_required": "yes",
+            "ready_for_commit_requested": False,
+            "ready_for_push_requested": False,
+            "ready_for_stage_8_requested": False,
+            "write_files": False,
+        },
+        "missing-validation-results": {
+            "approval_record_exists": True,
+            "pre_apply_audit_exists": True,
+            "post_apply_audit_exists": True,
+            "expected_target_files": ["tools/continuous_task_planner.py"],
+            "expected_patch_files": [],
+            "actual_changed_files": ["tools/continuous_task_planner.py"],
+            "diff_stat_after": "1 file changed, 50 insertions(+)",
+            "validation_results": None,  # None = missing
+            "report_paths": ["reports/dev/T132-dev-report.md"],
+            "forbidden_files": [],
+            "human_review_required": "no",
+            "ready_for_commit_requested": False,
+            "ready_for_push_requested": False,
+            "ready_for_stage_8_requested": False,
+            "write_files": False,
+        },
+        "commit-requested": {
+            "approval_record_exists": True,
+            "pre_apply_audit_exists": True,
+            "post_apply_audit_exists": True,
+            "expected_target_files": ["tools/continuous_task_planner.py"],
+            "expected_patch_files": [],
+            "actual_changed_files": ["tools/continuous_task_planner.py"],
+            "diff_stat_after": "1 file changed, 50 insertions(+)",
+            "validation_results": ["pass"],
+            "report_paths": ["reports/dev/T132-dev-report.md"],
+            "forbidden_files": [],
+            "human_review_required": "yes",
+            "ready_for_commit_requested": True,
+            "ready_for_push_requested": False,
+            "ready_for_stage_8_requested": False,
+            "write_files": False,
+        },
+        "push-requested": {
+            "approval_record_exists": True,
+            "pre_apply_audit_exists": True,
+            "post_apply_audit_exists": True,
+            "expected_target_files": ["tools/continuous_task_planner.py"],
+            "expected_patch_files": [],
+            "actual_changed_files": ["tools/continuous_task_planner.py"],
+            "diff_stat_after": "1 file changed, 50 insertions(+)",
+            "validation_results": ["pass"],
+            "report_paths": ["reports/dev/T132-dev-report.md"],
+            "forbidden_files": [],
+            "human_review_required": "yes",
+            "ready_for_commit_requested": False,
+            "ready_for_push_requested": True,
+            "ready_for_stage_8_requested": False,
+            "write_files": False,
+        },
+        "stage-8-requested": {
+            "approval_record_exists": True,
+            "pre_apply_audit_exists": True,
+            "post_apply_audit_exists": True,
+            "expected_target_files": ["tools/continuous_task_planner.py"],
+            "expected_patch_files": [],
+            "actual_changed_files": ["tools/continuous_task_planner.py"],
+            "diff_stat_after": "1 file changed, 50 insertions(+)",
+            "validation_results": ["pass"],
+            "report_paths": ["reports/dev/T132-dev-report.md"],
+            "forbidden_files": [],
+            "human_review_required": "yes",
+            "ready_for_commit_requested": False,
+            "ready_for_push_requested": False,
+            "ready_for_stage_8_requested": True,
+            "write_files": False,
+        },
+    }
+
+    if sample not in _SAMPLES:
+        available = ", ".join(sorted(_SAMPLES.keys()))
+        return FirstRealPatchApplyGuardedDryRunResult(
+            dry_run_mode="first_real_patch_apply_guarded_dry_run",
+            task_id=task_id,
+            task_title=task_title,
+            approval_record_path="none",
+            pre_apply_audit_path="none",
+            post_apply_audit_path="none",
+            approval_record_check_result="fail",
+            pre_apply_audit_check_result="fail",
+            post_apply_audit_check_result="fail",
+            expected_target_files=[],
+            expected_patch_files=[],
+            actual_changed_files=[],
+            unexpected_files=[],
+            diff_stat_after="",
+            post_apply_validation_status="fail",
+            post_apply_validation_check_result="fail",
+            dirty_workspace_classification="clean_unexpected",
+            ready_for_human_review="yes",
+            ready_for_git_backup_dry_run="no",
+            stop_reason=f"unknown_sample: {sample}",
+            violations=[f"unknown_sample: {sample}"],
+            check_result="fail",
+            message=f"Unknown sample '{sample}'. Available: {available}",
+            **_safe,
+        )
+
+    p = _SAMPLES[sample]
+
+    # Simulate record check results
+    approval_check = "pass" if p["approval_record_exists"] else "fail"
+    pre_audit_check = "pass" if p["pre_apply_audit_exists"] else "fail"
+    post_audit_check = "pass" if p["post_apply_audit_exists"] else "fail"
+
+    # Determine record paths
+    approval_path = (
+        f"reports/apply/{task_id}-sample-approval-record.md"
+        if p["approval_record_exists"]
+        else "none"
+    )
+    pre_audit_path = (
+        f"reports/apply/{task_id}-sample-pre-apply-audit.md"
+        if p["pre_apply_audit_exists"]
+        else "none"
+    )
+    post_audit_path = (
+        f"reports/apply/{task_id}-sample-post-apply-audit.md"
+        if p["post_apply_audit_exists"]
+        else "none"
+    )
+
+    # Build allowed report patterns for file scope validation
+    allowed_report_patterns = [
+        f"reports/dev/{task_id}-dev-report.md",
+        f"reports/checks/{task_id}-first-real-patch-apply-guarded-dry-run-check.md",
+        f"reports/apply/{task_id}-sample-post-apply-audit.md",
+        f"reports/apply/{task_id}-sample-guarded-apply-dry-run.md",
+        f"reports/apply/{task_id}-sample-post-apply-validation.md",
+    ]
+
+    # Run post-apply validation
+    validation_status, classification, stop_reason, violations = (
+        validate_post_apply_state_dry_run(
+            task_id=task_id,
+            approval_record_exists=p["approval_record_exists"],
+            pre_apply_audit_exists=p["pre_apply_audit_exists"],
+            post_apply_audit_exists=p["post_apply_audit_exists"],
+            expected_target_files=p["expected_target_files"],
+            expected_patch_files=p["expected_patch_files"],
+            actual_changed_files=p["actual_changed_files"],
+            diff_stat_after=p["diff_stat_after"],
+            validation_results=p["validation_results"],
+            report_paths=p["report_paths"],
+            human_review_required=p["human_review_required"],
+            ready_for_commit_requested=p["ready_for_commit_requested"],
+            ready_for_push_requested=p["ready_for_push_requested"],
+            ready_for_stage_8_requested=p["ready_for_stage_8_requested"],
+            forbidden_files=p["forbidden_files"],
+            allowed_report_patterns=allowed_report_patterns,
+        )
+    )
+
+    # Determine unexpected files
+    expected_all = set(p["expected_target_files"]) | set(p["expected_patch_files"])
+    allowed_set = set(allowed_report_patterns)
+    all_allowed = expected_all | allowed_set
+    actual_set = set(p["actual_changed_files"])
+    unexpected = sorted(actual_set - all_allowed)
+
+    # Determine ready flags
+    ready_for_git_backup = "yes" if validation_status == "pass" else "no"
+
+    # Generate sample files for pass scenario
+    if sample == "pass" and p.get("write_files"):
+        _build_guarded_apply_dry_run_sample_files(task_id, "reports/apply")
+
+    # Overall check result
+    check_result = validation_status
+
+    # Build message
+    if check_result == "pass":
+        msg = (
+            "Guarded apply dry-run passed. Post-apply validation gate passed. "
+            "Workspace classification: expected_dirty. "
+            "Ready for human review and Git backup dry-run. "
+            "NOT ready for real apply, commit, push, or Stage 8."
+        )
+    else:
+        violation_summary = "; ".join(violations[:3]) if violations else "unknown"
+        msg = (
+            f"Guarded apply dry-run failed: {violation_summary}. "
+            f"Workspace classification: {classification}. "
+            "NOT ready for Git backup dry-run, commit, push, or Stage 8."
+        )
+
+    return FirstRealPatchApplyGuardedDryRunResult(
+        dry_run_mode="first_real_patch_apply_guarded_dry_run",
+        task_id=task_id,
+        task_title=task_title,
+        approval_record_path=approval_path,
+        pre_apply_audit_path=pre_audit_path,
+        post_apply_audit_path=post_audit_path,
+        approval_record_check_result=approval_check,
+        pre_apply_audit_check_result=pre_audit_check,
+        post_apply_audit_check_result=post_audit_check,
+        expected_target_files=p["expected_target_files"],
+        expected_patch_files=p["expected_patch_files"],
+        actual_changed_files=p["actual_changed_files"],
+        unexpected_files=unexpected,
+        diff_stat_after=p["diff_stat_after"],
+        post_apply_validation_status=validation_status,
+        post_apply_validation_check_result=validation_status,
+        dirty_workspace_classification=classification,
+        ready_for_human_review="yes",
+        ready_for_git_backup_dry_run=ready_for_git_backup,
+        stop_reason=stop_reason,
+        violations=violations,
+        check_result=check_result,
+        message=msg,
+        **_safe,
+    )

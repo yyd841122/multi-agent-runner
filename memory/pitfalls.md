@@ -647,3 +647,7 @@
 
 - 不要把 expected_dirty after apply 当成 commit 的许可。expected_dirty 只表示变更符合预期范围，仍需 human review 和 Git backup gate 才能考虑 commit。
 - 不要在 post-apply validation gate 中执行验证命令。gate 只验证命令结果是否已记录，command execution 由独立 executor gate 控制。
+
+## T132 guarded real patch apply dry-run 避坑
+
+- 不要把 ready_for_git_backup_dry_run 当成 commit 或 push 的许可。ready_for_git_backup_dry_run=yes 只表示可以进入 Git backup dry-run 阶段，不是 commit/push 的授权。

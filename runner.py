@@ -2601,6 +2601,49 @@ def main():
         print(f"CHECK_RESULT={result.check_result}")
         print()
         print(f"MESSAGE：{result.message}")
+    elif args[0] == "first-real-patch-apply-guarded-dry-run":
+        # T132: first real patch apply guarded dry-run
+        from tools.continuous_task_planner import run_first_real_patch_apply_guarded_dry_run
+
+        sample_type = "pass"
+        i = 1
+        while i < len(args):
+            if args[i] == "--sample" and i + 1 < len(args):
+                sample_type = args[i + 1]
+                i += 2
+            else:
+                i += 1
+
+        result = run_first_real_patch_apply_guarded_dry_run(sample=sample_type)
+
+        print()
+        print(f"EXECUTION_MODE={result.dry_run_mode}")
+        print(f"GUARDED_APPLY_SAMPLE={sample_type}")
+        print(f"APPROVAL_RECORD_CHECK_RESULT={result.approval_record_check_result}")
+        print(f"PRE_APPLY_AUDIT_CHECK_RESULT={result.pre_apply_audit_check_result}")
+        print(f"POST_APPLY_AUDIT_CHECK_RESULT={result.post_apply_audit_check_result}")
+        print(f"POST_APPLY_VALIDATION_STATUS={result.post_apply_validation_status}")
+        print(f"DIRTY_WORKSPACE_CLASSIFICATION={result.dirty_workspace_classification}")
+        print(f"READY_FOR_HUMAN_REVIEW={result.ready_for_human_review}")
+        print(f"READY_FOR_GIT_BACKUP_DRY_RUN={result.ready_for_git_backup_dry_run}")
+        print(f"READY_FOR_REAL_APPLY={result.ready_for_real_apply}")
+        print(f"READY_FOR_COMMAND_EXECUTION={result.ready_for_command_execution}")
+        print(f"READY_FOR_COMMIT={result.ready_for_commit}")
+        print(f"READY_FOR_PUSH={result.ready_for_push}")
+        print(f"READY_FOR_STAGE_8={result.ready_for_stage_8}")
+        print(f"REAL_PATCH_APPLIED={result.real_patch_applied}")
+        print(f"COMMAND_EXECUTION_PERFORMED={result.command_execution_performed}")
+        print(f"REAL_TASK_EXECUTION={result.real_task_execution}")
+        print(f"RUN_PROJECT_TASK_FULL_CALLED={result.run_project_task_full_called}")
+        print(f"CLAUDE_CODE_CALLED={result.claude_code_called}")
+        print(f"BUSINESS_CODE_CHANGED={result.business_code_changed}")
+        print(f"AUTO_CONTINUE_TO_NEXT_TASK={result.auto_continue_to_next_task}")
+        print(f"AUTO_GIT_BACKUP={result.auto_git_backup}")
+        print(f"BYPASS_PERMISSIONS_USED={result.bypass_permissions_used}")
+        print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required}")
+        print(f"CHECK_RESULT={result.check_result}")
+        print()
+        print(f"MESSAGE：{result.message}")
     else:
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")
@@ -2637,6 +2680,7 @@ def main():
         print("  python runner.py command-allowlist-dry-run [--sample <name> | --command <cmd>]  Command allowlist validation dry-run")
         print("  python runner.py first-human-reviewed-controlled-apply-dry-run [--sample <name> | --approval-token <token>]  First human-reviewed controlled apply dry-run")
         print("  python runner.py real-apply-approval-record-dry-run [--sample <name>]  Real apply approval record dry-run")
+        print("  python runner.py first-real-patch-apply-guarded-dry-run [--sample <name>]  First real patch apply guarded dry-run")
 
 
 if __name__ == "__main__":

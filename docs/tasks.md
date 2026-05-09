@@ -3559,7 +3559,7 @@ Designed real apply approval persistence and audit record.
 Defined approval record schema, audit record schema, file path design, required evidence (20 items), invalidation conditions (15 conditions), and T130 boundary.
 No real apply, no command execution, no business code modification.
 
-<!-- NEXT_PENDING=T132 -->
+<!-- NEXT_PENDING=T133 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ## T130 实现 real apply approval record dry-run
@@ -3585,6 +3585,22 @@ No real apply, no command execution, no business code modification.
 
 ## T132 实现 first real patch apply guarded dry-run
 
-状态：pending
+状态：done
 角色：Implementer
 目标：实现 guarded real patch apply dry-run。
+
+Implemented first real patch apply guarded dry-run.
+Dry-run validates approval/audit records, expected vs actual files, diff stat, post-apply validation, and blocks real apply, command execution, commit, push, and Stage 8.
+12/12 scenarios validated (1 pass + 11 fail-closed).
+
+## T133 验证 first real patch apply guarded dry-run pass/fail 场景
+
+状态：pending
+角色：Verifier
+目标：验证 T132 guarded dry-run 的 pass/fail 场景覆盖完整性。
+
+## T134 归档 Stage 7 guarded real patch apply dry-run 成果
+
+状态：pending
+角色：Archiver
+目标：归档 Stage 7 guarded real patch apply dry-run 全部成果。

@@ -853,3 +853,7 @@ G006 已完成完整闭环：
 ### T131 post-apply validation gate 设计经验
 
 - **Post-apply validation must compare expected files with actual changed files before any commit or push is considered.** Why: apply 后的 validation gate 是最后一道安全门，如果 actual files 不在 expected 范围内就无法确认 apply 的安全性。How to apply: 18 项检查覆盖 record existence、file scope、diff stat、validation results、reports 和 safety flags，全部通过才允许进入 Git backup dry-run。
+
+### T132 guarded real patch apply dry-run 经验
+
+- **Guarded real patch apply dry-run must validate post-apply state before any Git backup, commit, push, or Stage 8 transition is considered.** Why: guarded dry-run 串联 approval record + pre/post audit + post-apply validation gate，确保完整安全链路。How to apply: run_first_real_patch_apply_guarded_dry_run() 先检查 record existence，再验证 file scope，最后分类 workspace，任何一步 fail 都阻止后续。
