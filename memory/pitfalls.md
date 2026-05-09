@@ -660,3 +660,8 @@
 
 - 不要把归档完成误判为可以进入 Stage 8。归档只总结 T129-T133 的 guarded dry-run chain，不代表真实执行安全。
 - 不要把 ready_for_git_backup_dry_run 当成 actual git commit 或 git push 的许可。Git backup dry-run 是下一步设计任务，不是自动备份执行。
+
+## T135 guarded Git backup dry-run gate 设计避坑
+
+- 不要把 Git backup dry-run gate pass 当成 permission to run git add, git commit, or git push。Gate pass 只允许生成 dry-run record 和预览，不授权任何真实 Git 操作。
+- 不要在 commit message 中暗示已 real apply、已 push 或已进入 Stage 8。Commit message 必须符合安全规则，不含 misleading claims。

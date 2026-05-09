@@ -3604,7 +3604,7 @@ Pass path reaches only ready_for_git_backup_dry_run.
 Failure paths fail closed and never enter real apply, command execution, commit, push, or Stage 8.
 No real patch applied, no command executed, no Claude Code called.
 
-<!-- NEXT_PENDING=T135 -->
+<!-- NEXT_PENDING=T136 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ## T134 归档 Stage 7 guarded real patch apply dry-run 成果
@@ -3616,9 +3616,10 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T135 设计 guarded Git backup dry-run gate
 
-状态：pending
+状态：done
 角色：Designer
 目标：设计 guarded Git backup dry-run gate。
+完成说明：Designed guarded Git backup dry-run gate. Defined 17 required inputs, 22 gate checks in 7 groups, backup record schema v1.0, commit message rules, 25 rejection conditions, 5 allowed and 8 forbidden after gate pass, and T136 boundary. No git add, commit, push, command execution, business code modification, or Stage 8 continuation.
 
 ## T136 实现 guarded Git backup dry-run
 

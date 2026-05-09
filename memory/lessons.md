@@ -865,3 +865,7 @@ G006 已完成完整闭环：
 ### T134 Stage 7 guarded real patch apply dry-run archive 经验
 
 - **After guarded real patch apply dry-run validation, the next safe step is Git backup dry-run design, not commit or push.** Why: T129-T133 validated the complete guarded dry-run chain (approval record → pre/post audit → post-apply validation → pass/fail), but this only proves the dry-run pipeline, not real apply safety. How to apply: continue Stage 7 with guarded Git backup dry-run gate design, still no real apply, commit, push, or Stage 8.
+
+### T135 guarded Git backup dry-run gate 设计经验
+
+- **Git backup dry-run gate must distinguish backup readiness from real git add/commit/push permission.** Why: ready_for_git_backup_dry_run=yes only means the guarded apply dry-run chain passed and workspace is in expected_dirty state, not that git operations are authorized. How to apply: gate defines 22 checks and 25 rejection conditions, gate pass only allows generating dry-run records and previews, never real git add/commit/push.
