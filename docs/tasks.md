@@ -3679,5 +3679,48 @@ No real patch applied, no command executed, no Claude Code called.
 目标：确认 Stage 7 是否已经完成，是否具备进入 Stage 8 planning 的条件。
 完成说明：Reviewed Stage 7 completion status. Confirmed T115-T142 (28 tasks, 5 safety chains) are all complete and archived. All chains have pass/fail validation reports. Workspace clean, latest commit is T142.1. No remaining Stage 7 pending tasks. STAGE7_COMPLETE=yes. Next safe step is Stage 8 planning, not direct continuous execution.
 
-<!-- NEXT_PENDING=Stage 8 planning -->
+## Stage 8 planning
+
+状态：done
+角色：Planner
+目标：设计 Stage 8 真实连续任务自动推进方案。
+完成说明：Designed Stage 8 continuous real task auto-advance plan. Defined task loop boundaries, max_tasks limits (default 1, max 10), stop reasons (12 types), dirty workspace protection rules, checkpoint schema, per-task approval records, CLI/workflow direction, pass/fail scenarios (6 pass + 13 fail), Stage integration strategy, and next Stage 8 task chain (T143-T148). No Stage 8 execution, real git add, commit, push, continuous auto-advance, or implementation occurred.
+
+## T143 设计 Stage 8 continuous real task runner safety gate
+
+状态：pending
+角色：Designer
+目标：设计 Stage 8 连续真实任务推进的安全 gate。
+
+## T144 实现 Stage 8 continuous runner dry-run planner
+
+状态：pending
+角色：Developer
+目标：实现 Stage 8 连续 runner 的 dry-run planner。
+
+## T145 验证 Stage 8 continuous runner dry-run pass/fail 场景
+
+状态：pending
+角色：Validator
+目标：验证 Stage 8 continuous runner dry-run pass/fail 行为。
+
+## T146 实现 real single-step continuous advance dry-run
+
+状态：pending
+角色：Developer
+目标：在 dry-run planner 基础上实现 single-step continuous advance dry-run。
+
+## T147 验证 real single-step continuous advance dry-run pass/fail 场景
+
+状态：pending
+角色：Validator
+目标：验证 real single-step continuous advance dry-run pass/fail 行为。
+
+## T148 归档 Stage 8 planning / dry-run 成果
+
+状态：pending
+角色：Archiver
+目标：归档 Stage 8 planning / dry-run 全部成果。
+
+<!-- NEXT_PENDING=T143 -->
 <!-- NEXT_STAGE=Stage 8 -->
