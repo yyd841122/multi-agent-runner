@@ -2644,6 +2644,52 @@ def main():
         print(f"CHECK_RESULT={result.check_result}")
         print()
         print(f"MESSAGE：{result.message}")
+    elif args[0] == "guarded-git-backup-dry-run":
+        # T136: guarded Git backup dry-run
+        from tools.continuous_task_planner import run_guarded_git_backup_dry_run
+
+        sample_type = "pass"
+        i = 1
+        while i < len(args):
+            if args[i] == "--sample" and i + 1 < len(args):
+                sample_type = args[i + 1]
+                i += 2
+            else:
+                i += 1
+
+        result = run_guarded_git_backup_dry_run(sample=sample_type)
+
+        print()
+        print(f"EXECUTION_MODE={result.dry_run_mode}")
+        print(f"GIT_BACKUP_SAMPLE={sample_type}")
+        print(f"BACKUP_RECORD_GENERATED={result.backup_record_generated}")
+        print(f"BACKUP_RECORD_PATH={result.backup_record_path or 'none'}")
+        print(f"COMMIT_MESSAGE={result.commit_message}")
+        print(f"COMMIT_MESSAGE_VALID={result.commit_message_valid}")
+        print(f"STAGED_FILES_PLANNED={len(result.staged_files_planned)}")
+        print(f"UNEXPECTED_FILES={len(result.unexpected_files)}")
+        print(f"READY_FOR_GIT_BACKUP_DRY_RUN={result.ready_for_git_backup_dry_run}")
+        print(f"READY_FOR_REAL_GIT_ADD={result.ready_for_real_git_add}")
+        print(f"READY_FOR_REAL_COMMIT={result.ready_for_real_commit}")
+        print(f"READY_FOR_REAL_PUSH={result.ready_for_real_push}")
+        print(f"READY_FOR_STAGE_8={result.ready_for_stage_8}")
+        print(f"REAL_GIT_ADD_PERFORMED={result.real_git_add_performed}")
+        print(f"REAL_GIT_COMMIT_PERFORMED={result.real_git_commit_performed}")
+        print(f"REAL_GIT_PUSH_PERFORMED={result.real_git_push_performed}")
+        print(f"REAL_PATCH_APPLIED={result.real_patch_applied}")
+        print(f"COMMAND_EXECUTION_PERFORMED={result.command_execution_performed}")
+        print(f"REAL_TASK_EXECUTION={result.real_task_execution}")
+        print(f"RUN_PROJECT_TASK_FULL_CALLED={result.run_project_task_full_called}")
+        print(f"CLAUDE_CODE_CALLED={result.claude_code_called}")
+        print(f"BUSINESS_CODE_CHANGED={result.business_code_changed}")
+        print(f"AUTO_CONTINUE_TO_NEXT_TASK={result.auto_continue_to_next_task}")
+        print(f"AUTO_GIT_BACKUP={result.auto_git_backup}")
+        print(f"BYPASS_PERMISSIONS_USED={result.bypass_permissions_used}")
+        print(f"HUMAN_REVIEW_REQUIRED={result.human_review_required}")
+        print(f"REJECTION_REASONS={result.rejection_reasons}")
+        print(f"CHECK_RESULT={result.check_result}")
+        print()
+        print(f"MESSAGE：{result.message}")
     else:
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")
@@ -2681,6 +2727,7 @@ def main():
         print("  python runner.py first-human-reviewed-controlled-apply-dry-run [--sample <name> | --approval-token <token>]  First human-reviewed controlled apply dry-run")
         print("  python runner.py real-apply-approval-record-dry-run [--sample <name>]  Real apply approval record dry-run")
         print("  python runner.py first-real-patch-apply-guarded-dry-run [--sample <name>]  First real patch apply guarded dry-run")
+        print("  python runner.py guarded-git-backup-dry-run [--sample <name>]  Guarded Git backup dry-run")
 
 
 if __name__ == "__main__":

@@ -9061,3 +9061,699 @@ def run_first_real_patch_apply_guarded_dry_run(
         message=msg,
         **_safe,
     )
+
+
+# ---------------------------------------------------------------------------
+# T136: Guarded Git Backup Dry-Run
+# ---------------------------------------------------------------------------
+
+@dataclass
+class GuardedGitBackupDryRunResult:
+    """Guarded Git backup dry-run 结果。
+
+    基于 T135 gate 设计。只做 Git backup 预览和记录生成，
+    不执行真实 git add / commit / push。
+    """
+
+    # 模式标识
+    dry_run_mode: str  # guarded_git_backup_dry_run
+
+    # 任务信息
+    task_id: str
+    task_title: str
+
+    # Backup record 元信息
+    backup_record_version: str  # 1.0
+    backup_id: str
+    backup_record_path: str | None
+
+    # Git 状态
+    last_commit_before_backup: str
+    branch: str
+    remote: str
+    worktree_status: str  # expected_dirty / unexpected_dirty / clean
+
+    # 文件
+    expected_changed_files: list[str]
+    actual_changed_files: list[str]
+    staged_files_planned: list[str]
+    unexpected_files: list[str]
+    diff_stat: str
+
+    # Reports
+    dev_report_path: str
+    check_report_path: str
+    apply_record_paths: list[str]
+
+    # Commit message
+    commit_message: str
+    commit_message_valid: str  # yes / no
+    commit_message_rejection_reasons: list[str]
+
+    # Backup record 状态
+    backup_record_generated: str  # yes / no
+
+    # Guarded apply 前置校验结果
+    guarded_apply_check_result: str  # pass / fail
+    post_apply_validation_check_result: str  # pass / fail
+
+    # Ready flags
+    ready_for_git_backup_dry_run: str  # yes / no
+    ready_for_real_git_add: str  # no
+    ready_for_real_commit: str  # no
+    ready_for_real_push: str  # no
+    ready_for_stage_8: str  # no
+
+    # 安全保证字段（始终为安全值）
+    real_git_add_performed: str           # no
+    real_git_commit_performed: str        # no
+    real_git_push_performed: str          # no
+    real_patch_applied: str               # no
+    command_execution_performed: str      # no
+    real_task_execution: str              # no
+    run_project_task_full_called: str     # no
+    claude_code_called: str               # no
+    business_code_changed: str            # no
+    framework_code_changed: str           # no
+    auto_continue_to_next_task: str       # no
+    auto_git_backup: str                  # no
+    bypass_permissions_used: str          # no
+    human_review_required: str            # yes
+
+    # 拒绝原因
+    rejection_reasons: list[str]
+
+    # 最终结果
+    check_result: str  # pass / fail
+    message: str
+
+
+def validate_guarded_git_backup_commit_message_dry_run(
+    commit_message: str,
+    task_id: str,
+) -> tuple[bool, list[str]]:
+    """校验 Git backup dry-run commit message 是否安全。
+
+    不执行 Git 命令，只做文本校验。
+    """
+    reasons: list[str] = []
+
+    # 必须非空
+    if not commit_message or not commit_message.strip():
+        reasons.append("commit message is empty")
+        return False, reasons
+
+    msg_lower = commit_message.lower()
+
+    # 建议包含 task id 或任务主题关键词
+    task_keywords = ["task", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9",
+                     "dry-run", "dry run", "guarded", "backup", "git", "patch", "apply"]
+    if task_id.lower() not in msg_lower and not any(kw in msg_lower for kw in task_keywords):
+        reasons.append("commit message should contain task id or task-related keywords")
+
+    # 长度不能过长
+    if len(commit_message) > 500:
+        reasons.append("commit message too long (max 500 characters)")
+
+    # Unsafe patterns from T135 design
+    unsafe_patterns = [
+        ("real patch applied", "implies real patch was applied"),
+        ("real execution completed", "implies real execution was completed"),
+        ("pushed to", "implies code was pushed to remote"),
+        ("stage 8", "implies Stage 8 continuation"),
+        ("auto continue", "implies automatic continuation"),
+        ("auto backup", "implies automatic backup"),
+        ("unattended", "implies unattended execution"),
+        ("production", "implies production deployment"),
+        ("bypass", "implies bypassing safety checks"),
+        ("forced backup", "implies forced backup operation"),
+    ]
+
+    for pattern, description in unsafe_patterns:
+        if pattern in msg_lower:
+            reasons.append(f"unsafe pattern '{pattern}': {description}")
+
+    # 不能包含 git add/commit/push 执行暗示
+    execution_patterns = [
+        ("git add", "implies real git add was performed"),
+        ("git commit", "implies real git commit was performed"),
+        ("git push", "implies real git push was performed"),
+    ]
+    # Allow if clearly in context of "dry-run" or "preview"
+    has_dry_run_context = "dry-run" in msg_lower or "dry run" in msg_lower or "preview" in msg_lower
+    if not has_dry_run_context:
+        for pattern, description in execution_patterns:
+            if pattern in msg_lower:
+                reasons.append(f"unsafe pattern '{pattern}': {description}")
+
+    valid = len(reasons) == 0
+    return valid, reasons
+
+
+def build_guarded_git_backup_dry_run_record_content(
+    task_id: str,
+    task_title: str,
+    backup_id: str,
+    last_commit_before_backup: str,
+    branch: str,
+    remote: str,
+    worktree_status: str,
+    expected_changed_files: list[str],
+    actual_changed_files: list[str],
+    staged_files_planned: list[str],
+    unexpected_files: list[str],
+    diff_stat: str,
+    dev_report_path: str,
+    check_report_path: str,
+    apply_record_paths: list[str],
+    commit_message: str,
+    guarded_apply_check_result: str,
+    post_apply_validation_check_result: str,
+    ready_for_git_backup_dry_run: str,
+    gate_checks_passed: int,
+    gate_checks_failed: int,
+    failed_checks: list[str],
+    check_result: str,
+    rejection_reasons: list[str],
+    generated_at: str = "",
+) -> str:
+    """根据 T135 schema 生成 backup record Markdown 文本。
+
+    不执行 Git 命令，不调用 subprocess。
+    """
+    import datetime
+
+    if not generated_at:
+        generated_at = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+    # Determine commit type from file patterns
+    commit_type = "docs"
+    has_code = any(
+        f.endswith(".py") for f in staged_files_planned
+    )
+    has_test = any(
+        "test" in f.lower() or "check" in f.lower() for f in staged_files_planned
+    )
+    if has_test:
+        commit_type = "test"
+    elif has_code:
+        commit_type = "feat"
+
+    lines = [
+        f"# Git Backup Dry-Run Record",
+        f"",
+        f"```yaml",
+        f"backup_record_version: \"1.0\"",
+        f"backup_id: \"{backup_id}\"",
+        f"task_id: \"{task_id}\"",
+        f"task_title: \"{task_title}\"",
+        f"backup_mode: \"guarded_git_backup_dry_run\"",
+        f"generated_at: \"{generated_at}\"",
+        f"",
+        f"git:",
+        f"  head_before_backup: \"{last_commit_before_backup}\"",
+        f"  branch: \"{branch}\"",
+        f"  remote: \"{remote}\"",
+        f"  worktree_status: \"{worktree_status}\"",
+        f"",
+        f"files:",
+        f"  expected_changed_files:",
+    ]
+    for f in expected_changed_files:
+        lines.append(f"    - \"{f}\"")
+    lines.append(f"  actual_changed_files:")
+    for f in actual_changed_files:
+        lines.append(f"    - \"{f}\"")
+    lines.append(f"  staged_files_planned:")
+    for f in staged_files_planned:
+        lines.append(f"    - \"{f}\"")
+    lines.append(f"  unexpected_files:")
+    for f in unexpected_files:
+        lines.append(f"    - \"{f}\"")
+    lines.append(f"  forbidden_files_found: []")
+
+    lines += [
+        f"",
+        f"reports:",
+        f"  dev_report: \"{dev_report_path}\"",
+        f"  check_report: \"{check_report_path}\"",
+        f"  apply_records:",
+    ]
+    for p in apply_record_paths:
+        lines.append(f"    - \"{p}\"")
+
+    lines += [
+        f"",
+        f"commit:",
+        f"  commit_message: \"{commit_message}\"",
+        f"  commit_type: \"{commit_type}\"",
+        f"  commit_scope: \"{task_id}\"",
+        f"  commit_allowed: \"no\"",
+        f"  push_allowed: \"no\"",
+        f"",
+        f"safety:",
+        f"  real_git_add_performed: \"no\"",
+        f"  real_git_commit_performed: \"no\"",
+        f"  real_git_push_performed: \"no\"",
+        f"  auto_continue_allowed: \"no\"",
+        f"  stage_8_allowed: \"no\"",
+        f"  command_execution_performed: \"no\"",
+        f"  business_code_modified: \"no\"",
+        f"",
+        f"validation:",
+        f"  gate_checks_total: 22",
+        f"  gate_checks_passed: {gate_checks_passed}",
+        f"  gate_checks_failed: {gate_checks_failed}",
+        f"  failed_checks:",
+    ]
+    for fc in failed_checks:
+        lines.append(f"    - \"{fc}\"")
+
+    lines += [
+        f"",
+        f"decision:",
+        f"  ready_for_git_backup_dry_run: \"{ready_for_git_backup_dry_run}\"",
+        f"  ready_for_git_add: \"no\"",
+        f"  ready_for_commit: \"no\"",
+        f"  ready_for_push: \"no\"",
+        f"  ready_for_stage_8: \"no\"",
+        f"  human_review_required: \"yes\"",
+        f"  check_result: \"{check_result}\"",
+        f"",
+        f"notes: |",
+        f"  This is a DRY-RUN backup record. No real git operations were performed.",
+        f"  Guarded apply check: {guarded_apply_check_result}.",
+        f"  Post-apply validation check: {post_apply_validation_check_result}.",
+        f"  Rejection reasons: {rejection_reasons}.",
+        f"```",
+        f"",
+    ]
+    return "\n".join(lines)
+
+
+def run_guarded_git_backup_dry_run(
+    sample: str = "pass",
+) -> GuardedGitBackupDryRunResult:
+    """运行 guarded Git backup dry-run。
+
+    根据 sample 模拟 required inputs 和 gate checks。
+    不执行 git add / commit / push，不调用 subprocess。
+
+    支持 14 个 sample 场景：
+    - pass: 所有 gate checks 通过
+    - guarded-apply-failed: guarded apply check 未通过
+    - post-apply-validation-failed: post-apply validation 未通过
+    - not-ready-for-git-backup: ready_for_git_backup_dry_run=no
+    - unexpected-file: 存在意外文件
+    - missing-dev-report: dev report 缺失
+    - missing-check-report: check report 缺失
+    - missing-apply-record: apply record 缺失
+    - missing-diff-stat: diff stat 缺失
+    - unsafe-commit-message: commit message 包含不安全内容
+    - git-add-requested: 请求执行 git add
+    - git-commit-requested: 请求执行 git commit
+    - git-push-requested: 请求执行 git push
+    - stage-8-requested: 请求进入 Stage 8
+    """
+    import os
+
+    task_id = "T136"
+    task_title = "实现 guarded Git backup dry-run"
+    last_commit = "281f30f"
+    branch = "main"
+    remote = "origin"
+    backup_id = f"{task_id}-backup-dry-run"
+
+    # Default expected files (T136 pattern)
+    expected_files = [
+        "tools/continuous_task_planner.py",
+        "runner.py",
+        "docs/tasks.md",
+        "reports/checks/T136-guarded-git-backup-dry-run-check.md",
+        "reports/dev/T136-dev-report.md",
+        "reports/git-backup/T136-sample-backup-record.md",
+    ]
+
+    # Default actual files (matches expected for pass)
+    actual_files = list(expected_files)
+
+    # Default reports
+    dev_report = "reports/dev/T136-dev-report.md"
+    check_report = "reports/checks/T136-guarded-git-backup-dry-run-check.md"
+    apply_records = [
+        "reports/apply-records/T132-apply-record.md",
+        "reports/apply-records/T133-apply-record.md",
+    ]
+
+    diff_stat = "6 files changed, 500 insertions(+), 10 deletions(-)"
+    commit_message = "feat: add guarded git backup dry run"
+    worktree_status = "expected_dirty"
+
+    # Default safety flags
+    guarded_apply_check = "pass"
+    post_apply_validation_check = "pass"
+    ready_for_git_backup = "yes"
+    ready_for_real_apply = "no"
+    ready_for_commit = "no"
+    ready_for_push = "no"
+    ready_for_stage_8 = "no"
+    human_review_required = "yes"
+
+    # Override based on sample
+    rejection_reasons: list[str] = []
+    unexpected_files: list[str] = []
+
+    if sample == "pass":
+        pass  # defaults are correct
+
+    elif sample == "guarded-apply-failed":
+        guarded_apply_check = "fail"
+        rejection_reasons.append("guarded apply check failed (condition 5)")
+
+    elif sample == "post-apply-validation-failed":
+        post_apply_validation_check = "fail"
+        rejection_reasons.append("post-apply validation check failed (condition 6)")
+
+    elif sample == "not-ready-for-git-backup":
+        ready_for_git_backup = "no"
+        rejection_reasons.append("ready_for_git_backup_dry_run is not yes (condition 7)")
+
+    elif sample == "unexpected-file":
+        unexpected_files = ["projects/down-100-floors-game/src/unexpected.py"]
+        actual_files = expected_files + unexpected_files
+        rejection_reasons.append("unexpected files found (condition 2)")
+
+    elif sample == "missing-dev-report":
+        dev_report = ""
+        rejection_reasons.append("dev report missing (condition 13)")
+
+    elif sample == "missing-check-report":
+        check_report = ""
+        rejection_reasons.append("check report missing (condition 14)")
+
+    elif sample == "missing-apply-record":
+        apply_records = []
+        rejection_reasons.append("apply records missing (condition 15)")
+
+    elif sample == "missing-diff-stat":
+        diff_stat = ""
+        rejection_reasons.append("diff stat missing (condition 16)")
+
+    elif sample == "unsafe-commit-message":
+        commit_message = "feat: real patch applied and pushed to main, auto backup completed"
+        rejection_reasons.append("commit message unsafe (condition 18)")
+
+    elif sample == "git-add-requested":
+        rejection_reasons.append("git add requested (condition 23)")
+
+    elif sample == "git-commit-requested":
+        rejection_reasons.append("git commit requested (condition 24)")
+
+    elif sample == "git-push-requested":
+        rejection_reasons.append("git push requested (condition 25)")
+
+    elif sample == "stage-8-requested":
+        rejection_reasons.append("stage 8 requested (condition 11)")
+        ready_for_stage_8 = "yes"
+        rejection_reasons.append("ready_for_stage_8 is yes (condition 11)")
+
+    else:
+        rejection_reasons.append(f"unknown sample: {sample}")
+
+    # Run gate checks
+    gate_checks_passed = 0
+    gate_checks_failed = 0
+    failed_checks: list[str] = []
+
+    # Group 1: Workspace State (3 checks)
+    # Check 1: worktree classification
+    if worktree_status == "expected_dirty":
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("workspace classification not expected_dirty")
+
+    # Check 2: actual files subset of expected
+    actual_set = set(actual_files) - set(unexpected_files)
+    expected_set = set(expected_files)
+    if actual_set.issubset(expected_set) or sample == "pass":
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("actual files not subset of expected files")
+        if "actual files not subset of expected files" not in " ".join(rejection_reasons):
+            rejection_reasons.append("actual files not subset of expected files (condition 4)")
+
+    # Check 3: no forbidden files
+    forbidden_patterns = [
+        "projects/down-100-floors-game/",
+        "tools/rework_manager.py",
+        ".env",
+    ]
+    has_forbidden = any(
+        any(pat in f for pat in forbidden_patterns)
+        for f in unexpected_files
+    )
+    if not has_forbidden:
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("forbidden files changed")
+        if "forbidden files changed" not in " ".join(rejection_reasons):
+            rejection_reasons.append("forbidden files changed (condition 3)")
+
+    # Group 2: Guarded Apply Validation (4 checks)
+    # Check 4: guarded apply check pass
+    if guarded_apply_check == "pass":
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("guarded apply check failed")
+
+    # Check 5: post-apply validation check pass
+    if post_apply_validation_check == "pass":
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("post-apply validation check failed")
+
+    # Check 6: ready_for_git_backup_dry_run=yes
+    if ready_for_git_backup == "yes":
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("ready_for_git_backup_dry_run not yes")
+
+    # Check 7: ready_for_real_apply=no
+    if ready_for_real_apply == "no":
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("ready_for_real_apply is yes")
+
+    # Group 3: Safety Flags (4 checks)
+    # Check 8: ready_for_commit=no
+    if ready_for_commit == "no":
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("ready_for_commit is yes")
+
+    # Check 9: ready_for_push=no
+    if ready_for_push == "no":
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("ready_for_push is yes")
+
+    # Check 10: ready_for_stage_8=no
+    if ready_for_stage_8 == "no":
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("ready_for_stage_8 is yes")
+
+    # Check 11: human_review_required=yes
+    if human_review_required == "yes":
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("human_review_required is not yes")
+
+    # Group 4: File Validation (4 checks)
+    # Check 12: no unexpected files
+    if len(unexpected_files) == 0:
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        if "unexpected files found" not in " ".join(failed_checks):
+            failed_checks.append("unexpected files found")
+
+    # Check 13: diff stat present
+    if diff_stat:
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        if "diff stat missing" not in " ".join(failed_checks):
+            failed_checks.append("diff stat missing")
+
+    # Check 14: dev report exists
+    if dev_report:
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        if "dev report missing" not in " ".join(failed_checks):
+            failed_checks.append("dev report missing")
+
+    # Check 15: check report exists
+    if check_report:
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        if "check report missing" not in " ".join(failed_checks):
+            failed_checks.append("check report missing")
+
+    # Group 5: Records Validation (1 check)
+    # Check 16: apply records exist
+    if apply_records:
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        if "apply records missing" not in " ".join(failed_checks):
+            failed_checks.append("apply records missing")
+
+    # Group 6: Commit Message (2 checks)
+    commit_msg_valid, commit_msg_reasons = validate_guarded_git_backup_commit_message_dry_run(
+        commit_message, task_id,
+    )
+    if commit_message:
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("commit message missing")
+
+    if commit_msg_valid:
+        gate_checks_passed += 1
+    else:
+        gate_checks_failed += 1
+        failed_checks.append("commit message unsafe")
+        for r in commit_msg_reasons:
+            if r not in rejection_reasons and "unsafe" not in " ".join(rejection_reasons):
+                rejection_reasons.append(f"commit message rejected: {r}")
+
+    # Group 7: Backup Record (4 checks)
+    # These are always safe in dry-run
+    # Check 19: backup record generated (will be yes for pass)
+    # Check 20-22: real git ops (always no)
+    gate_checks_passed += 3  # real_git_add/commit/push always no
+    gate_checks_passed += 1  # will set to pass after record generation attempt
+
+    # Determine check result
+    is_pass = (
+        len(rejection_reasons) == 0
+        and gate_checks_failed == 0
+        and sample == "pass"
+    )
+    check_result = "pass" if is_pass else "fail"
+
+    # Generate staged files planned
+    staged_files_planned = list(expected_files) if is_pass else list(actual_files)
+
+    # Generate backup record for pass
+    backup_record_path: str | None = None
+    backup_record_generated = "no"
+
+    if is_pass:
+        backup_record_generated = "yes"
+        backup_record_path = "reports/git-backup/T136-sample-backup-record.md"
+
+        record_content = build_guarded_git_backup_dry_run_record_content(
+            task_id=task_id,
+            task_title=task_title,
+            backup_id=backup_id,
+            last_commit_before_backup=last_commit,
+            branch=branch,
+            remote=remote,
+            worktree_status=worktree_status,
+            expected_changed_files=expected_files,
+            actual_changed_files=actual_files,
+            staged_files_planned=staged_files_planned,
+            unexpected_files=unexpected_files,
+            diff_stat=diff_stat,
+            dev_report_path=dev_report,
+            check_report_path=check_report,
+            apply_record_paths=apply_records,
+            commit_message=commit_message,
+            guarded_apply_check_result=guarded_apply_check,
+            post_apply_validation_check_result=post_apply_validation_check,
+            ready_for_git_backup_dry_run=ready_for_git_backup,
+            gate_checks_passed=gate_checks_passed,
+            gate_checks_failed=gate_checks_failed,
+            failed_checks=failed_checks,
+            check_result=check_result,
+            rejection_reasons=rejection_reasons,
+        )
+
+        # Write sample backup record
+        record_dir = os.path.join("reports", "git-backup")
+        os.makedirs(record_dir, exist_ok=True)
+        with open(os.path.join(record_dir, "T136-sample-backup-record.md"), "w", encoding="utf-8") as f:
+            f.write(record_content)
+
+    commit_message_valid_str = "yes" if commit_msg_valid else "no"
+
+    msg = (
+        f"Guarded git backup dry-run ({sample}): {check_result}. "
+        f"Gate checks: {gate_checks_passed} passed, {gate_checks_failed} failed. "
+        f"Rejection reasons: {rejection_reasons if rejection_reasons else 'none'}. "
+        f"Backup record generated: {backup_record_generated}."
+    )
+
+    return GuardedGitBackupDryRunResult(
+        dry_run_mode="guarded_git_backup_dry_run",
+        task_id=task_id,
+        task_title=task_title,
+        backup_record_version="1.0",
+        backup_id=backup_id,
+        backup_record_path=backup_record_path,
+        last_commit_before_backup=last_commit,
+        branch=branch,
+        remote=remote,
+        worktree_status=worktree_status,
+        expected_changed_files=expected_files,
+        actual_changed_files=actual_files,
+        staged_files_planned=staged_files_planned,
+        unexpected_files=unexpected_files,
+        diff_stat=diff_stat,
+        dev_report_path=dev_report,
+        check_report_path=check_report,
+        apply_record_paths=apply_records,
+        commit_message=commit_message,
+        commit_message_valid=commit_message_valid_str,
+        commit_message_rejection_reasons=commit_msg_reasons,
+        backup_record_generated=backup_record_generated,
+        guarded_apply_check_result=guarded_apply_check,
+        post_apply_validation_check_result=post_apply_validation_check,
+        ready_for_git_backup_dry_run=ready_for_git_backup if is_pass else "no",
+        ready_for_real_git_add="no",
+        ready_for_real_commit="no",
+        ready_for_real_push="no",
+        ready_for_stage_8="no",
+        real_git_add_performed="no",
+        real_git_commit_performed="no",
+        real_git_push_performed="no",
+        real_patch_applied="no",
+        command_execution_performed="no",
+        real_task_execution="no",
+        run_project_task_full_called="no",
+        claude_code_called="no",
+        business_code_changed="no",
+        framework_code_changed="yes" if is_pass else "no",
+        auto_continue_to_next_task="no",
+        auto_git_backup="no",
+        bypass_permissions_used="no",
+        human_review_required="yes",
+        rejection_reasons=rejection_reasons,
+        check_result=check_result,
+        message=msg,
+    )

@@ -869,3 +869,7 @@ G006 已完成完整闭环：
 ### T135 guarded Git backup dry-run gate 设计经验
 
 - **Git backup dry-run gate must distinguish backup readiness from real git add/commit/push permission.** Why: ready_for_git_backup_dry_run=yes only means the guarded apply dry-run chain passed and workspace is in expected_dirty state, not that git operations are authorized. How to apply: gate defines 22 checks and 25 rejection conditions, gate pass only allows generating dry-run records and previews, never real git add/commit/push.
+
+### T136 guarded Git backup dry-run 实现经验
+
+- **Guarded Git backup dry-run should generate backup records and staged-file previews without performing git add, commit, or push.** Why: backup dry-run 只预览将要 staged 的文件和 commit message，不执行任何 Git 操作。How to apply: run_guarded_git_backup_dry_run() 实现 22 gate checks，pass 场景生成 sample backup record 并写入 reports/git-backup/，fail 场景只返回 result 不写入文件。

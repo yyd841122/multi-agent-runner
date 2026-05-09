@@ -665,3 +665,8 @@
 
 - 不要把 Git backup dry-run gate pass 当成 permission to run git add, git commit, or git push。Gate pass 只允许生成 dry-run record 和预览，不授权任何真实 Git 操作。
 - 不要在 commit message 中暗示已 real apply、已 push 或已进入 Stage 8。Commit message 必须符合安全规则，不含 misleading claims。
+
+## T136 guarded Git backup dry-run 实现避坑
+
+- 不要把生成的 backup dry-run record 当成真实 Git 操作的许可。Record 只证明 generation pipeline 正确，不授权 git add/commit/push。
+- 不要在 fail 场景中写入 backup record 文件。只有 pass 场景才写入，避免混淆 dry-run record 和真实备份。

@@ -3604,7 +3604,7 @@ Pass path reaches only ready_for_git_backup_dry_run.
 Failure paths fail closed and never enter real apply, command execution, commit, push, or Stage 8.
 No real patch applied, no command executed, no Claude Code called.
 
-<!-- NEXT_PENDING=T136 -->
+<!-- NEXT_PENDING=T137 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ## T134 归档 Stage 7 guarded real patch apply dry-run 成果
@@ -3623,7 +3623,8 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T136 实现 guarded Git backup dry-run
 
-状态：pending
+状态：done
+完成说明：Implemented guarded Git backup dry-run. Added GuardedGitBackupDryRunResult, build_guarded_git_backup_dry_run_record_content(), validate_guarded_git_backup_commit_message_dry_run(), run_guarded_git_backup_dry_run() with 14 scenarios (1 pass + 13 fail-closed). Generated sample backup record and extended runner.py CLI. No git add, commit, push, command execution, business code modification, or Stage 8 continuation occurred.
 角色：Developer
 目标：实现 guarded Git backup dry-run。
 
