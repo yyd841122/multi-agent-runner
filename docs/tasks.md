@@ -1,4 +1,4 @@
-# Tasks
+﻿# Tasks
 
 ## T001 初始化项目骨架
 
@@ -3604,7 +3604,7 @@ Pass path reaches only ready_for_git_backup_dry_run.
 Failure paths fail closed and never enter real apply, command execution, commit, push, or Stage 8.
 No real patch applied, no command executed, no Claude Code called.
 
-<!-- NEXT_PENDING=T139 -->
+<!-- NEXT_PENDING=T140 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ## T134 归档 Stage 7 guarded real patch apply dry-run 成果
@@ -3645,9 +3645,12 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T139 设计 real Git add/commit approval gate
 
-状态：pending
+状态：done
 角色：Designer
 目标：设计真实 git add/commit 前的最终安全审批 gate。
+
+
+完成说明：Designed real Git add/commit approval gate. Added Stage 7 design document for approval conditions, allowed scope, sensitive file blocking, staged file consistency, commit message validation, approval record schema, pass/fail scenarios, and T140 dry-run direction. No real git add, commit, push, implementation code change, Claude Code real task execution, continuous auto-advance, or Stage 8 continuation occurred.
 
 ## T140 实现 real Git add/commit dry-run with approval record
 
