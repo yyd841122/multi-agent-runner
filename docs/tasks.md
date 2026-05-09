@@ -3688,9 +3688,10 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T143 设计 Stage 8 continuous real task runner safety gate
 
-状态：pending
+状态：done
 角色：Designer
 目标：设计 Stage 8 连续真实任务推进的安全 gate。
+完成说明：Designed Stage 8 continuous real task runner safety gate. Defined 30 gate input fields, 13 gate output fields, 21 gate checks (G1-G21), 14 stop reasons with categories, checkpoint read/write requirements, Stage 7 gate reuse strategy, 5 pass + 14 fail scenarios, and T144 dry-run planner direction. No Stage 8 continuous execution, implementation, real git add, commit, push, or Stage 9 continuation occurred.
 
 ## T144 实现 Stage 8 continuous runner dry-run planner
 
@@ -3722,5 +3723,5 @@ No real patch applied, no command executed, no Claude Code called.
 角色：Archiver
 目标：归档 Stage 8 planning / dry-run 全部成果。
 
-<!-- NEXT_PENDING=T143 -->
+<!-- NEXT_PENDING=T144 -->
 <!-- NEXT_STAGE=Stage 8 -->
