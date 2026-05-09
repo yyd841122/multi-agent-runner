@@ -3604,7 +3604,7 @@ Pass path reaches only ready_for_git_backup_dry_run.
 Failure paths fail closed and never enter real apply, command execution, commit, push, or Stage 8.
 No real patch applied, no command executed, no Claude Code called.
 
-<!-- NEXT_PENDING=T138 -->
+<!-- NEXT_PENDING=T139 -->
 <!-- NEXT_STAGE=Stage 7 -->
 
 ## T134 归档 Stage 7 guarded real patch apply dry-run 成果
@@ -3637,6 +3637,32 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T138 归档 Stage 7 Git backup dry-run 成果
 
-状态：pending
+状态：done
+
+完成说明：Archived Stage 7 guarded Git backup dry-run chain. Confirmed T135-T137 reports and backup dry-run records are present. Next safe step remains Stage 7 real Git add/commit approval gate, not real git add, commit, push, or Stage 8.
 角色：Archiver
 目标：归档 Stage 7 Git backup dry-run 成果。
+
+## T139 设计 real Git add/commit approval gate
+
+状态：pending
+角色：Designer
+目标：设计真实 git add/commit 前的最终安全审批 gate。
+
+## T140 实现 real Git add/commit dry-run with approval record
+
+状态：pending
+角色：Developer
+目标：实现带审批记录的 real Git add/commit dry-run。
+
+## T141 验证 real Git add/commit dry-run pass/fail 场景
+
+状态：pending
+角色：Validator
+目标：独立验证 real Git add/commit dry-run pass/fail 行为。
+
+## T142 归档 Stage 7 Git commit dry-run 成果
+
+状态：pending
+角色：Archiver
+目标：归档 Stage 7 Git commit dry-run 链路成果。

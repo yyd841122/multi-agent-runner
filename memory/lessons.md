@@ -877,3 +877,7 @@ G006 已完成完整闭环：
 ### T137 guarded Git backup dry-run pass/fail 验证经验
 
 - **Guarded Git backup pass/fail validation must prove that even the pass path only generates backup dry-run records, not real git operations.** Why: pass 场景 BACKUP_RECORD_GENERATED=yes 只代表 dry-run record 已生成，不等于 git add/commit/push 已执行或被授权。独立验证确保 pipeline 行为稳定。How to apply: 使用 CLI 逐场景执行 14 个样本，确认 pass 场景只有 BACKUP_RECORD_GENERATED=yes 和 READY_FOR_GIT_BACKUP_DRY_RUN=yes，fail 场景全部 fail closed，所有安全字段在 14/14 场景中均为安全值。
+
+### T138 Stage 7 guarded Git backup dry-run 归档经验
+
+- **After guarded Git backup dry-run validation, the next safe step is real Git add/commit approval design, not actual git add, commit, or push.** Why: T135-T137 validated the guarded Git backup dry-run chain (gate design → implementation → pass/fail), but this only proves dry-run records and previews, not real git operations. How to apply: continue Stage 7 with real Git add/commit approval gate design, still no real git add, commit, push, automatic Git backup, or Stage 8.

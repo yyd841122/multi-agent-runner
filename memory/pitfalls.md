@@ -675,3 +675,9 @@
 
 - 不要把 backup record generation 当成 permission for git add, commit, push, or Stage 8。Record 只是 dry-run 产物，不授权任何真实操作。
 - 不要在验证任务中修改 pipeline 逻辑或业务代码。T137 只验证 T136 已有实现的 pass/fail 行为。
+
+## T138 Stage 7 guarded Git backup dry-run 归档避坑
+
+- 不要把归档完成误判为可以进入 Stage 8 或执行真实 Git 操作。归档只总结 T135-T137 的 dry-run chain，不代表真实执行安全。
+- 不要在归档任务中实现新功能或修改 pipeline 逻辑。归档只做总结和确认下一步方向。
+- 不要把 validated Git backup dry-run 当成 permission for real git add, commit, push。下一步仍应设计 real Git add/commit approval gate。
