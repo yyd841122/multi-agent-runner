@@ -65,6 +65,7 @@ from tools.continuous_task_planner import run_first_human_reviewed_controlled_ap
 from tools.continuous_task_planner import run_real_git_add_commit_dry_run
 from tools.continuous_task_planner import run_stage8_continuous_runner_dry_run_planner
 from tools.continuous_task_planner import run_stage8_single_step_continuous_advance_dry_run
+from tools.continuous_task_planner import run_stage8_real_controlled_execution_dry_run
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -2876,6 +2877,81 @@ def main():
         print(f"STAGE9_ENTERED={result.stage9_entered}")
         print()
         print(f"MESSAGE：{result.message}")
+    elif args[0] == "stage8-real-controlled-execution-dry-run":
+        # T150: Stage 8 real controlled continuous execution dry-run
+        sample_type = None
+        max_tasks_val = 1
+        i = 1
+        while i < len(args):
+            if args[i] == "--sample" and i + 1 < len(args):
+                sample_type = args[i + 1]
+                i += 2
+            elif args[i] == "--max-tasks" and i + 1 < len(args):
+                max_tasks_val = int(args[i + 1])
+                i += 2
+            else:
+                i += 1
+
+        result = run_stage8_real_controlled_execution_dry_run(
+            project_root=str(PROJECT_ROOT),
+            max_tasks=max_tasks_val,
+            sample=sample_type,
+        )
+
+        print()
+        print(f"RUN_ID={result.run_id}")
+        print(f"TASK_ID={result.task_id}")
+        print(f"DRY_RUN={result.dry_run}")
+        print(f"STAGE={result.stage}")
+        print(f"MODE={result.mode}")
+        print(f"MAX_TASKS={result.max_tasks}")
+        print(f"TASKS_ATTEMPTED={result.tasks_attempted}")
+        print(f"TASKS_COMPLETED={result.tasks_completed}")
+        print(f"CURRENT_TASK={result.current_task}")
+        print(f"NEXT_PENDING_TASK={result.next_pending_task}")
+        print(f"SELECTED_NEXT_TASK={result.selected_next_task}")
+        print(f"EXECUTION_MODE={result.execution_mode}")
+        print(f"WORKSPACE_STATUS_BEFORE={result.workspace_status_before}")
+        print(f"WORKSPACE_STATUS_AFTER={result.workspace_status_after}")
+        print(f"STAGED_FILES_BEFORE={result.staged_files_before}")
+        print(f"CURRENT_BRANCH={result.current_branch}")
+        print(f"LAST_COMMIT_BEFORE={result.last_commit_before}")
+        print(f"STAGE_BOUNDARY_CHECK={result.stage_boundary_check}")
+        print(f"SAFETY_GATE_PASSED={result.safety_gate_passed}")
+        print(f"SAFETY_GATE_FAILED={result.safety_gate_failed}")
+        print(f"EXECUTION_GATE_PASSED={result.execution_gate_passed}")
+        print(f"EXECUTION_GATE_FAILED={result.execution_gate_failed}")
+        print(f"GATE_CHECKS_PASSED={result.gate_checks_passed}")
+        print(f"GATE_CHECKS_FAILED={result.gate_checks_failed}")
+        print(f"FAILED_CHECKS={result.failed_checks}")
+        print(f"ALLOWED={result.allowed}")
+        print(f"DECISION={result.decision}")
+        print(f"STOP_REASON={result.stop_reason}")
+        print(f"FAILURE_REASONS={result.failure_reasons}")
+        print(f"REQUIRED_ACTIONS={result.required_actions}")
+        print(f"ALLOWED_SCOPE={result.allowed_scope}")
+        print(f"PLANNED_FILES={result.planned_files}")
+        print(f"COMMAND_ALLOWLIST={result.command_allowlist}")
+        print(f"PUSH_ALLOWED={result.push_allowed}")
+        print(f"REAL_EXECUTION_ALLOWED={result.real_execution_allowed}")
+        print(f"RESUME_ALLOWED={result.resume_allowed}")
+        print(f"REWORK_REQUIRED={result.rework_required}")
+        print(f"RATE_LIMIT_STATUS={result.rate_limit_status}")
+        print(f"MANUAL_STOP_REQUESTED={result.manual_stop_requested}")
+        print(f"MANUAL_REVIEW_REQUIRED={result.manual_review_required}")
+        print(f"VALIDATION_STATUS={result.validation_status}")
+        print(f"APPROVAL_RECORD_PATH={result.approval_record_path}")
+        print(f"CHECKPOINT_PATH={result.checkpoint_path}")
+        print(f"REPORT_PATH={result.report_path}")
+        print(f"STAGE8_EXECUTION_STARTED={result.stage8_execution_started}")
+        print(f"REAL_CONTINUOUS_EXECUTION_STARTED={result.real_continuous_execution_started}")
+        print(f"CONTINUOUS_AUTO_ADVANCE_USED={result.continuous_auto_advance_used}")
+        print(f"REAL_GIT_ADD_USED={result.real_git_add_used}")
+        print(f"REAL_GIT_COMMIT_USED={result.real_git_commit_used}")
+        print(f"REAL_GIT_PUSH_USED={result.real_git_push_used}")
+        print(f"STAGE9_ENTERED={result.stage9_entered}")
+        print()
+        print(f"MESSAGE：{result.message}")
     else:
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")
@@ -2917,6 +2993,7 @@ def main():
         print("  python runner.py git-commit-dry-run [--sample <name>]  Real Git add/commit dry-run with approval record")
         print("  python runner.py stage8-continuous-dry-run [--sample <name>] [--max-tasks N]  Stage 8 continuous runner dry-run planner")
         print("  python runner.py stage8-single-step-dry-run [--sample <name>] [--max-tasks N]  Stage 8 single-step continuous advance dry-run")
+        print("  python runner.py stage8-real-controlled-execution-dry-run [--sample <name>] [--max-tasks N]  Stage 8 real controlled continuous execution dry-run")
 
 
 if __name__ == "__main__":

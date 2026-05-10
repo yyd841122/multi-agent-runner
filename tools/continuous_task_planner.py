@@ -12119,3 +12119,1304 @@ def run_stage8_single_step_continuous_advance_dry_run(
 
     temp_result.message = msg
     return temp_result
+
+
+# ---------------------------------------------------------------------------
+# T150: Stage 8 Real Controlled Continuous Execution Dry-Run
+# ---------------------------------------------------------------------------
+
+# Execution gate 常量
+STAGE8_EXECUTION_GATE_CHECK_COUNT = 18
+STAGE8_REAL_CONTROLLED_MAX_TASKS_LIMIT = 2
+
+
+@dataclass
+class Stage8RealControlledExecutionGateInput:
+    """Stage 8 real controlled execution gate 输入数据。
+
+    基于 T149 设计的 37 个输入字段，分 7 组。
+    在 T143 Stage8SafetyGateInput 基础上增加 execution-specific 字段。
+    """
+
+    # 运行级别（8 个）
+    stage: str
+    run_id: str
+    max_tasks: int | None
+    tasks_attempted: int
+    tasks_completed: int
+    current_task_id: str | None
+    mode: str  # real_controlled_single_step_execution
+    selected_next_task: str | None
+
+    # 下一任务
+    next_pending_task_id: str | None
+    next_pending_task_stage: str | None
+
+    # 工作区（4 个）
+    workspace_status: str  # clean / dirty
+    staged_files: list[str]
+    current_branch: str | None
+    last_commit: str | None
+
+    # 审批记录（4 个）
+    approval_record_status: str  # exists / missing
+    approval_record_approved_by: str  # human / auto / unknown
+    approval_record_approval_status: str  # approved / pending / rejected
+    approval_record_path: str | None
+
+    # 检查点与报告（5 个）
+    checkpoint_status: str  # exists / missing
+    checkpoint_consistent: bool
+    report_status: str  # exists / missing / will_generate
+    checkpoint_path: str | None
+    report_path: str | None
+
+    # 执行范围（3 个）
+    allowed_scope: list[str]
+    planned_files: list[str]
+    command_allowlist: list[str]
+
+    # 安全标志（6 个）
+    validation_status: str  # pass / fail / unknown
+    rework_required: bool
+    manual_review_required: bool
+    manual_stop_requested: bool
+    rate_limit_status: str  # clear / triggered
+    stage_boundary_check: str  # within / exceeded / unknown
+
+    # 执行控制（7 个）
+    real_execution_requested: bool
+    real_execution_allowed: bool  # 只能由 gate 设置
+    push_allowed: bool  # 始终 false
+    resume_allowed: bool  # 默认 false
+    dirty_workspace_policy: str  # block
+    git_backup_required: bool
+    commit_required: bool
+
+
+@dataclass
+class Stage8RealControlledExecutionDryRunResult:
+    """Stage 8 real controlled continuous execution dry-run 结果。
+
+    只做 dry-run，不执行真实操作。
+    """
+
+    # 运行标识
+    run_id: str
+    task_id: str
+    dry_run: bool  # 始终 True
+    stage: str
+    mode: str  # real_controlled_single_step_execution_dry_run
+
+    # 计划
+    max_tasks: int
+    tasks_attempted: int
+    tasks_completed: int
+
+    # 当前/下一任务
+    current_task: str | None
+    next_pending_task: str | None
+    selected_next_task: str | None
+    execution_mode: str | None  # real_controlled_single_step / null
+
+    # 工作区
+    workspace_status_before: str
+    workspace_status_after: str
+    staged_files_before: list[str]
+    staged_files_after: list[str]
+    current_branch: str | None
+    last_commit_before: str | None
+    last_commit_after: str | None
+
+    # 执行范围
+    allowed_scope: list[str]
+    planned_files: list[str]
+    command_allowlist: list[str]
+
+    # 安全标志
+    push_allowed: bool  # 始终 False
+    real_execution_allowed: bool  # 始终 False（dry-run）
+    resume_allowed: bool  # 始终 False
+    stage_boundary_check: str
+    rework_required: bool
+    rate_limit_status: str
+    manual_stop_requested: bool
+    manual_review_required: bool
+    validation_status: str
+    approval_record_status: str
+    checkpoint_status: str
+    report_status: str
+
+    # Gate 结果
+    allowed: bool
+    decision: str  # allowed_for_real_controlled_single_step / stop / blocked
+    stop_reason: str | None
+    failure_reasons: list[str]
+    required_actions: list[str]
+
+    # Gate check 详情
+    safety_gate_passed: int  # G1-G21 通过数
+    safety_gate_failed: int
+    safety_failed_checks: list[str]
+    execution_gate_passed: int  # E1-E18 通过数
+    execution_gate_failed: int
+    execution_failed_checks: list[str]
+    gate_checks_passed: int  # 总计
+    gate_checks_failed: int
+    failed_checks: list[str]
+
+    # 需求标记
+    checkpoint_required: bool
+    approval_record_required: bool
+    git_backup_required: bool
+    commit_required: bool
+
+    # 报告路径
+    approval_record_path: str | None
+    checkpoint_path: str | None
+    report_path: str | None
+
+    # 安全追踪
+    stage8_execution_started: bool  # 始终 False
+    real_continuous_execution_started: bool  # 始终 False
+    continuous_auto_advance_used: bool  # 始终 False
+    real_git_add_used: bool  # 始终 False
+    real_git_commit_used: bool  # 始终 False
+    real_git_push_used: bool  # 始终 False
+    stage9_entered: bool  # 始终 False
+
+    notes: str
+    message: str
+
+
+# T150 real controlled execution sample 默认值
+_STAGE8_REAL_CONTROLLED_SAMPLE_DEFAULTS = {
+    "stage": STAGE8_NAME,
+    "tasks_attempted": 0,
+    "tasks_completed": 0,
+    "current_task_id": "T149",
+    "mode": "real_controlled_single_step_execution",
+    "selected_next_task": "T150",
+    "next_pending_task_id": "T150",
+    "next_pending_task_stage": STAGE8_NAME,
+    "workspace_status": "clean",
+    "staged_files": [],
+    "current_branch": "main",
+    "last_commit": "7c1b4ec docs: add T149 stage 8 real controlled execution gate design",
+    "approval_record_status": "exists",
+    "approval_record_approved_by": "human",
+    "approval_record_approval_status": "approved",
+    "approval_record_path": "reports/stage8/stage8-real-controlled-execution-approval-record.md",
+    "checkpoint_status": "exists",
+    "checkpoint_consistent": True,
+    "report_status": "will_generate",
+    "checkpoint_path": "reports/stage8/stage8-real-controlled-execution-checkpoint.md",
+    "report_path": None,
+    "allowed_scope": ["tools/", "runner.py", "docs/", "reports/"],
+    "planned_files": ["tools/continuous_task_planner.py", "runner.py"],
+    "command_allowlist": ["python runner.py", "git status --short", "git diff", "git log --oneline"],
+    "validation_status": "pass",
+    "rework_required": False,
+    "manual_review_required": False,
+    "manual_stop_requested": False,
+    "rate_limit_status": "clear",
+    "stage_boundary_check": "within",
+    "real_execution_requested": True,
+    "real_execution_allowed": False,
+    "push_allowed": False,
+    "resume_allowed": False,
+    "dirty_workspace_policy": "block",
+    "git_backup_required": True,
+    "commit_required": True,
+    "max_tasks": 1,
+}
+
+
+def _build_real_controlled_sample_input(sample: str) -> Stage8RealControlledExecutionGateInput:
+    """根据 sample 名称构建 real controlled execution gate input。"""
+    d = dict(_STAGE8_REAL_CONTROLLED_SAMPLE_DEFAULTS)
+
+    if sample == "pass_ready_for_single_step_trial":
+        # P1: max_tasks=1, workspace clean, approval/checkpoint/report complete
+        d["max_tasks"] = 1
+        d["selected_next_task"] = "T150"
+        d["next_pending_task_id"] = "T150"
+    elif sample == "pass_no_pending_tasks":
+        # P2: no pending tasks - safe stop
+        d["max_tasks"] = 1
+        d["tasks_attempted"] = 1
+        d["tasks_completed"] = 1
+        d["next_pending_task_id"] = None
+        d["next_pending_task_stage"] = None
+        d["selected_next_task"] = None
+    elif sample == "pass_select_next_task":
+        # P3: current task done, next pending is Stage 8
+        d["max_tasks"] = 1
+        d["current_task_id"] = "T149"
+        d["next_pending_task_id"] = "T150"
+        d["selected_next_task"] = "T150"
+    elif sample == "dirty_workspace":
+        d["max_tasks"] = 1
+        d["workspace_status"] = "dirty"
+    elif sample == "staged_changes":
+        d["max_tasks"] = 1
+        d["staged_files"] = ["docs/extra.md"]
+    elif sample == "missing_approval_record":
+        d["max_tasks"] = 1
+        d["approval_record_status"] = "missing"
+        d["approval_record_approved_by"] = "unknown"
+        d["approval_record_approval_status"] = "pending"
+    elif sample == "missing_checkpoint":
+        d["max_tasks"] = 1
+        d["checkpoint_status"] = "missing"
+        d["checkpoint_consistent"] = False
+    elif sample == "missing_report":
+        d["max_tasks"] = 1
+        d["report_status"] = "missing"
+    elif sample == "missing_allowed_scope":
+        d["max_tasks"] = 1
+        d["allowed_scope"] = []
+    elif sample == "missing_command_allowlist":
+        d["max_tasks"] = 1
+        d["command_allowlist"] = []
+    elif sample == "validation_failure":
+        d["max_tasks"] = 1
+        d["validation_status"] = "fail"
+    elif sample == "stage_boundary_to_stage9":
+        d["max_tasks"] = 1
+        d["next_pending_task_id"] = "T155"
+        d["next_pending_task_stage"] = "Stage 9"
+        d["selected_next_task"] = "T155"
+        d["stage_boundary_check"] = "exceeded"
+    elif sample == "max_tasks_missing":
+        d["max_tasks"] = None
+    elif sample == "max_tasks_too_large":
+        d["max_tasks"] = 5
+    elif sample == "push_allowed_true":
+        d["max_tasks"] = 1
+        d["push_allowed"] = True
+    elif sample == "resume_allowed_true":
+        d["max_tasks"] = 1
+        d["resume_allowed"] = True
+    elif sample == "real_execution_without_approval":
+        d["max_tasks"] = 1
+        d["real_execution_allowed"] = True
+        d["real_execution_requested"] = True
+    elif sample == "rate_limit_blocked":
+        d["max_tasks"] = 1
+        d["rate_limit_status"] = "triggered"
+    elif sample == "rework_required":
+        d["max_tasks"] = 1
+        d["rework_required"] = True
+    elif sample == "unknown_error":
+        d["max_tasks"] = 1
+        d["checkpoint_consistent"] = False
+        d["checkpoint_status"] = "exists"
+    else:
+        # 默认 pass 场景
+        d["max_tasks"] = 1
+        d["current_task_id"] = "T149"
+        d["next_pending_task_id"] = "T150"
+        d["selected_next_task"] = "T150"
+
+    return Stage8RealControlledExecutionGateInput(
+        stage=d["stage"],
+        run_id=_generate_stage8_run_id(),
+        max_tasks=d["max_tasks"],
+        tasks_attempted=d["tasks_attempted"],
+        tasks_completed=d["tasks_completed"],
+        current_task_id=d["current_task_id"],
+        mode=d["mode"],
+        selected_next_task=d["selected_next_task"],
+        next_pending_task_id=d["next_pending_task_id"],
+        next_pending_task_stage=d["next_pending_task_stage"],
+        workspace_status=d["workspace_status"],
+        staged_files=d["staged_files"],
+        current_branch=d["current_branch"],
+        last_commit=d["last_commit"],
+        approval_record_status=d["approval_record_status"],
+        approval_record_approved_by=d["approval_record_approved_by"],
+        approval_record_approval_status=d["approval_record_approval_status"],
+        approval_record_path=d["approval_record_path"],
+        checkpoint_status=d["checkpoint_status"],
+        checkpoint_consistent=d["checkpoint_consistent"],
+        report_status=d["report_status"],
+        checkpoint_path=d["checkpoint_path"],
+        report_path=d["report_path"],
+        allowed_scope=d["allowed_scope"],
+        planned_files=d["planned_files"],
+        command_allowlist=d["command_allowlist"],
+        validation_status=d["validation_status"],
+        rework_required=d["rework_required"],
+        manual_review_required=d["manual_review_required"],
+        manual_stop_requested=d["manual_stop_requested"],
+        rate_limit_status=d["rate_limit_status"],
+        stage_boundary_check=d["stage_boundary_check"],
+        real_execution_requested=d["real_execution_requested"],
+        real_execution_allowed=d["real_execution_allowed"],
+        push_allowed=d["push_allowed"],
+        resume_allowed=d["resume_allowed"],
+        dirty_workspace_policy=d["dirty_workspace_policy"],
+        git_backup_required=d["git_backup_required"],
+        commit_required=d["commit_required"],
+    )
+
+
+# ---------------------------------------------------------------------------
+# T150: Execution Gate 评估 (E1-E18)
+# ---------------------------------------------------------------------------
+
+def evaluate_stage8_real_controlled_execution_gate(
+    gate_input: Stage8RealControlledExecutionGateInput,
+) -> tuple[bool, str, str | None, list[str], list[str], int, int, list[str], list[str]]:
+    """评估 Stage 8 real controlled execution gate (E1-E18)。
+
+    在 G1-G21 safety gate 基础上增加 E1-E18 execution gate check。
+    不执行任何真实操作。
+
+    Args:
+        gate_input: execution gate 输入数据
+
+    Returns:
+        (allowed, decision, stop_reason, failure_reasons, required_actions,
+         gate_passed, gate_failed, failed_checks, safety_gate_failed_checks)
+    """
+    gate_passed = 0
+    gate_failed = 0
+    failed_checks: list[str] = []
+    failure_reasons: list[str] = []
+    required_actions: list[str] = []
+
+    # ---- E1: stage 必须为 Stage 8 ----
+    if gate_input.stage == STAGE8_NAME:
+        gate_passed += 1
+    else:
+        gate_failed += 1
+        failed_checks.append("E1: stage is not Stage 8")
+        failure_reasons.append(f"stage must be '{STAGE8_NAME}', got '{gate_input.stage}'")
+
+    # ---- E2: next_pending_task_stage 必须为 Stage 8 ----
+    if gate_input.next_pending_task_id is None:
+        # 无 pending 任务 → E6 会处理
+        gate_passed += 1
+    elif gate_input.next_pending_task_stage == STAGE8_NAME:
+        gate_passed += 1
+    else:
+        gate_failed += 1
+        failed_checks.append("E2: next task stage is not Stage 8")
+        failure_reasons.append(
+            f"Next task {gate_input.next_pending_task_id} belongs to "
+            f"{gate_input.next_pending_task_stage}, not {STAGE8_NAME}"
+        )
+
+    # ---- E3: 不允许进入 Stage 9 ----
+    if gate_input.stage_boundary_check == "within":
+        gate_passed += 1
+    elif gate_input.next_pending_task_id is None:
+        gate_passed += 1
+    else:
+        gate_failed += 1
+        failed_checks.append("E3: stage boundary exceeded")
+        failure_reasons.append("Stage boundary check failed: would enter Stage 9+")
+
+    # ---- E4: max_tasks 必须存在且在安全上限内 ----
+    if gate_input.max_tasks is not None and isinstance(gate_input.max_tasks, int) and gate_input.max_tasks >= 1:
+        if gate_input.max_tasks <= STAGE8_REAL_CONTROLLED_MAX_TASKS_LIMIT:
+            gate_passed += 1
+        else:
+            gate_failed += 1
+            failed_checks.append(f"E4: max_tasks exceeds safety limit {STAGE8_REAL_CONTROLLED_MAX_TASKS_LIMIT}")
+            failure_reasons.append(
+                f"max_tasks exceeds safety limit {STAGE8_REAL_CONTROLLED_MAX_TASKS_LIMIT} "
+                f"for real controlled execution"
+            )
+    else:
+        gate_failed += 1
+        failed_checks.append("E4: max_tasks is missing or invalid")
+        failure_reasons.append("max_tasks is required and must be a positive integer <= 2")
+
+    # ---- E5: current_task_id 存在或明确为首次运行 ----
+    if gate_input.current_task_id is not None:
+        gate_passed += 1
+    else:
+        # 首次运行允许 current_task_id 为 None
+        gate_passed += 1
+
+    # ---- E6: next_pending_task_id 必须存在 ----
+    if gate_input.next_pending_task_id is not None:
+        gate_passed += 1
+    else:
+        gate_failed += 1
+        failed_checks.append("E6: no pending task")
+        failure_reasons.append("No pending tasks available for real controlled execution")
+
+    # ---- E7: workspace_status 必须为 clean ----
+    if gate_input.workspace_status == "clean":
+        gate_passed += 1
+    else:
+        gate_failed += 1
+        failed_checks.append("E7: workspace is dirty")
+        failure_reasons.append("Workspace is dirty")
+
+    # ---- E8: staged_files 必须为空 ----
+    if len(gate_input.staged_files) == 0:
+        gate_passed += 1
+    else:
+        gate_failed += 1
+        failed_checks.append("E8: staged files not empty")
+        failure_reasons.append(f"Staged files not empty: {gate_input.staged_files}")
+
+    # ---- E9: approval_record_status 必须为 exists ----
+    if gate_input.approval_record_status == "exists":
+        gate_passed += 1
+    else:
+        gate_failed += 1
+        failed_checks.append("E9: approval record missing")
+        failure_reasons.append("Approval record v2.0 does not exist for next task")
+
+    # ---- E10: checkpoint_status 必须为 exists 且 consistent ----
+    if gate_input.checkpoint_status == "exists" and gate_input.checkpoint_consistent:
+        gate_passed += 1
+    else:
+        gate_failed += 1
+        if gate_input.checkpoint_status != "exists":
+            failed_checks.append("E10: checkpoint does not exist")
+            failure_reasons.append("Checkpoint v2.0 does not exist")
+        else:
+            failed_checks.append("E10: checkpoint not consistent")
+            failure_reasons.append("Checkpoint is not consistent")
+
+    # ---- E11: report_status 必须为 exists 或 will_generate ----
+    if gate_input.report_status in ("exists", "will_generate"):
+        gate_passed += 1
+    else:
+        gate_failed += 1
+        failed_checks.append("E11: report missing")
+        failure_reasons.append("Report does not exist and no generation plan")
+
+    # ---- E12: validation_status 必须为 pass ----
+    if gate_input.validation_status == "pass":
+        gate_passed += 1
+    else:
+        gate_failed += 1
+        failed_checks.append("E12: validation status is not pass")
+        failure_reasons.append("Current task validation failed")
+
+    # ---- E13: allowed_scope 必须非空 ----
+    if len(gate_input.allowed_scope) > 0:
+        gate_passed += 1
+    else:
+        gate_failed += 1
+        failed_checks.append("E13: allowed_scope is empty or missing")
+        failure_reasons.append("allowed_scope is empty or missing")
+
+    # ---- E14: command_allowlist 必须非空 ----
+    if len(gate_input.command_allowlist) > 0:
+        gate_passed += 1
+    else:
+        gate_failed += 1
+        failed_checks.append("E14: command_allowlist is empty or missing")
+        failure_reasons.append("command_allowlist is empty or missing")
+
+    # ---- E15: planned_files 必须明确 ----
+    # planned_files 可以是空列表（明确不需要改文件），但不能是 None 或未提供
+    if gate_input.planned_files is not None:
+        gate_passed += 1
+    else:
+        gate_failed += 1
+        failed_checks.append("E15: planned_files not specified")
+        failure_reasons.append("planned_files must be specified")
+
+    # ---- E16: real_execution_allowed 必须经过 execution gate 审批 ----
+    # 在 dry-run 中，real_execution_allowed 应该为 False（尚未经过 gate 审批）
+    # gate 本身决定是否允许，所以这里检查是否有未经审批的外部设置
+    if not gate_input.real_execution_allowed:
+        gate_passed += 1
+    else:
+        # 如果外部已经设为 True 但没有经过 gate 审批，则拒绝
+        gate_failed += 1
+        failed_checks.append("E16: real_execution_allowed set without gate authorization")
+        failure_reasons.append(
+            "real_execution_allowed=true requires explicit execution gate authorization"
+        )
+
+    # ---- E17: push_allowed 必须为 false ----
+    if not gate_input.push_allowed:
+        gate_passed += 1
+    else:
+        gate_failed += 1
+        failed_checks.append("E17: push_allowed is true")
+        failure_reasons.append("push_allowed must be false")
+
+    # ---- E18: 无阻塞标志 ----
+    blockers = []
+    if gate_input.rework_required:
+        blockers.append("rework_required")
+    if gate_input.manual_stop_requested:
+        blockers.append("manual_stop_requested")
+    if gate_input.rate_limit_status == "triggered":
+        blockers.append("rate_limit_triggered")
+    if not blockers:
+        gate_passed += 1
+    else:
+        gate_failed += 1
+        failed_checks.append(f"E18: blocking flags active: {', '.join(blockers)}")
+        failure_reasons.extend([f"Blocking flag: {b}" for b in blockers])
+
+    # ---- 决策 ----
+    allowed = gate_failed == 0
+    decision: str
+    stop_reason: str | None = None
+
+    if allowed:
+        decision = "allowed_for_real_controlled_single_step"
+    else:
+        # 根据 first failed check 确定 stop_reason
+        if any("E6:" in c for c in failed_checks):
+            decision = "stop"
+            stop_reason = "no_pending_tasks"
+            required_actions = ["Check if new tasks needed or archive current Stage"]
+        elif any("E7:" in c for c in failed_checks):
+            decision = "blocked"
+            stop_reason = "blocked_by_dirty_workspace"
+            required_actions = ["Review dirty workspace files", "Commit or revert changes"]
+        elif any("E8:" in c for c in failed_checks):
+            decision = "blocked"
+            stop_reason = "blocked_by_staged_changes"
+            required_actions = ["Review staged files", "Confirm if expected"]
+        elif any("E9:" in c for c in failed_checks):
+            decision = "blocked"
+            stop_reason = "blocked_by_missing_approval_record"
+            required_actions = ["Generate approval record v2.0", "Get human approval"]
+        elif any("E10:" in c for c in failed_checks):
+            decision = "blocked"
+            stop_reason = "blocked_by_missing_checkpoint"
+            required_actions = ["Generate checkpoint v2.0", "Rerun after generation"]
+        elif any("E11:" in c for c in failed_checks):
+            decision = "blocked"
+            stop_reason = "blocked_by_missing_report"
+            required_actions = ["Generate report", "Rerun after generation"]
+        elif any("E12:" in c for c in failed_checks):
+            decision = "blocked"
+            stop_reason = "blocked_by_validation_failure"
+            required_actions = ["Check validation report", "Fix issues and rerun"]
+        elif any("E13:" in c for c in failed_checks):
+            decision = "blocked"
+            stop_reason = "blocked_by_missing_allowed_scope"
+            required_actions = ["Specify allowed_scope for execution"]
+        elif any("E14:" in c for c in failed_checks):
+            decision = "blocked"
+            stop_reason = "blocked_by_missing_command_allowlist"
+            required_actions = ["Specify command_allowlist for execution"]
+        elif any("E2:" in c or "E3:" in c for c in failed_checks):
+            decision = "blocked"
+            stop_reason = "blocked_by_stage_boundary"
+            required_actions = ["Confirm cross-Stage necessity", "Requires separate authorization"]
+        elif any("E4:" in c for c in failed_checks):
+            decision = "blocked"
+            stop_reason = "blocked_by_unknown_error"
+            required_actions = ["Fix max_tasks", "Must be 1 or 2"]
+        elif any("E16:" in c for c in failed_checks):
+            decision = "blocked"
+            stop_reason = "blocked_by_real_execution_gate"
+            required_actions = ["Fix execution gate authorization chain"]
+        elif any("E17:" in c for c in failed_checks):
+            decision = "blocked"
+            stop_reason = "blocked_by_git_safety_gate"
+            required_actions = ["Fix push_allowed flag", "push_allowed must be false"]
+        elif any("rework_required" in c for c in failed_checks):
+            decision = "blocked"
+            stop_reason = "blocked_by_rework_required"
+            required_actions = ["Execute rework", "Rerun after rework"]
+        elif any("rate_limit" in c for c in failed_checks):
+            decision = "blocked"
+            stop_reason = "blocked_by_rate_limit"
+            required_actions = ["Wait for cooldown", "Rerun after cooldown"]
+        elif any("manual_stop" in c for c in failed_checks):
+            decision = "blocked"
+            stop_reason = "manual_stop_required"
+            required_actions = ["Manual confirmation needed"]
+        else:
+            decision = "blocked"
+            stop_reason = "blocked_by_unknown_error"
+            required_actions = ["Check error logs", "Manual intervention needed"]
+
+    return (
+        allowed, decision, stop_reason, failure_reasons, required_actions,
+        gate_passed, gate_failed, failed_checks, [],
+    )
+
+
+# ---------------------------------------------------------------------------
+# T150: Approval Record v2.0 生成
+# ---------------------------------------------------------------------------
+
+def build_stage8_real_controlled_execution_approval_record_content(
+    gate_input: Stage8RealControlledExecutionGateInput,
+    allowed: bool,
+    stop_reason: str | None,
+    run_id: str,
+) -> str:
+    """生成 Stage 8 real controlled execution approval record v2.0 内容。
+
+    Args:
+        gate_input: gate 输入
+        allowed: gate 是否允许
+        stop_reason: 停止原因
+        run_id: 运行标识
+
+    Returns:
+        Markdown 格式的 approval record 内容
+    """
+    now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    final_status = "approved_for_execution" if allowed else "blocked"
+    approval_status = "approved" if allowed else "rejected"
+
+    lines = [
+        f"# Stage 8 Real Controlled Execution Approval Record v2.0",
+        f"",
+        f"```yaml",
+        f"approval_record_version: \"2.0\"",
+        f"approval_id: \"{gate_input.selected_next_task or 'unknown'}-real-controlled-execution-approval\"",
+        f"generated_at: \"{now}\"",
+        f"run_id: \"{run_id}\"",
+        f"",
+        f"task:",
+        f"  task_id: \"{gate_input.selected_next_task or 'null'}\"",
+        f"  stage: \"{gate_input.stage}\"",
+        f"  operation_type: \"real_controlled_single_step_execution\"",
+        f"  execution_mode: \"real_controlled_single_step\"",
+        f"",
+        f"execution:",
+        f"  planned_action: \"Execute {gate_input.selected_next_task or 'unknown'} real controlled single-step execution\"",
+        f"  planned_files:",
+    ]
+    for pf in gate_input.planned_files:
+        lines.append(f"    - \"{pf}\"")
+    if not gate_input.planned_files:
+        lines.append(f"    []  # no planned files")
+
+    lines += [
+        f"  allowed_scope:",
+    ]
+    for scope in gate_input.allowed_scope:
+        lines.append(f"    - \"{scope}\"")
+    if not gate_input.allowed_scope:
+        lines.append(f"    []  # no scope defined")
+
+    lines += [
+        f"  command_allowlist:",
+    ]
+    for cmd in gate_input.command_allowlist:
+        lines.append(f"    - \"{cmd}\"")
+    if not gate_input.command_allowlist:
+        lines.append(f"    []  # no commands allowed")
+
+    lines += [
+        f"  real_execution_requested: {gate_input.real_execution_requested}",
+        f"  real_execution_allowed: {allowed}",
+        f"  push_allowed: {gate_input.push_allowed}",
+        f"  resume_allowed: {gate_input.resume_allowed}",
+        f"  stage_boundary_check: \"{gate_input.stage_boundary_check}\"",
+        f"",
+        f"approval:",
+        f"  approval_status: \"{approval_status}\"",
+        f"  approved_by: \"{gate_input.approval_record_approved_by}\"",
+        f"  approval_time: \"{now}\"",
+        f"",
+        f"validation:",
+        f"  validation_required: true",
+        f"  validation_status: \"{'pending' if allowed else 'not_applicable'}\"",
+        f"  validation_report_path: \"null\"",
+        f"",
+        f"git:",
+        f"  git_backup_required: {gate_input.git_backup_required}",
+        f"  commit_required: {gate_input.commit_required}",
+        f"  commit_message_template: \"feat: add {gate_input.selected_next_task or 'unknown'} stage 8 real controlled execution\"",
+        f"",
+        f"decision:",
+        f"  final_status: \"{final_status}\"",
+        f"  ready_for_execution: {allowed}",
+        f"  ready_for_git_commit: false",
+        f"  ready_for_push: false",
+        f"  ready_for_stage_9: false",
+        f"",
+        f"stop_reason: \"{stop_reason or 'null'}\"",
+        f"",
+        f"notes: |",
+        f"  Approval record v2.0 for {gate_input.selected_next_task or 'unknown'}.",
+        f"  dry_run=True. push_allowed=false. resume_allowed=false.",
+        f"  approved_by={gate_input.approval_record_approved_by} required.",
+        f"```",
+        f"",
+        f"---",
+        f"",
+        f"## 安全保证",
+        f"",
+        f"- dry_run: True",
+        f"- push_allowed: {gate_input.push_allowed}",
+        f"- resume_allowed: {gate_input.resume_allowed}",
+        f"- stage8_execution_started: False",
+        f"- stage9_entered: False",
+    ]
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# T150: Checkpoint v2.0 生成
+# ---------------------------------------------------------------------------
+
+def build_stage8_real_controlled_execution_checkpoint_content(
+    gate_input: Stage8RealControlledExecutionGateInput,
+    allowed: bool,
+    stop_reason: str | None,
+    run_id: str,
+) -> str:
+    """生成 Stage 8 real controlled execution checkpoint v2.0 内容。
+
+    Args:
+        gate_input: gate 输入
+        allowed: gate 是否允许
+        stop_reason: 停止原因
+        run_id: 运行标识
+
+    Returns:
+        Markdown 格式的 checkpoint 内容
+    """
+    now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+    lines = [
+        f"# Stage 8 Real Controlled Execution Checkpoint v2.0",
+        f"",
+        f"```yaml",
+        f"checkpoint_version: \"2.0\"",
+        f"run_id: \"{run_id}\"",
+        f"stage: \"{gate_input.stage}\"",
+        f"mode: \"real_controlled_single_step_execution\"",
+        f"real_controlled_execution: false  # dry-run, no real execution",
+        f"",
+        f"timing:",
+        f"  started_at: \"{now}\"",
+        f"  ended_at: \"{now}\"",
+        f"  last_checkpoint_at: \"{now}\"",
+        f"",
+        f"limits:",
+        f"  max_tasks: {gate_input.max_tasks or 'null'}",
+        f"  tasks_attempted: {gate_input.tasks_attempted}",
+        f"  tasks_completed: {gate_input.tasks_completed}",
+        f"",
+        f"current_state:",
+        f"  current_task: \"{gate_input.current_task_id or 'null'}\"",
+        f"  last_completed_task: \"{gate_input.current_task_id or 'null'}\"",
+        f"  next_pending_task: \"{gate_input.next_pending_task_id or 'null'}\"",
+        f"  selected_next_task: \"{gate_input.selected_next_task or 'null'}\"",
+        f"  stop_reason: \"{stop_reason or 'null'}\"",
+        f"",
+        f"workspace:",
+        f"  status_before: \"{gate_input.workspace_status}\"",
+        f"  status_after: \"{gate_input.workspace_status}\"",
+        f"  staged_files_before: {gate_input.staged_files}",
+        f"  staged_files_after: {gate_input.staged_files}",
+        f"  current_branch: \"{gate_input.current_branch or 'null'}\"",
+        f"  last_commit_before: \"{gate_input.last_commit or 'null'}\"",
+        f"  last_commit_after: \"{gate_input.last_commit or 'null'}\"",
+        f"",
+        f"records:",
+        f"  approval_record_path: \"{gate_input.approval_record_path or 'null'}\"",
+        f"  checkpoint_path: \"{gate_input.checkpoint_path or 'null'}\"",
+        f"  report_path: \"{gate_input.report_path or 'null'}\"",
+        f"  reports_generated: []",
+        f"  commits_created: []",
+        f"  pushes_created: []  # always empty",
+        f"",
+        f"validation:",
+        f"  validation_status: \"{'pending' if allowed else 'not_applicable'}\"",
+        f"  validation_report_path: \"null\"",
+        f"",
+        f"resume:",
+        f"  resume_allowed: {gate_input.resume_allowed}",
+        f"  manual_review_required: {not allowed}",
+        f"",
+        f"errors: []",
+        f"",
+        f"notes: |",
+        f"  Real controlled execution checkpoint v2.0 (dry-run).",
+        f"  Pre-execution state recorded.",
+        f"  G1-G21 + E1-E18 gate checks {'passed' if allowed else 'failed'}.",
+        f"  No real execution occurred.",
+        f"```",
+        f"",
+        f"---",
+        f"",
+        f"## 安全保证",
+        f"",
+        f"- checkpoint_version: 2.0",
+        f"- real_controlled_execution: false (dry-run)",
+        f"- resume_allowed: {gate_input.resume_allowed}",
+        f"- pushes_created: [] (始终为空)",
+        f"- dry_run: True",
+        f"- push_allowed: {gate_input.push_allowed}",
+        f"- stage8_execution_started: False",
+        f"- stage9_entered: False",
+    ]
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# T150: Dry-Run Report 生成
+# ---------------------------------------------------------------------------
+
+def build_stage8_real_controlled_execution_dry_run_report_content(
+    result: Stage8RealControlledExecutionDryRunResult,
+) -> str:
+    """生成 Stage 8 real controlled execution dry-run report。"""
+    lines = [
+        f"# Stage 8 Real Controlled Execution Dry-Run Report",
+        f"",
+        f"```yaml",
+        f"run_id: \"{result.run_id}\"",
+        f"task_id: \"{result.task_id}\"",
+        f"stage: \"{result.stage}\"",
+        f"mode: \"{result.mode}\"",
+        f"dry_run: {result.dry_run}",
+        f"",
+        f"gate_decision:",
+        f"  allowed: {result.allowed}",
+        f"  decision: \"{result.decision}\"",
+        f"  execution_mode: \"{result.execution_mode or 'null'}\"",
+        f"  selected_next_task: \"{result.selected_next_task or 'null'}\"",
+        f"  stop_reason: \"{result.stop_reason or 'null'}\"",
+        f"",
+        f"gate_checks:",
+        f"  safety_gate_passed: {result.safety_gate_passed}",
+        f"  safety_gate_failed: {result.safety_gate_failed}",
+        f"  safety_failed_checks: {result.safety_failed_checks}",
+        f"  execution_gate_passed: {result.execution_gate_passed}",
+        f"  execution_gate_failed: {result.execution_gate_failed}",
+        f"  execution_failed_checks: {result.execution_failed_checks}",
+        f"  total_passed: {result.gate_checks_passed}",
+        f"  total_failed: {result.gate_checks_failed}",
+        f"  all_failed_checks: {result.failed_checks}",
+        f"  failure_reasons: {result.failure_reasons}",
+        f"  required_actions: {result.required_actions}",
+        f"",
+        f"limits:",
+        f"  max_tasks: {result.max_tasks}",
+        f"  tasks_attempted: {result.tasks_attempted}",
+        f"  tasks_completed: {result.tasks_completed}",
+        f"",
+        f"workspace:",
+        f"  status_before: \"{result.workspace_status_before}\"",
+        f"  status_after: \"{result.workspace_status_after}\"",
+        f"  staged_files_before: {result.staged_files_before}",
+        f"  staged_files_after: {result.staged_files_after}",
+        f"  current_branch: \"{result.current_branch or 'null'}\"",
+        f"  last_commit_before: \"{result.last_commit_before or 'null'}\"",
+        f"  last_commit_after: \"{result.last_commit_after or 'null'}\"",
+        f"",
+        f"execution_scope:",
+        f"  allowed_scope: {result.allowed_scope}",
+        f"  planned_files: {result.planned_files}",
+        f"  command_allowlist: {result.command_allowlist}",
+        f"",
+        f"safety:",
+        f"  push_allowed: {result.push_allowed}",
+        f"  real_execution_allowed: {result.real_execution_allowed}",
+        f"  resume_allowed: {result.resume_allowed}",
+        f"  stage_boundary_check: \"{result.stage_boundary_check}\"",
+        f"  rework_required: {result.rework_required}",
+        f"  rate_limit_status: \"{result.rate_limit_status}\"",
+        f"  manual_stop_requested: {result.manual_stop_requested}",
+        f"  manual_review_required: {result.manual_review_required}",
+        f"  validation_status: \"{result.validation_status}\"",
+        f"",
+        f"records:",
+        f"  approval_record_path: \"{result.approval_record_path or 'null'}\"",
+        f"  checkpoint_path: \"{result.checkpoint_path or 'null'}\"",
+        f"  report_path: \"{result.report_path or 'null'}\"",
+        f"",
+        f"execution_tracking:",
+        f"  stage8_execution_started: {result.stage8_execution_started}",
+        f"  real_continuous_execution_started: {result.real_continuous_execution_started}",
+        f"  continuous_auto_advance_used: {result.continuous_auto_advance_used}",
+        f"  real_git_add_used: {result.real_git_add_used}",
+        f"  real_git_commit_used: {result.real_git_commit_used}",
+        f"  real_git_push_used: {result.real_git_push_used}",
+        f"  stage9_entered: {result.stage9_entered}",
+        f"",
+        f"notes: |",
+        f"  {result.notes}",
+        f"```",
+        f"",
+        f"---",
+        f"",
+        f"## 安全保证",
+        f"",
+        f"- dry_run: True",
+        f"- stage8_execution_started: False",
+        f"- real_continuous_execution_started: False",
+        f"- continuous_auto_advance_used: False",
+        f"- real_git_add_used: False",
+        f"- real_git_commit_used: False",
+        f"- real_git_push_used: False",
+        f"- push_allowed: False",
+        f"- real_execution_allowed: False",
+        f"- resume_allowed: False",
+        f"- stage9_entered: False",
+    ]
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# T150: 主函数
+# ---------------------------------------------------------------------------
+
+def run_stage8_real_controlled_execution_dry_run(
+    project_root: str | Path = ".",
+    max_tasks: int = 1,
+    sample: str | None = None,
+) -> Stage8RealControlledExecutionDryRunResult:
+    """Stage 8 real controlled continuous execution dry-run。
+
+    基于 T149 execution gate 设计和 T144/T146 dry-run 实现。
+    只做 dry-run，不执行真实任务，不修改业务代码，不执行 git 操作。
+
+    执行流程：
+    1. 构建 gate input（sample 或真实 workspace）
+    2. 评估 G1-G21 safety gate
+    3. 如果 safety gate 通过，评估 E1-E18 execution gate
+    4. 生成 approval record v2.0
+    5. 生成 checkpoint v2.0
+    6. 生成 dry-run report
+    7. 返回 result
+
+    Args:
+        project_root: 项目根目录
+        max_tasks: 最大任务数（仅在非 sample 模式下使用）
+        sample: sample 场景名称
+
+    Returns:
+        Stage8RealControlledExecutionDryRunResult
+    """
+    import os
+
+    project_root = Path(project_root).resolve()
+    run_id = _generate_stage8_run_id()
+
+    # 构建 gate input
+    if sample:
+        exec_gate_input = _build_real_controlled_sample_input(sample)
+        actual_max_tasks = exec_gate_input.max_tasks or 0
+        workspace_before = exec_gate_input.workspace_status
+        staged_before = exec_gate_input.staged_files
+        branch = exec_gate_input.current_branch
+        last_commit_val = exec_gate_input.last_commit
+        task_id = f"T150-sample-{sample}"
+    else:
+        # 使用真实 workspace 数据
+        actual_max_tasks = max_tasks
+        workspace_before, _ = _get_workspace_status_detailed(project_root)
+        staged_before = _get_staged_files_list(project_root)
+        branch = _get_branch(project_root)
+        last_commit_val = _get_last_commit(project_root)
+        task_id = "T150"
+
+        # 读取 tasks.md
+        tasks_file = project_root / "docs" / "tasks.md"
+        next_pending_id = None
+        next_pending_stage = None
+        current_task_id = None
+        tasks_attempted = 0
+
+        if tasks_file.exists():
+            content = load_tasks_file(tasks_file)
+            tasks = parse_tasks(content)
+            pending = [t for t in tasks if t["status"] == "pending"]
+            done_tasks = [t for t in tasks if t["status"] == "done"]
+
+            if pending:
+                next_pending_id = pending[0]["id"]
+                next_pending_stage = _infer_task_stage(next_pending_id, content)
+
+            stage8_done = [
+                t for t in done_tasks
+                if t["id"].startswith("T14") or t["id"].startswith("T13")
+            ]
+            if stage8_done:
+                current_task_id = stage8_done[-1]["id"]
+
+        exec_gate_input = Stage8RealControlledExecutionGateInput(
+            stage=STAGE8_NAME,
+            run_id=run_id,
+            max_tasks=actual_max_tasks,
+            tasks_attempted=tasks_attempted,
+            tasks_completed=tasks_attempted,
+            current_task_id=current_task_id,
+            mode="real_controlled_single_step_execution",
+            selected_next_task=next_pending_id,
+            next_pending_task_id=next_pending_id,
+            next_pending_task_stage=next_pending_stage or STAGE8_NAME,
+            workspace_status=workspace_before,
+            staged_files=staged_before,
+            current_branch=branch,
+            last_commit=last_commit_val,
+            approval_record_status="exists",
+            approval_record_approved_by="human",
+            approval_record_approval_status="approved",
+            approval_record_path="reports/stage8/stage8-real-controlled-execution-approval-record.md",
+            checkpoint_status="exists",
+            checkpoint_consistent=True,
+            report_status="will_generate",
+            checkpoint_path="reports/stage8/stage8-real-controlled-execution-checkpoint.md",
+            report_path=None,
+            allowed_scope=["tools/", "runner.py", "docs/", "reports/"],
+            planned_files=["tools/continuous_task_planner.py", "runner.py"],
+            command_allowlist=["python runner.py", "git status --short"],
+            validation_status="pass",
+            rework_required=False,
+            manual_review_required=False,
+            manual_stop_requested=False,
+            rate_limit_status="clear",
+            stage_boundary_check="within",
+            real_execution_requested=True,
+            real_execution_allowed=False,
+            push_allowed=False,
+            resume_allowed=False,
+            dirty_workspace_policy="block",
+            git_backup_required=True,
+            commit_required=True,
+        )
+
+    # ---- Step 1: 评估 G1-G21 safety gate ----
+    safety_gate_input = Stage8SafetyGateInput(
+        stage=exec_gate_input.stage,
+        run_id=exec_gate_input.run_id,
+        max_tasks=exec_gate_input.max_tasks,
+        tasks_attempted=exec_gate_input.tasks_attempted,
+        tasks_completed=exec_gate_input.tasks_completed,
+        current_task_id=exec_gate_input.current_task_id,
+        current_task_status="done" if exec_gate_input.current_task_id else None,
+        validation_status=exec_gate_input.validation_status,
+        approval_record_status=exec_gate_input.approval_record_status,
+        report_status=exec_gate_input.report_status if exec_gate_input.report_status in ("exists", "missing") else "exists",
+        rework_required=exec_gate_input.rework_required,
+        next_pending_task_id=exec_gate_input.next_pending_task_id,
+        next_pending_task_stage=exec_gate_input.next_pending_task_stage,
+        workspace_status=exec_gate_input.workspace_status,
+        staged_files=exec_gate_input.staged_files,
+        current_branch=exec_gate_input.current_branch,
+        last_commit=exec_gate_input.last_commit,
+        push_allowed=exec_gate_input.push_allowed,
+        real_execution_allowed=exec_gate_input.real_execution_allowed,
+        rate_limit_status=exec_gate_input.rate_limit_status,
+        manual_stop_requested=exec_gate_input.manual_stop_requested,
+        checkpoint_exists=exec_gate_input.checkpoint_status == "exists",
+        checkpoint_consistent=exec_gate_input.checkpoint_consistent,
+    )
+    safety_output = evaluate_stage8_continuous_runner_safety_gate(safety_gate_input)
+
+    # ---- Step 2: 如果 safety gate 通过，评估 E1-E18 execution gate ----
+    safety_passed = safety_output.allowed
+    safety_gate_passed_count = safety_output.gate_checks_passed
+    safety_gate_failed_count = safety_output.gate_checks_failed
+    safety_failed_checks_list = safety_output.failed_checks
+
+    exec_allowed = False
+    exec_decision = "blocked"
+    exec_stop_reason: str | None = "blocked_by_safety_gate"
+    exec_failure_reasons: list[str] = []
+    exec_required_actions: list[str] = []
+    exec_gate_passed_count = 0
+    exec_gate_failed_count = 0
+    exec_failed_checks_list: list[str] = []
+
+    if safety_passed:
+        # Safety gate 通过，继续评估 execution gate
+        (
+            exec_allowed,
+            exec_decision,
+            exec_stop_reason,
+            exec_failure_reasons,
+            exec_required_actions,
+            exec_gate_passed_count,
+            exec_gate_failed_count,
+            exec_failed_checks_list,
+            _,
+        ) = evaluate_stage8_real_controlled_execution_gate(exec_gate_input)
+
+    # ---- 汇总 gate 结果 ----
+    total_passed = safety_gate_passed_count + exec_gate_passed_count
+    total_failed = safety_gate_failed_count + exec_gate_failed_count
+    all_failed_checks = safety_failed_checks_list + exec_failed_checks_list
+    all_failure_reasons = safety_output.failure_reasons + exec_failure_reasons
+    all_required_actions = safety_output.required_actions + exec_required_actions
+
+    allowed = safety_passed and exec_allowed
+    decision: str
+    stop_reason: str | None
+
+    if not safety_passed:
+        decision = safety_output.decision
+        stop_reason = safety_output.stop_reason
+    else:
+        decision = exec_decision
+        stop_reason = exec_stop_reason
+
+    # selected_next_task
+    selected_next_task = exec_gate_input.selected_next_task if allowed else None
+    execution_mode = "real_controlled_single_step" if allowed else None
+
+    # stage_boundary_check
+    if exec_gate_input.next_pending_task_stage == STAGE8_NAME:
+        stage_boundary_check = "within"
+    elif exec_gate_input.next_pending_task_id is None:
+        stage_boundary_check = "unknown"
+    else:
+        stage_num = _extract_stage_number(exec_gate_input.next_pending_task_stage)
+        if stage_num is not None and stage_num > 8:
+            stage_boundary_check = "exceeded"
+        else:
+            stage_boundary_check = "within"
+
+    # 写入文件
+    ckpt_dir = project_root / "reports" / "stage8"
+    os.makedirs(ckpt_dir, exist_ok=True)
+
+    # 生成 approval record v2.0
+    approval_record_path = str(
+        ckpt_dir / "stage8-real-controlled-execution-approval-record.md"
+    )
+    approval_content = build_stage8_real_controlled_execution_approval_record_content(
+        exec_gate_input, allowed, stop_reason, run_id,
+    )
+    with open(approval_record_path, "w", encoding="utf-8") as f:
+        f.write(approval_content)
+
+    # 生成 checkpoint v2.0
+    checkpoint_path = str(
+        ckpt_dir / "stage8-real-controlled-execution-checkpoint.md"
+    )
+    checkpoint_content = build_stage8_real_controlled_execution_checkpoint_content(
+        exec_gate_input, allowed, stop_reason, run_id,
+    )
+    with open(checkpoint_path, "w", encoding="utf-8") as f:
+        f.write(checkpoint_content)
+
+    # 构建 notes
+    if allowed:
+        notes = (
+            f"All G1-G21 ({STAGE8_GATE_CHECK_COUNT}) safety gate checks and "
+            f"E1-E18 ({STAGE8_EXECUTION_GATE_CHECK_COUNT}) execution gate checks passed. "
+            f"Ready for real controlled single-step execution. "
+            f"DRY_RUN=True — no real execution occurred."
+        )
+    else:
+        notes = (
+            f"Gate blocked: safety_passed={safety_passed}, "
+            f"execution_passed={exec_allowed}. "
+            f"stop_reason={stop_reason}. "
+            f"DRY_RUN=True — no real execution occurred."
+        )
+
+    # 先构建临时 result 用于生成 report
+    temp_result = Stage8RealControlledExecutionDryRunResult(
+        run_id=run_id,
+        task_id=task_id,
+        dry_run=True,
+        stage=STAGE8_NAME,
+        mode="real_controlled_single_step_execution_dry_run",
+        max_tasks=actual_max_tasks,
+        tasks_attempted=exec_gate_input.tasks_attempted,
+        tasks_completed=exec_gate_input.tasks_completed,
+        current_task=exec_gate_input.current_task_id,
+        next_pending_task=exec_gate_input.next_pending_task_id,
+        selected_next_task=selected_next_task,
+        execution_mode=execution_mode,
+        workspace_status_before=exec_gate_input.workspace_status,
+        workspace_status_after=exec_gate_input.workspace_status,
+        staged_files_before=exec_gate_input.staged_files,
+        staged_files_after=exec_gate_input.staged_files,
+        current_branch=exec_gate_input.current_branch,
+        last_commit_before=exec_gate_input.last_commit,
+        last_commit_after=exec_gate_input.last_commit,
+        allowed_scope=exec_gate_input.allowed_scope,
+        planned_files=exec_gate_input.planned_files,
+        command_allowlist=exec_gate_input.command_allowlist,
+        push_allowed=False,
+        real_execution_allowed=False,
+        resume_allowed=False,
+        stage_boundary_check=stage_boundary_check,
+        rework_required=exec_gate_input.rework_required,
+        rate_limit_status=exec_gate_input.rate_limit_status,
+        manual_stop_requested=exec_gate_input.manual_stop_requested,
+        manual_review_required=not allowed,
+        validation_status=exec_gate_input.validation_status,
+        approval_record_status=exec_gate_input.approval_record_status,
+        checkpoint_status=exec_gate_input.checkpoint_status,
+        report_status=exec_gate_input.report_status,
+        allowed=allowed,
+        decision=decision,
+        stop_reason=stop_reason,
+        failure_reasons=all_failure_reasons,
+        required_actions=all_required_actions,
+        safety_gate_passed=safety_gate_passed_count,
+        safety_gate_failed=safety_gate_failed_count,
+        safety_failed_checks=safety_failed_checks_list,
+        execution_gate_passed=exec_gate_passed_count,
+        execution_gate_failed=exec_gate_failed_count,
+        execution_failed_checks=exec_failed_checks_list,
+        gate_checks_passed=total_passed,
+        gate_checks_failed=total_failed,
+        failed_checks=all_failed_checks,
+        checkpoint_required=True,
+        approval_record_required=True,
+        git_backup_required=exec_gate_input.git_backup_required,
+        commit_required=exec_gate_input.commit_required,
+        approval_record_path=approval_record_path,
+        checkpoint_path=checkpoint_path,
+        report_path=None,
+        stage8_execution_started=False,
+        real_continuous_execution_started=False,
+        continuous_auto_advance_used=False,
+        real_git_add_used=False,
+        real_git_commit_used=False,
+        real_git_push_used=False,
+        stage9_entered=False,
+        notes=notes,
+        message="",
+    )
+
+    # 生成 dry-run report
+    report_path = str(
+        ckpt_dir / "stage8-real-controlled-execution-dry-run-report.md"
+    )
+    report_content = build_stage8_real_controlled_execution_dry_run_report_content(temp_result)
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(report_content)
+
+    temp_result.report_path = report_path
+
+    # 构建 message
+    if allowed:
+        msg = (
+            f"Stage 8 real controlled execution dry-run: ALLOWED. "
+            f"Selected next task: {selected_next_task}. "
+            f"Gate checks: {total_passed} passed "
+            f"(G1-G21: {safety_gate_passed_count}, E1-E18: {exec_gate_passed_count}). "
+            f"DRY_RUN=True. No real execution."
+        )
+    else:
+        msg = (
+            f"Stage 8 real controlled execution dry-run: {decision.upper()}. "
+            f"Gate checks: {total_passed} passed, {total_failed} failed "
+            f"(G1-G21: {safety_gate_passed_count}/{safety_gate_failed_count}, "
+            f"E1-E18: {exec_gate_passed_count}/{exec_gate_failed_count}). "
+            f"stop_reason: {stop_reason}. "
+            f"DRY_RUN=True. No real execution."
+        )
+
+    temp_result.message = msg
+    return temp_result

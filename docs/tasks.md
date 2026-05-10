@@ -3745,9 +3745,10 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T150 实现 Stage 8 real controlled continuous execution dry-run
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 Stage 8 真实受控连续推进 dry-run。
+完成说明：Implemented Stage 8 real controlled continuous execution dry-run. Added real controlled execution gate dry-run model, approval record v2.0 generation, checkpoint v2.0 generation, dry-run report output, CLI dry-run entry, sample scenarios, and T150 dev report. Recovered after API 429 rate-limit interruption without restarting or overwriting completed partial work. No Stage 8 real continuous execution, real git add, commit, push, Stage 9 continuation, or business code modification occurred.
 
 ## T151 验证 Stage 8 real controlled continuous execution dry-run
 
@@ -3773,5 +3774,5 @@ No real patch applied, no command executed, no Claude Code called.
 角色：Archiver
 目标：归档 Stage 8 真实受控连续推进成果。
 
-<!-- NEXT_PENDING=T150 -->
+<!-- NEXT_PENDING=T151 -->
 <!-- NEXT_STAGE=Stage 8 -->
