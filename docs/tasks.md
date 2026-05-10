@@ -3759,9 +3759,10 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T152 实现 max_tasks=1 real controlled single-step execution trial
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 max_tasks=1 的真实受控单步推进试运行。
+完成说明：Implemented max_tasks=1 real controlled single-step execution trial framework. Added single-step trial result model, max_tasks=1 policy, execution gate reuse, trial approval record, trial checkpoint, trial report, CLI entry, sample scenarios, and T152 dev report. Recovered after API 429 rate-limit interruption without restarting or overwriting completed partial work. The trial does not execute the selected next task, does not modify business code, does not run real git add, commit, push, does not enter Stage 9, and preserves resume_allowed=false by default.
 
 ## T153 验证 max_tasks=1 real controlled single-step execution trial
 
@@ -3775,5 +3776,5 @@ No real patch applied, no command executed, no Claude Code called.
 角色：Archiver
 目标：归档 Stage 8 真实受控连续推进成果。
 
-<!-- NEXT_PENDING=T152 -->
+<!-- NEXT_PENDING=T153 -->
 <!-- NEXT_STAGE=Stage 8 -->

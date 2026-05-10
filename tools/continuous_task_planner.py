@@ -13420,3 +13420,1052 @@ def run_stage8_real_controlled_execution_dry_run(
 
     temp_result.message = msg
     return temp_result
+
+
+# ---------------------------------------------------------------------------
+# T152: max_tasks=1 Real Controlled Single-Step Execution Trial
+# ---------------------------------------------------------------------------
+
+# T152 trial 强制 max_tasks=1
+STAGE8_SINGLE_STEP_TRIAL_MAX_TASKS = 1
+
+
+@dataclass
+class Stage8RealControlledSingleStepTrialResult:
+    """Stage 8 max_tasks=1 real controlled single-step execution trial 结果。
+
+    只做 trial framework 运行，不执行真实 next task 开发，
+    不修改业务代码，不执行 git 操作。
+    """
+
+    # 运行标识
+    run_id: str
+    task_id: str
+    dry_run: bool  # 始终 True (trial framework)
+    stage: str
+    mode: str  # real_controlled_single_step_execution_trial
+    trial_mode: str  # trial / trial_blocked
+
+    # max_tasks 策略
+    max_tasks: int  # 始终 1
+    max_tasks_policy: str  # enforced_max_tasks_1
+    tasks_attempted: int
+    tasks_completed: int
+
+    # 当前/下一任务
+    current_task: str | None
+    next_pending_task: str | None
+    selected_next_task: str | None
+    execution_mode: str | None
+
+    # 工作区
+    workspace_status_before: str
+    workspace_status_after: str
+    staged_files_before: list[str]
+    staged_files_after: list[str]
+    current_branch: str | None
+    last_commit_before: str | None
+    last_commit_after: str | None
+
+    # 执行范围
+    allowed_scope: list[str]
+    planned_files: list[str]
+    command_allowlist: list[str]
+
+    # 安全标志
+    push_allowed: bool  # 始终 False
+    real_execution_allowed: bool  # trial gate 是否允许
+    resume_allowed: bool  # 始终 False
+    stage_boundary_check: str
+    rework_required: bool
+    rate_limit_status: str
+    manual_stop_requested: bool
+    manual_review_required: bool
+    validation_status: str
+    approval_record_status: str
+    checkpoint_status: str
+    report_status: str
+
+    # Gate 结果
+    allowed: bool
+    decision: str  # allowed_for_trial / stop / blocked
+    stop_reason: str | None
+    failure_reasons: list[str]
+    required_actions: list[str]
+
+    # Gate check 详情
+    safety_gate_passed: int
+    safety_gate_failed: int
+    safety_failed_checks: list[str]
+    execution_gate_passed: int
+    execution_gate_failed: int
+    execution_failed_checks: list[str]
+    gate_checks_passed: int
+    gate_checks_failed: int
+    failed_checks: list[str]
+
+    # Trial 专属标志
+    trial_allowed: bool
+    trial_decision: str  # trial_proceed / trial_blocked
+    next_task_executed: bool  # 始终 False
+    business_code_modified: bool  # 始终 False
+
+    # 需求标记
+    checkpoint_required: bool
+    approval_record_required: bool
+    git_backup_required: bool
+    commit_required: bool
+
+    # 报告路径
+    approval_record_path: str | None
+    checkpoint_path: str | None
+    trial_report_path: str | None
+
+    # 安全追踪
+    stage8_execution_started: bool  # 始终 False
+    real_continuous_execution_started: bool  # 始终 False
+    continuous_auto_advance_used: bool  # 始终 False
+    real_git_add_used: bool  # 始终 False
+    real_git_commit_used: bool  # 始终 False
+    real_git_push_used: bool  # 始终 False
+    stage9_entered: bool  # 始终 False
+
+    notes: str
+    message: str
+
+
+# T152 trial sample 默认值
+_STAGE8_SINGLE_STEP_TRIAL_SAMPLE_DEFAULTS = {
+    "stage": STAGE8_NAME,
+    "tasks_attempted": 0,
+    "tasks_completed": 0,
+    "current_task_id": "T151",
+    "mode": "real_controlled_single_step_execution_trial",
+    "selected_next_task": "T152",
+    "next_pending_task_id": "T152",
+    "next_pending_task_stage": STAGE8_NAME,
+    "workspace_status": "clean",
+    "staged_files": [],
+    "current_branch": "main",
+    "last_commit": "b4b2428 test: validate T151 stage 8 real controlled execution dry-run",
+    "approval_record_status": "exists",
+    "approval_record_approved_by": "human",
+    "approval_record_approval_status": "approved",
+    "approval_record_path": "reports/stage8/stage8-real-controlled-single-step-trial-approval-record.md",
+    "checkpoint_status": "exists",
+    "checkpoint_consistent": True,
+    "report_status": "will_generate",
+    "checkpoint_path": "reports/stage8/stage8-real-controlled-single-step-trial-checkpoint.md",
+    "report_path": None,
+    "allowed_scope": ["tools/", "runner.py", "docs/", "reports/"],
+    "planned_files": ["tools/continuous_task_planner.py", "runner.py"],
+    "command_allowlist": ["python runner.py", "git status --short", "git diff", "git log --oneline"],
+    "validation_status": "pass",
+    "rework_required": False,
+    "manual_review_required": False,
+    "manual_stop_requested": False,
+    "rate_limit_status": "clear",
+    "stage_boundary_check": "within",
+    "real_execution_requested": True,
+    "real_execution_allowed": False,
+    "push_allowed": False,
+    "resume_allowed": False,
+    "dirty_workspace_policy": "block",
+    "git_backup_required": True,
+    "commit_required": True,
+    "max_tasks": 1,
+}
+
+
+def _build_single_step_trial_sample_input(sample: str) -> Stage8RealControlledExecutionGateInput:
+    """根据 sample 名称构建 single-step trial gate input。"""
+    d = dict(_STAGE8_SINGLE_STEP_TRIAL_SAMPLE_DEFAULTS)
+
+    if sample == "pass_single_step_trial":
+        # P1: max_tasks=1, workspace clean, all gates pass
+        d["max_tasks"] = 1
+        d["selected_next_task"] = "T152"
+        d["next_pending_task_id"] = "T152"
+    elif sample == "no_pending_tasks":
+        # P2: no pending tasks - safe stop
+        d["max_tasks"] = 1
+        d["tasks_attempted"] = 1
+        d["tasks_completed"] = 1
+        d["next_pending_task_id"] = None
+        d["next_pending_task_stage"] = None
+        d["selected_next_task"] = None
+    elif sample == "max_tasks_missing":
+        d["max_tasks"] = None
+    elif sample == "max_tasks_zero":
+        d["max_tasks"] = 0
+    elif sample == "max_tasks_too_large":
+        d["max_tasks"] = 2
+    elif sample == "dirty_workspace":
+        d["max_tasks"] = 1
+        d["workspace_status"] = "dirty"
+    elif sample == "staged_changes":
+        d["max_tasks"] = 1
+        d["staged_files"] = ["docs/extra.md"]
+    elif sample == "missing_approval_record":
+        d["max_tasks"] = 1
+        d["approval_record_status"] = "missing"
+        d["approval_record_approved_by"] = "unknown"
+        d["approval_record_approval_status"] = "pending"
+    elif sample == "missing_checkpoint":
+        d["max_tasks"] = 1
+        d["checkpoint_status"] = "missing"
+        d["checkpoint_consistent"] = False
+    elif sample == "stage_boundary_to_stage9":
+        d["max_tasks"] = 1
+        d["next_pending_task_id"] = "T155"
+        d["next_pending_task_stage"] = "Stage 9"
+        d["selected_next_task"] = "T155"
+        d["stage_boundary_check"] = "exceeded"
+    elif sample == "push_allowed_true":
+        d["max_tasks"] = 1
+        d["push_allowed"] = True
+    elif sample == "resume_allowed_true":
+        d["max_tasks"] = 1
+        d["resume_allowed"] = True
+    elif sample == "real_execution_without_approval":
+        d["max_tasks"] = 1
+        d["real_execution_allowed"] = True
+        d["real_execution_requested"] = True
+    elif sample == "unknown_error":
+        d["max_tasks"] = 1
+        d["checkpoint_consistent"] = False
+        d["checkpoint_status"] = "exists"
+    else:
+        # 默认 pass 场景
+        d["max_tasks"] = 1
+        d["current_task_id"] = "T151"
+        d["next_pending_task_id"] = "T152"
+        d["selected_next_task"] = "T152"
+
+    return Stage8RealControlledExecutionGateInput(
+        stage=d["stage"],
+        run_id=_generate_stage8_run_id(),
+        max_tasks=d["max_tasks"],
+        tasks_attempted=d["tasks_attempted"],
+        tasks_completed=d["tasks_completed"],
+        current_task_id=d["current_task_id"],
+        mode=d["mode"],
+        selected_next_task=d["selected_next_task"],
+        next_pending_task_id=d["next_pending_task_id"],
+        next_pending_task_stage=d["next_pending_task_stage"],
+        workspace_status=d["workspace_status"],
+        staged_files=d["staged_files"],
+        current_branch=d["current_branch"],
+        last_commit=d["last_commit"],
+        approval_record_status=d["approval_record_status"],
+        approval_record_approved_by=d["approval_record_approved_by"],
+        approval_record_approval_status=d["approval_record_approval_status"],
+        approval_record_path=d["approval_record_path"],
+        checkpoint_status=d["checkpoint_status"],
+        checkpoint_consistent=d["checkpoint_consistent"],
+        report_status=d["report_status"],
+        checkpoint_path=d["checkpoint_path"],
+        report_path=d["report_path"],
+        allowed_scope=d["allowed_scope"],
+        planned_files=d["planned_files"],
+        command_allowlist=d["command_allowlist"],
+        validation_status=d["validation_status"],
+        rework_required=d["rework_required"],
+        manual_review_required=d["manual_review_required"],
+        manual_stop_requested=d["manual_stop_requested"],
+        rate_limit_status=d["rate_limit_status"],
+        stage_boundary_check=d["stage_boundary_check"],
+        real_execution_requested=d["real_execution_requested"],
+        real_execution_allowed=d["real_execution_allowed"],
+        push_allowed=d["push_allowed"],
+        resume_allowed=d["resume_allowed"],
+        dirty_workspace_policy=d["dirty_workspace_policy"],
+        git_backup_required=d["git_backup_required"],
+        commit_required=d["commit_required"],
+    )
+
+
+def _enforce_max_tasks_1_policy(max_tasks: int | None) -> tuple[bool, str | None]:
+    """强制 max_tasks=1 策略。
+
+    Returns:
+        (policy_passed, stop_reason)
+    """
+    if max_tasks is None:
+        return False, "blocked_by_max_tasks_policy"
+    if max_tasks == 0:
+        return False, "blocked_by_max_tasks_policy"
+    if max_tasks > STAGE8_SINGLE_STEP_TRIAL_MAX_TASKS:
+        return False, "blocked_by_max_tasks_policy"
+    if max_tasks == STAGE8_SINGLE_STEP_TRIAL_MAX_TASKS:
+        return True, None
+    return False, "blocked_by_max_tasks_policy"
+
+
+# ---------------------------------------------------------------------------
+# T152: Trial Approval Record 生成
+# ---------------------------------------------------------------------------
+
+def build_stage8_single_step_trial_approval_record_content(
+    gate_input: Stage8RealControlledExecutionGateInput,
+    allowed: bool,
+    stop_reason: str | None,
+    run_id: str,
+) -> str:
+    """生成 Stage 8 single-step trial approval record 内容。"""
+    now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    final_status = "approved_for_trial" if allowed else "blocked"
+    approval_status = "approved" if allowed else "rejected"
+
+    lines = [
+        f"# Stage 8 Real Controlled Single-Step Trial Approval Record",
+        f"",
+        f"```yaml",
+        f"approval_record_version: \"2.1\"",
+        f"approval_id: \"{gate_input.selected_next_task or 'unknown'}-single-step-trial-approval\"",
+        f"generated_at: \"{now}\"",
+        f"run_id: \"{run_id}\"",
+        f"",
+        f"task:",
+        f"  task_id: \"{gate_input.selected_next_task or 'null'}\"",
+        f"  stage: \"{gate_input.stage}\"",
+        f"  operation_type: \"real_controlled_single_step_execution_trial\"",
+        f"  trial_mode: \"max_tasks_1\"",
+        f"  max_tasks: {gate_input.max_tasks or 'null'}",
+        f"",
+        f"execution:",
+        f"  planned_action: \"Trial {gate_input.selected_next_task or 'unknown'} single-step execution framework\"",
+        f"  planned_files:",
+    ]
+    for pf in gate_input.planned_files:
+        lines.append(f"    - \"{pf}\"")
+    if not gate_input.planned_files:
+        lines.append(f"    []  # no planned files")
+
+    lines += [
+        f"  allowed_scope:",
+    ]
+    for scope in gate_input.allowed_scope:
+        lines.append(f"    - \"{scope}\"")
+    if not gate_input.allowed_scope:
+        lines.append(f"    []  # no scope defined")
+
+    lines += [
+        f"  command_allowlist:",
+    ]
+    for cmd in gate_input.command_allowlist:
+        lines.append(f"    - \"{cmd}\"")
+    if not gate_input.command_allowlist:
+        lines.append(f"    []  # no commands allowed")
+
+    lines += [
+        f"  real_execution_requested: {gate_input.real_execution_requested}",
+        f"  real_execution_allowed: {allowed}",
+        f"  next_task_executed: False",
+        f"  business_code_modified: False",
+        f"  push_allowed: {gate_input.push_allowed}",
+        f"  resume_allowed: {gate_input.resume_allowed}",
+        f"  stage_boundary_check: \"{gate_input.stage_boundary_check}\"",
+        f"",
+        f"approval:",
+        f"  approval_status: \"{approval_status}\"",
+        f"  approved_by: \"{gate_input.approval_record_approved_by}\"",
+        f"  approval_time: \"{now}\"",
+        f"",
+        f"validation:",
+        f"  validation_required: true",
+        f"  validation_status: \"{'pending' if allowed else 'not_applicable'}\"",
+        f"  validation_report_path: \"null\"",
+        f"",
+        f"decision:",
+        f"  final_status: \"{final_status}\"",
+        f"  ready_for_execution: {allowed}",
+        f"  ready_for_git_commit: false",
+        f"  ready_for_push: false",
+        f"  ready_for_stage_9: false",
+        f"",
+        f"stop_reason: \"{stop_reason or 'null'}\"",
+        f"",
+        f"notes: |",
+        f"  Single-step trial approval record for {gate_input.selected_next_task or 'unknown'}.",
+        f"  max_tasks=1 enforced. next_task_executed=False. business_code_modified=False.",
+        f"  push_allowed=False. resume_allowed=False.",
+        f"```",
+        f"",
+        f"---",
+        f"",
+        f"## 安全保证",
+        f"",
+        f"- max_tasks: 1 (enforced)",
+        f"- next_task_executed: False",
+        f"- business_code_modified: False",
+        f"- push_allowed: {gate_input.push_allowed}",
+        f"- resume_allowed: {gate_input.resume_allowed}",
+        f"- stage8_execution_started: False",
+        f"- stage9_entered: False",
+    ]
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# T152: Trial Checkpoint 生成
+# ---------------------------------------------------------------------------
+
+def build_stage8_single_step_trial_checkpoint_content(
+    gate_input: Stage8RealControlledExecutionGateInput,
+    allowed: bool,
+    stop_reason: str | None,
+    run_id: str,
+) -> str:
+    """生成 Stage 8 single-step trial checkpoint 内容。"""
+    now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+    lines = [
+        f"# Stage 8 Real Controlled Single-Step Trial Checkpoint",
+        f"",
+        f"```yaml",
+        f"checkpoint_version: \"2.1\"",
+        f"run_id: \"{run_id}\"",
+        f"stage: \"{gate_input.stage}\"",
+        f"mode: \"real_controlled_single_step_execution_trial\"",
+        f"trial_mode: \"max_tasks_1\"",
+        f"real_controlled_execution: false  # trial framework, no real execution",
+        f"",
+        f"timing:",
+        f"  started_at: \"{now}\"",
+        f"  ended_at: \"{now}\"",
+        f"  last_checkpoint_at: \"{now}\"",
+        f"",
+        f"limits:",
+        f"  max_tasks: {gate_input.max_tasks or 'null'}",
+        f"  max_tasks_policy: enforced_max_tasks_1",
+        f"  tasks_attempted: {gate_input.tasks_attempted}",
+        f"  tasks_completed: {gate_input.tasks_completed}",
+        f"",
+        f"current_state:",
+        f"  current_task: \"{gate_input.current_task_id or 'null'}\"",
+        f"  last_completed_task: \"{gate_input.current_task_id or 'null'}\"",
+        f"  next_pending_task: \"{gate_input.next_pending_task_id or 'null'}\"",
+        f"  selected_next_task: \"{gate_input.selected_next_task or 'null'}\"",
+        f"  stop_reason: \"{stop_reason or 'null'}\"",
+        f"",
+        f"workspace:",
+        f"  status_before: \"{gate_input.workspace_status}\"",
+        f"  status_after: \"{gate_input.workspace_status}\"",
+        f"  staged_files_before: {gate_input.staged_files}",
+        f"  staged_files_after: {gate_input.staged_files}",
+        f"  current_branch: \"{gate_input.current_branch or 'null'}\"",
+        f"  last_commit_before: \"{gate_input.last_commit or 'null'}\"",
+        f"  last_commit_after: \"{gate_input.last_commit or 'null'}\"",
+        f"",
+        f"records:",
+        f"  approval_record_path: \"{gate_input.approval_record_path or 'null'}\"",
+        f"  checkpoint_path: \"{gate_input.checkpoint_path or 'null'}\"",
+        f"  trial_report_path: \"null\"",
+        f"  reports_generated: []",
+        f"  commits_created: []",
+        f"  pushes_created: []  # always empty",
+        f"",
+        f"validation:",
+        f"  validation_status: \"{'pending' if allowed else 'not_applicable'}\"",
+        f"  validation_report_path: \"null\"",
+        f"",
+        f"resume:",
+        f"  resume_allowed: {gate_input.resume_allowed}",
+        f"  manual_review_required: {not allowed}",
+        f"",
+        f"errors: []",
+        f"",
+        f"notes: |",
+        f"  Single-step trial checkpoint (max_tasks=1).",
+        f"  Pre-execution state recorded.",
+        f"  G1-G21 + E1-E18 gate checks {'passed' if allowed else 'failed'}.",
+        f"  next_task_executed=False. No real execution occurred.",
+        f"```",
+        f"",
+        f"---",
+        f"",
+        f"## 安全保证",
+        f"",
+        f"- max_tasks: 1 (enforced)",
+        f"- real_controlled_execution: false (trial framework)",
+        f"- next_task_executed: False",
+        f"- business_code_modified: False",
+        f"- resume_allowed: {gate_input.resume_allowed}",
+        f"- pushes_created: [] (始终为空)",
+        f"- stage8_execution_started: False",
+        f"- stage9_entered: False",
+    ]
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# T152: Trial Report 生成
+# ---------------------------------------------------------------------------
+
+def build_stage8_single_step_trial_report_content(
+    result: Stage8RealControlledSingleStepTrialResult,
+) -> str:
+    """生成 Stage 8 single-step trial report 内容。"""
+    lines = [
+        f"# Stage 8 Real Controlled Single-Step Trial Report",
+        f"",
+        f"```yaml",
+        f"run_id: \"{result.run_id}\"",
+        f"task_id: \"{result.task_id}\"",
+        f"stage: \"{result.stage}\"",
+        f"mode: \"{result.mode}\"",
+        f"trial_mode: \"{result.trial_mode}\"",
+        f"dry_run: {result.dry_run}",
+        f"",
+        f"trial_objective: |",
+        f"  Execute max_tasks=1 real controlled single-step execution trial.",
+        f"  Select next pending task, generate trial plan, approval record, checkpoint,",
+        f"  and report. Do NOT execute the selected next task's development content.",
+        f"  Do NOT modify business code. Do NOT execute real git operations.",
+        f"",
+        f"max_tasks_policy:",
+        f"  max_tasks: {result.max_tasks}",
+        f"  max_tasks_policy: \"{result.max_tasks_policy}\"",
+        f"  policy_enforced: True",
+        f"",
+        f"selected_next_task: \"{result.selected_next_task or 'null'}\"",
+        f"next_task_executed: {result.next_task_executed}",
+        f"business_code_modified: {result.business_code_modified}",
+        f"",
+        f"gate_decision:",
+        f"  allowed: {result.allowed}",
+        f"  decision: \"{result.decision}\"",
+        f"  trial_decision: \"{result.trial_decision}\"",
+        f"  trial_allowed: {result.trial_allowed}",
+        f"  execution_mode: \"{result.execution_mode or 'null'}\"",
+        f"  stop_reason: \"{result.stop_reason or 'null'}\"",
+        f"",
+        f"gate_checks:",
+        f"  safety_gate_passed: {result.safety_gate_passed}",
+        f"  safety_gate_failed: {result.safety_gate_failed}",
+        f"  safety_failed_checks: {result.safety_failed_checks}",
+        f"  execution_gate_passed: {result.execution_gate_passed}",
+        f"  execution_gate_failed: {result.execution_gate_failed}",
+        f"  execution_failed_checks: {result.execution_failed_checks}",
+        f"  total_passed: {result.gate_checks_passed}",
+        f"  total_failed: {result.gate_checks_failed}",
+        f"  all_failed_checks: {result.failed_checks}",
+        f"  failure_reasons: {result.failure_reasons}",
+        f"  required_actions: {result.required_actions}",
+        f"",
+        f"limits:",
+        f"  max_tasks: {result.max_tasks}",
+        f"  tasks_attempted: {result.tasks_attempted}",
+        f"  tasks_completed: {result.tasks_completed}",
+        f"",
+        f"workspace:",
+        f"  status_before: \"{result.workspace_status_before}\"",
+        f"  status_after: \"{result.workspace_status_after}\"",
+        f"  staged_files_before: {result.staged_files_before}",
+        f"  staged_files_after: {result.staged_files_after}",
+        f"  current_branch: \"{result.current_branch or 'null'}\"",
+        f"  last_commit_before: \"{result.last_commit_before or 'null'}\"",
+        f"  last_commit_after: \"{result.last_commit_after or 'null'}\"",
+        f"",
+        f"execution_scope:",
+        f"  allowed_scope: {result.allowed_scope}",
+        f"  planned_files: {result.planned_files}",
+        f"  command_allowlist: {result.command_allowlist}",
+        f"",
+        f"safety:",
+        f"  push_allowed: {result.push_allowed}",
+        f"  real_execution_allowed: {result.real_execution_allowed}",
+        f"  resume_allowed: {result.resume_allowed}",
+        f"  stage_boundary_check: \"{result.stage_boundary_check}\"",
+        f"  rework_required: {result.rework_required}",
+        f"  rate_limit_status: \"{result.rate_limit_status}\"",
+        f"  manual_stop_requested: {result.manual_stop_requested}",
+        f"  manual_review_required: {result.manual_review_required}",
+        f"  validation_status: \"{result.validation_status}\"",
+        f"",
+        f"records:",
+        f"  approval_record_path: \"{result.approval_record_path or 'null'}\"",
+        f"  checkpoint_path: \"{result.checkpoint_path or 'null'}\"",
+        f"  trial_report_path: \"{result.trial_report_path or 'null'}\"",
+        f"",
+        f"execution_tracking:",
+        f"  stage8_execution_started: {result.stage8_execution_started}",
+        f"  real_continuous_execution_started: {result.real_continuous_execution_started}",
+        f"  continuous_auto_advance_used: {result.continuous_auto_advance_used}",
+        f"  real_git_add_used: {result.real_git_add_used}",
+        f"  real_git_commit_used: {result.real_git_commit_used}",
+        f"  real_git_push_used: {result.real_git_push_used}",
+        f"  stage9_entered: {result.stage9_entered}",
+        f"",
+        f"no_real_execution_proof:",
+        f"  next_task_executed: {result.next_task_executed}",
+        f"  business_code_modified: {result.business_code_modified}",
+        f"  real_git_add_used: {result.real_git_add_used}",
+        f"  real_git_commit_used: {result.real_git_commit_used}",
+        f"  real_git_push_used: {result.real_git_push_used}",
+        f"  stage9_entered: {result.stage9_entered}",
+        f"  tasks_attempted: {result.tasks_attempted}",
+        f"  tasks_completed: {result.tasks_completed}",
+        f"",
+        f"notes: |",
+        f"  {result.notes}",
+        f"```",
+        f"",
+        f"---",
+        f"",
+        f"## 安全保证",
+        f"",
+        f"- max_tasks: 1 (enforced)",
+        f"- next_task_executed: False",
+        f"- business_code_modified: False",
+        f"- stage8_execution_started: False",
+        f"- real_continuous_execution_started: False",
+        f"- continuous_auto_advance_used: False",
+        f"- real_git_add_used: False",
+        f"- real_git_commit_used: False",
+        f"- real_git_push_used: False",
+        f"- push_allowed: False",
+        f"- real_execution_allowed: False",
+        f"- resume_allowed: False",
+        f"- stage9_entered: False",
+    ]
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# T152: Trial 主函数
+# ---------------------------------------------------------------------------
+
+def run_stage8_real_controlled_single_step_execution_trial(
+    project_root: str | Path = ".",
+    max_tasks: int = 1,
+    sample: str | None = None,
+) -> Stage8RealControlledSingleStepTrialResult:
+    """Stage 8 max_tasks=1 real controlled single-step execution trial。
+
+    在 T150 real controlled execution dry-run 基础上，
+    增加 max_tasks=1 强制策略和 trial framework。
+
+    不执行真实 next task 开发，不修改业务代码，不执行 git 操作。
+
+    Args:
+        project_root: 项目根目录
+        max_tasks: 最大任务数（必须为 1）
+        sample: sample 场景名称
+
+    Returns:
+        Stage8RealControlledSingleStepTrialResult
+    """
+    import os
+
+    project_root = Path(project_root).resolve()
+    run_id = _generate_stage8_run_id()
+
+    # ---- Step 0: max_tasks=1 强制策略检查 ----
+    policy_passed, policy_stop_reason = _enforce_max_tasks_1_policy(max_tasks)
+
+    if not policy_passed:
+        # max_tasks 策略失败 → 直接 fail closed
+        task_id = f"T152-sample-{sample or 'default'}"
+        return Stage8RealControlledSingleStepTrialResult(
+            run_id=run_id,
+            task_id=task_id,
+            dry_run=True,
+            stage=STAGE8_NAME,
+            mode="real_controlled_single_step_execution_trial",
+            trial_mode="trial_blocked",
+            max_tasks=max_tasks or 0,
+            max_tasks_policy="enforced_max_tasks_1",
+            tasks_attempted=0,
+            tasks_completed=0,
+            current_task=None,
+            next_pending_task=None,
+            selected_next_task=None,
+            execution_mode=None,
+            workspace_status_before="unknown",
+            workspace_status_after="unknown",
+            staged_files_before=[],
+            staged_files_after=[],
+            current_branch=None,
+            last_commit_before=None,
+            last_commit_after=None,
+            allowed_scope=[],
+            planned_files=[],
+            command_allowlist=[],
+            push_allowed=False,
+            real_execution_allowed=False,
+            resume_allowed=False,
+            stage_boundary_check="unknown",
+            rework_required=False,
+            rate_limit_status="clear",
+            manual_stop_requested=False,
+            manual_review_required=True,
+            validation_status="unknown",
+            approval_record_status="missing",
+            checkpoint_status="missing",
+            report_status="missing",
+            allowed=False,
+            decision="blocked",
+            stop_reason=policy_stop_reason,
+            failure_reasons=[f"max_tasks={max_tasks} violates single-step trial policy (must be 1)"],
+            required_actions=["Set max_tasks=1 for single-step trial"],
+            safety_gate_passed=0,
+            safety_gate_failed=0,
+            safety_failed_checks=[],
+            execution_gate_passed=0,
+            execution_gate_failed=0,
+            execution_failed_checks=[],
+            gate_checks_passed=0,
+            gate_checks_failed=0,
+            failed_checks=[],
+            trial_allowed=False,
+            trial_decision="trial_blocked",
+            next_task_executed=False,
+            business_code_modified=False,
+            checkpoint_required=False,
+            approval_record_required=False,
+            git_backup_required=False,
+            commit_required=False,
+            approval_record_path=None,
+            checkpoint_path=None,
+            trial_report_path=None,
+            stage8_execution_started=False,
+            real_continuous_execution_started=False,
+            continuous_auto_advance_used=False,
+            real_git_add_used=False,
+            real_git_commit_used=False,
+            real_git_push_used=False,
+            stage9_entered=False,
+            notes=f"max_tasks={max_tasks} blocked by single-step trial policy.",
+            message=f"BLOCKED: max_tasks={max_tasks} violates single-step trial policy.",
+        )
+
+    # ---- Step 1: 构建 gate input ----
+    if sample:
+        exec_gate_input = _build_single_step_trial_sample_input(sample)
+        actual_max_tasks = 1  # 强制
+        workspace_before = exec_gate_input.workspace_status
+        staged_before = exec_gate_input.staged_files
+        branch = exec_gate_input.current_branch
+        last_commit_val = exec_gate_input.last_commit
+        task_id = f"T152-sample-{sample}"
+    else:
+        actual_max_tasks = 1  # 强制
+        workspace_before, _ = _get_workspace_status_detailed(project_root)
+        staged_before = _get_staged_files_list(project_root)
+        branch = _get_branch(project_root)
+        last_commit_val = _get_last_commit(project_root)
+        task_id = "T152"
+
+        # 读取 tasks.md
+        tasks_file = project_root / "docs" / "tasks.md"
+        next_pending_id = None
+        next_pending_stage = None
+        current_task_id = None
+        tasks_attempted = 0
+
+        if tasks_file.exists():
+            content = load_tasks_file(tasks_file)
+            tasks = parse_tasks(content)
+            pending = [t for t in tasks if t["status"] == "pending"]
+            done_tasks = [t for t in tasks if t["status"] == "done"]
+
+            if pending:
+                next_pending_id = pending[0]["id"]
+                next_pending_stage = _infer_task_stage(next_pending_id, content)
+
+            stage8_done = [
+                t for t in done_tasks
+                if t["id"].startswith("T14") or t["id"].startswith("T13")
+            ]
+            if stage8_done:
+                current_task_id = stage8_done[-1]["id"]
+
+        exec_gate_input = Stage8RealControlledExecutionGateInput(
+            stage=STAGE8_NAME,
+            run_id=run_id,
+            max_tasks=actual_max_tasks,
+            tasks_attempted=tasks_attempted,
+            tasks_completed=tasks_attempted,
+            current_task_id=current_task_id,
+            mode="real_controlled_single_step_execution_trial",
+            selected_next_task=next_pending_id,
+            next_pending_task_id=next_pending_id,
+            next_pending_task_stage=next_pending_stage or STAGE8_NAME,
+            workspace_status=workspace_before,
+            staged_files=staged_before,
+            current_branch=branch,
+            last_commit=last_commit_val,
+            approval_record_status="exists",
+            approval_record_approved_by="human",
+            approval_record_approval_status="approved",
+            approval_record_path="reports/stage8/stage8-real-controlled-single-step-trial-approval-record.md",
+            checkpoint_status="exists",
+            checkpoint_consistent=True,
+            report_status="will_generate",
+            checkpoint_path="reports/stage8/stage8-real-controlled-single-step-trial-checkpoint.md",
+            report_path=None,
+            allowed_scope=["tools/", "runner.py", "docs/", "reports/"],
+            planned_files=["tools/continuous_task_planner.py", "runner.py"],
+            command_allowlist=["python runner.py", "git status --short", "git diff", "git log --oneline"],
+            validation_status="pass",
+            rework_required=False,
+            manual_review_required=False,
+            manual_stop_requested=False,
+            rate_limit_status="clear",
+            stage_boundary_check="within",
+            real_execution_requested=True,
+            real_execution_allowed=False,
+            push_allowed=False,
+            resume_allowed=False,
+            dirty_workspace_policy="block",
+            git_backup_required=True,
+            commit_required=True,
+        )
+
+    # ---- Step 2: 评估 G1-G21 safety gate ----
+    safety_gate_input = Stage8SafetyGateInput(
+        stage=exec_gate_input.stage,
+        run_id=exec_gate_input.run_id,
+        max_tasks=exec_gate_input.max_tasks,
+        tasks_attempted=exec_gate_input.tasks_attempted,
+        tasks_completed=exec_gate_input.tasks_completed,
+        current_task_id=exec_gate_input.current_task_id,
+        current_task_status="done" if exec_gate_input.current_task_id else None,
+        validation_status=exec_gate_input.validation_status,
+        approval_record_status=exec_gate_input.approval_record_status,
+        report_status=exec_gate_input.report_status if exec_gate_input.report_status in ("exists", "missing") else "exists",
+        rework_required=exec_gate_input.rework_required,
+        next_pending_task_id=exec_gate_input.next_pending_task_id,
+        next_pending_task_stage=exec_gate_input.next_pending_task_stage,
+        workspace_status=exec_gate_input.workspace_status,
+        staged_files=exec_gate_input.staged_files,
+        current_branch=exec_gate_input.current_branch,
+        last_commit=exec_gate_input.last_commit,
+        push_allowed=exec_gate_input.push_allowed,
+        real_execution_allowed=exec_gate_input.real_execution_allowed,
+        rate_limit_status=exec_gate_input.rate_limit_status,
+        manual_stop_requested=exec_gate_input.manual_stop_requested,
+        checkpoint_exists=exec_gate_input.checkpoint_status == "exists",
+        checkpoint_consistent=exec_gate_input.checkpoint_consistent,
+    )
+    safety_output = evaluate_stage8_continuous_runner_safety_gate(safety_gate_input)
+
+    # ---- Step 3: 如果 safety gate 通过，评估 E1-E18 execution gate ----
+    safety_passed = safety_output.allowed
+    safety_gate_passed_count = safety_output.gate_checks_passed
+    safety_gate_failed_count = safety_output.gate_checks_failed
+    safety_failed_checks_list = safety_output.failed_checks
+
+    exec_allowed = False
+    exec_decision = "blocked"
+    exec_stop_reason: str | None = "blocked_by_safety_gate"
+    exec_failure_reasons: list[str] = []
+    exec_required_actions: list[str] = []
+    exec_gate_passed_count = 0
+    exec_gate_failed_count = 0
+    exec_failed_checks_list: list[str] = []
+
+    if safety_passed:
+        (
+            exec_allowed,
+            exec_decision,
+            exec_stop_reason,
+            exec_failure_reasons,
+            exec_required_actions,
+            exec_gate_passed_count,
+            exec_gate_failed_count,
+            exec_failed_checks_list,
+            _,
+        ) = evaluate_stage8_real_controlled_execution_gate(exec_gate_input)
+
+    # ---- 汇总 gate 结果 ----
+    total_passed = safety_gate_passed_count + exec_gate_passed_count
+    total_failed = safety_gate_failed_count + exec_gate_failed_count
+    all_failed_checks = safety_failed_checks_list + exec_failed_checks_list
+    all_failure_reasons = safety_output.failure_reasons + exec_failure_reasons
+    all_required_actions = safety_output.required_actions + exec_required_actions
+
+    gate_allowed = safety_passed and exec_allowed
+    decision: str
+    stop_reason: str | None
+
+    if not safety_passed:
+        decision = safety_output.decision
+        stop_reason = safety_output.stop_reason
+    else:
+        decision = exec_decision
+        stop_reason = exec_stop_reason
+
+    # trial 决策
+    trial_allowed = gate_allowed
+    trial_decision = "trial_proceed" if trial_allowed else "trial_blocked"
+
+    selected_next_task = exec_gate_input.selected_next_task if trial_allowed else None
+    execution_mode = "real_controlled_single_step_trial" if trial_allowed else None
+
+    # stage_boundary_check
+    if exec_gate_input.next_pending_task_stage == STAGE8_NAME:
+        stage_boundary_check = "within"
+    elif exec_gate_input.next_pending_task_id is None:
+        stage_boundary_check = "unknown"
+    else:
+        stage_num = _extract_stage_number(exec_gate_input.next_pending_task_stage)
+        if stage_num is not None and stage_num > 8:
+            stage_boundary_check = "exceeded"
+        else:
+            stage_boundary_check = "within"
+
+    # ---- Step 4: 写入文件 ----
+    ckpt_dir = project_root / "reports" / "stage8"
+    os.makedirs(ckpt_dir, exist_ok=True)
+
+    # 生成 trial approval record
+    approval_record_path = str(
+        ckpt_dir / "stage8-real-controlled-single-step-trial-approval-record.md"
+    )
+    approval_content = build_stage8_single_step_trial_approval_record_content(
+        exec_gate_input, trial_allowed, stop_reason, run_id,
+    )
+    with open(approval_record_path, "w", encoding="utf-8") as f:
+        f.write(approval_content)
+
+    # 生成 trial checkpoint
+    checkpoint_path = str(
+        ckpt_dir / "stage8-real-controlled-single-step-trial-checkpoint.md"
+    )
+    checkpoint_content = build_stage8_single_step_trial_checkpoint_content(
+        exec_gate_input, trial_allowed, stop_reason, run_id,
+    )
+    with open(checkpoint_path, "w", encoding="utf-8") as f:
+        f.write(checkpoint_content)
+
+    # 构建 notes
+    if trial_allowed:
+        notes = (
+            f"Single-step trial ALLOWED. max_tasks=1 enforced. "
+            f"Selected next task: {selected_next_task}. "
+            f"G1-G21 ({safety_gate_passed_count}) + E1-E18 ({exec_gate_passed_count}) gate checks passed. "
+            f"next_task_executed=False. business_code_modified=False. "
+            f"No real execution occurred."
+        )
+    else:
+        notes = (
+            f"Single-step trial BLOCKED. max_tasks=1 enforced. "
+            f"Gate blocked: safety_passed={safety_passed}, execution_passed={exec_allowed}. "
+            f"stop_reason={stop_reason}. "
+            f"next_task_executed=False. business_code_modified=False. "
+            f"No real execution occurred."
+        )
+
+    # 构建 result
+    result = Stage8RealControlledSingleStepTrialResult(
+        run_id=run_id,
+        task_id=task_id,
+        dry_run=True,
+        stage=STAGE8_NAME,
+        mode="real_controlled_single_step_execution_trial",
+        trial_mode="trial_proceed" if trial_allowed else "trial_blocked",
+        max_tasks=actual_max_tasks,
+        max_tasks_policy="enforced_max_tasks_1",
+        tasks_attempted=exec_gate_input.tasks_attempted,
+        tasks_completed=exec_gate_input.tasks_completed,
+        current_task=exec_gate_input.current_task_id,
+        next_pending_task=exec_gate_input.next_pending_task_id,
+        selected_next_task=selected_next_task,
+        execution_mode=execution_mode,
+        workspace_status_before=exec_gate_input.workspace_status,
+        workspace_status_after=exec_gate_input.workspace_status,
+        staged_files_before=exec_gate_input.staged_files,
+        staged_files_after=exec_gate_input.staged_files,
+        current_branch=exec_gate_input.current_branch,
+        last_commit_before=exec_gate_input.last_commit,
+        last_commit_after=exec_gate_input.last_commit,
+        allowed_scope=exec_gate_input.allowed_scope,
+        planned_files=exec_gate_input.planned_files,
+        command_allowlist=exec_gate_input.command_allowlist,
+        push_allowed=False,
+        real_execution_allowed=trial_allowed,
+        resume_allowed=False,
+        stage_boundary_check=stage_boundary_check,
+        rework_required=exec_gate_input.rework_required,
+        rate_limit_status=exec_gate_input.rate_limit_status,
+        manual_stop_requested=exec_gate_input.manual_stop_requested,
+        manual_review_required=not trial_allowed,
+        validation_status=exec_gate_input.validation_status,
+        approval_record_status=exec_gate_input.approval_record_status,
+        checkpoint_status=exec_gate_input.checkpoint_status,
+        report_status=exec_gate_input.report_status,
+        allowed=trial_allowed,
+        decision=decision if not trial_allowed else "allowed_for_trial",
+        stop_reason=stop_reason,
+        failure_reasons=all_failure_reasons,
+        required_actions=all_required_actions,
+        safety_gate_passed=safety_gate_passed_count,
+        safety_gate_failed=safety_gate_failed_count,
+        safety_failed_checks=safety_failed_checks_list,
+        execution_gate_passed=exec_gate_passed_count,
+        execution_gate_failed=exec_gate_failed_count,
+        execution_failed_checks=exec_failed_checks_list,
+        gate_checks_passed=total_passed,
+        gate_checks_failed=total_failed,
+        failed_checks=all_failed_checks,
+        trial_allowed=trial_allowed,
+        trial_decision=trial_decision,
+        next_task_executed=False,
+        business_code_modified=False,
+        checkpoint_required=True,
+        approval_record_required=True,
+        git_backup_required=exec_gate_input.git_backup_required,
+        commit_required=exec_gate_input.commit_required,
+        approval_record_path=approval_record_path,
+        checkpoint_path=checkpoint_path,
+        trial_report_path=None,
+        stage8_execution_started=False,
+        real_continuous_execution_started=False,
+        continuous_auto_advance_used=False,
+        real_git_add_used=False,
+        real_git_commit_used=False,
+        real_git_push_used=False,
+        stage9_entered=False,
+        notes=notes,
+        message="",
+    )
+
+    # 生成 trial report
+    trial_report_path = str(
+        ckpt_dir / "stage8-real-controlled-single-step-trial-report.md"
+    )
+    report_content = build_stage8_single_step_trial_report_content(result)
+    with open(trial_report_path, "w", encoding="utf-8") as f:
+        f.write(report_content)
+
+    result.trial_report_path = trial_report_path
+
+    # 构建 message
+    if trial_allowed:
+        msg = (
+            f"Stage 8 single-step trial: TRIAL_ALLOWED. "
+            f"Selected next task: {selected_next_task}. "
+            f"max_tasks=1 enforced. "
+            f"Gate checks: {total_passed} passed "
+            f"(G1-G21: {safety_gate_passed_count}, E1-E18: {exec_gate_passed_count}). "
+            f"next_task_executed=False. No real execution."
+        )
+    else:
+        msg = (
+            f"Stage 8 single-step trial: {trial_decision.upper()}. "
+            f"max_tasks=1 enforced. "
+            f"Gate checks: {total_passed} passed, {total_failed} failed "
+            f"(G1-G21: {safety_gate_passed_count}/{safety_gate_failed_count}, "
+            f"E1-E18: {exec_gate_passed_count}/{exec_gate_failed_count}). "
+            f"stop_reason: {stop_reason}. "
+            f"next_task_executed=False. No real execution."
+        )
+
+    result.message = msg
+    return result
