@@ -2,15 +2,15 @@
 
 ```yaml
 checkpoint_version: "2.0"
-run_id: "stage8-run-20260510-154426-732aac"
+run_id: "stage8-run-20260510-154944-1b1449"
 stage: "Stage 8"
 mode: "real_controlled_single_step_execution"
 real_controlled_execution: false  # dry-run, no real execution
 
 timing:
-  started_at: "2026-05-10T15:44:26"
-  ended_at: "2026-05-10T15:44:26"
-  last_checkpoint_at: "2026-05-10T15:44:26"
+  started_at: "2026-05-10T15:49:44"
+  ended_at: "2026-05-10T15:49:44"
+  last_checkpoint_at: "2026-05-10T15:49:44"
 
 limits:
   max_tasks: 1
@@ -22,7 +22,7 @@ current_state:
   last_completed_task: "T149"
   next_pending_task: "T150"
   selected_next_task: "T150"
-  stop_reason: "null"
+  stop_reason: "blocked_by_unknown_error"
 
 workspace:
   status_before: "clean"
@@ -42,19 +42,19 @@ records:
   pushes_created: []  # always empty
 
 validation:
-  validation_status: "pending"
+  validation_status: "not_applicable"
   validation_report_path: "null"
 
 resume:
   resume_allowed: False
-  manual_review_required: False
+  manual_review_required: True
 
 errors: []
 
 notes: |
   Real controlled execution checkpoint v2.0 (dry-run).
   Pre-execution state recorded.
-  G1-G21 + E1-E18 gate checks passed.
+  G1-G21 + E1-E18 gate checks failed.
   No real execution occurred.
 ```
 

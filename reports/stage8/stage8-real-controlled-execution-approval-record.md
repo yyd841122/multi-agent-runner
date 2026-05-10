@@ -3,8 +3,8 @@
 ```yaml
 approval_record_version: "2.0"
 approval_id: "T150-real-controlled-execution-approval"
-generated_at: "2026-05-10T15:44:26"
-run_id: "stage8-run-20260510-154426-732aac"
+generated_at: "2026-05-10T15:49:44"
+run_id: "stage8-run-20260510-154944-1b1449"
 
 task:
   task_id: "T150"
@@ -28,19 +28,19 @@ execution:
     - "git diff"
     - "git log --oneline"
   real_execution_requested: True
-  real_execution_allowed: True
+  real_execution_allowed: False
   push_allowed: False
   resume_allowed: False
   stage_boundary_check: "within"
 
 approval:
-  approval_status: "approved"
+  approval_status: "rejected"
   approved_by: "human"
-  approval_time: "2026-05-10T15:44:26"
+  approval_time: "2026-05-10T15:49:44"
 
 validation:
   validation_required: true
-  validation_status: "pending"
+  validation_status: "not_applicable"
   validation_report_path: "null"
 
 git:
@@ -49,13 +49,13 @@ git:
   commit_message_template: "feat: add T150 stage 8 real controlled execution"
 
 decision:
-  final_status: "approved_for_execution"
-  ready_for_execution: True
+  final_status: "blocked"
+  ready_for_execution: False
   ready_for_git_commit: false
   ready_for_push: false
   ready_for_stage_9: false
 
-stop_reason: "null"
+stop_reason: "blocked_by_unknown_error"
 
 notes: |
   Approval record v2.0 for T150.

@@ -1,31 +1,31 @@
 # Stage 8 Real Controlled Execution Dry-Run Report
 
 ```yaml
-run_id: "stage8-run-20260510-154426-732aac"
-task_id: "T150-sample-pass_ready_for_single_step_trial"
+run_id: "stage8-run-20260510-154944-1b1449"
+task_id: "T150-sample-unknown_error"
 stage: "Stage 8"
 mode: "real_controlled_single_step_execution_dry_run"
 dry_run: True
 
 gate_decision:
-  allowed: True
-  decision: "allowed_for_real_controlled_single_step"
-  execution_mode: "real_controlled_single_step"
-  selected_next_task: "T150"
-  stop_reason: "null"
+  allowed: False
+  decision: "blocked"
+  execution_mode: "null"
+  selected_next_task: "null"
+  stop_reason: "blocked_by_unknown_error"
 
 gate_checks:
-  safety_gate_passed: 21
-  safety_gate_failed: 0
-  safety_failed_checks: []
-  execution_gate_passed: 18
+  safety_gate_passed: 20
+  safety_gate_failed: 1
+  safety_failed_checks: ['G21: checkpoint not consistent']
+  execution_gate_passed: 0
   execution_gate_failed: 0
   execution_failed_checks: []
-  total_passed: 39
-  total_failed: 0
-  all_failed_checks: []
-  failure_reasons: []
-  required_actions: []
+  total_passed: 20
+  total_failed: 1
+  all_failed_checks: ['G21: checkpoint not consistent']
+  failure_reasons: ['Checkpoint is not consistent']
+  required_actions: ['Check error logs', 'Manual intervention needed']
 
 limits:
   max_tasks: 1
@@ -54,7 +54,7 @@ safety:
   rework_required: False
   rate_limit_status: "clear"
   manual_stop_requested: False
-  manual_review_required: False
+  manual_review_required: True
   validation_status: "pass"
 
 records:
@@ -72,7 +72,7 @@ execution_tracking:
   stage9_entered: False
 
 notes: |
-  All G1-G21 (21) safety gate checks and E1-E18 (18) execution gate checks passed. Ready for real controlled single-step execution. DRY_RUN=True — no real execution occurred.
+  Gate blocked: safety_passed=False, execution_passed=False. stop_reason=blocked_by_unknown_error. DRY_RUN=True — no real execution occurred.
 ```
 
 ---

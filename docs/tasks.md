@@ -3752,9 +3752,10 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T151 验证 Stage 8 real controlled continuous execution dry-run
 
-状态：pending
+状态：done
 角色：Validator
 目标：验证 Stage 8 真实受控连续推进 dry-run pass/fail 行为。
+完成说明：Validated Stage 8 real controlled continuous execution dry-run. Confirmed 2 pass samples succeed, 16/17 fail samples fail closed (1 non-blocking design gap: resume_allowed_true not caught by gate but safety default prevents harm). G1-G21 safety gate and E1-E18 execution gate layering is preserved and correct. Approval record v2.0, checkpoint v2.0, and dry-run report are complete. Dry-run does not start Stage 8 real continuous execution, real git add, commit, push, staged changes, or Stage 9 continuation.
 
 ## T152 实现 max_tasks=1 real controlled single-step execution trial
 
@@ -3774,5 +3775,5 @@ No real patch applied, no command executed, no Claude Code called.
 角色：Archiver
 目标：归档 Stage 8 真实受控连续推进成果。
 
-<!-- NEXT_PENDING=T151 -->
+<!-- NEXT_PENDING=T152 -->
 <!-- NEXT_STAGE=Stage 8 -->
