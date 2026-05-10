@@ -3717,9 +3717,10 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T147 验证 real single-step continuous advance dry-run pass/fail 场景
 
-状态：pending
+状态：done
 角色：Validator
 目标：验证 real single-step continuous advance dry-run pass/fail 行为。
+完成说明：Validated real single-step continuous advance dry-run. Confirmed 2 pass scenarios select next pending task without execution, 2 safe stop scenarios stop cleanly, 10 fail scenarios fail closed, checkpoint and advance report fields are complete, T145 minor gaps are fixed (last_commit, manual_review_required), and dry-run does not start Stage 8 real continuous execution, real git add, commit, push, staged changes, or Stage 9 continuation. All 21 gate checks (G1-G21) correctly reused. Validation report: reports/checks/T147-stage8-single-step-advance-dry-run-validation.md
 
 ## T148 归档 Stage 8 planning / dry-run 成果
 
@@ -3727,5 +3728,5 @@ No real patch applied, no command executed, no Claude Code called.
 角色：Archiver
 目标：归档 Stage 8 planning / dry-run 全部成果。
 
-<!-- NEXT_PENDING=T147 -->
+<!-- NEXT_PENDING=T148 -->
 <!-- NEXT_STAGE=Stage 8 -->

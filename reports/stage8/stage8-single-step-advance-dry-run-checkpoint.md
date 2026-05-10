@@ -2,13 +2,13 @@
 
 ```yaml
 checkpoint_version: "1.0"
-run_id: "stage8-run-20260510-110624-5782b9"
+run_id: "stage8-run-20260510-111607-46c859"
 stage: "Stage 8"
 mode: "single_step_continuous_advance_dry_run"
 
 timing:
-  started_at: "2026-05-10T11:06:24"
-  ended_at: "2026-05-10T11:06:24"
+  started_at: "2026-05-10T11:16:07"
+  ended_at: "2026-05-10T11:16:07"
 
 limits:
   max_tasks: 1
@@ -16,10 +16,10 @@ limits:
   tasks_completed: 0
 
 current_state:
-  current_task: "T145"
-  last_completed_task: "T145"
-  next_pending_task: "T146"
-  stop_reason: "null"
+  current_task: "null"
+  last_completed_task: "null"
+  next_pending_task: "null"
+  stop_reason: "blocked_by_unknown_error"
 
 workspace:
   status_before: "clean"
@@ -37,13 +37,14 @@ records:
 
 resume:
   resume_allowed: false
-  manual_review_required: false
+  manual_review_required: true
 
 errors:
-  []  # no errors
+  - "Checkpoint does not exist"
+  - "Checkpoint is not consistent"
 
 notes: |
-  Single-step advance dry-run for sample=pass_select_next_task. Gate checks: 21/21 passed.
+  Single-step advance dry-run for sample=unknown_error. Gate checks: 19/21 passed.
 ```
 
 ---
