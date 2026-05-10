@@ -3702,9 +3702,11 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T145 验证 Stage 8 continuous runner dry-run pass/fail 场景
 
-状态：pending
+状态：done
 角色：Validator
 目标：验证 Stage 8 continuous runner dry-run pass/fail 行为。
+
+完成说明：Validated Stage 8 continuous runner dry-run pass/fail scenarios. Confirmed 3 pass samples succeed, 15 fail samples fail closed with expected stop_reason values, 21/21 gate checks covered, 14/14 stop_reason types triggered, checkpoint fields mostly complete (minor gaps: last_commit and manual_review_required missing from output), and dry-run does not start Stage 8 execution, continuous auto-advance, real git add, commit, push, or Stage 9 continuation.
 
 ## T146 实现 real single-step continuous advance dry-run
 
@@ -3724,5 +3726,5 @@ No real patch applied, no command executed, no Claude Code called.
 角色：Archiver
 目标：归档 Stage 8 planning / dry-run 全部成果。
 
-<!-- NEXT_PENDING=T145 -->
+<!-- NEXT_PENDING=T146 -->
 <!-- NEXT_STAGE=Stage 8 -->
