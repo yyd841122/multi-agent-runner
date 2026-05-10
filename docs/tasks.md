@@ -3729,5 +3729,48 @@ No real patch applied, no command executed, no Claude Code called.
 目标：归档 Stage 8 planning / dry-run 全部成果。
 完成说明：Archived Stage 8 planning and dry-run chain. Confirmed Stage 8 planning, T143 safety gate design, T144 continuous runner dry-run planner, T145 pass/fail validation, T146 single-step advance dry-run, and T147 single-step validation are complete. Verified no Stage 8 real continuous execution, real git add, commit, push, staged changes, or Stage 9 continuation occurred. Next safe step is Stage 8 real controlled continuous execution planning. Archive: docs/archive/stage8-planning-and-dry-run-archive.md
 
-<!-- NEXT_PENDING=Stage 8 real controlled continuous execution planning -->
+## Stage 8 real controlled continuous execution planning
+
+状态：done
+角色：Planner
+目标：设计 Stage 8 真实受控连续推进方案。
+完成说明：Designed Stage 8 real controlled continuous execution plan. Defined real controlled execution boundaries, layered rollout (Layer 1-4), safety gate requirements (G1-G21 + E1-E16), checkpoint schema v2.0, approval record schema v2.0, 17 stop reasons, Git strategy, 12 risks with mitigations, and next task chain (T149-T154). No Stage 8 real continuous execution, real git add, commit, push, Stage 9 continuation, or implementation occurred.
+
+## T149 设计 Stage 8 real controlled continuous execution gate
+
+状态：pending
+角色：Designer
+目标：设计 Stage 8 真实受控连续推进 execution gate。
+
+## T150 实现 Stage 8 real controlled continuous execution dry-run
+
+状态：pending
+角色：Developer
+目标：实现 Stage 8 真实受控连续推进 dry-run。
+
+## T151 验证 Stage 8 real controlled continuous execution dry-run
+
+状态：pending
+角色：Validator
+目标：验证 Stage 8 真实受控连续推进 dry-run pass/fail 行为。
+
+## T152 实现 max_tasks=1 real controlled single-step execution trial
+
+状态：pending
+角色：Developer
+目标：实现 max_tasks=1 的真实受控单步推进试运行。
+
+## T153 验证 max_tasks=1 real controlled single-step execution trial
+
+状态：pending
+角色：Validator
+目标：验证 max_tasks=1 真实受控单步推进试运行。
+
+## T154 归档 Stage 8 real controlled continuous execution 成果
+
+状态：pending
+角色：Archiver
+目标：归档 Stage 8 真实受控连续推进成果。
+
+<!-- NEXT_PENDING=T149 -->
 <!-- NEXT_STAGE=Stage 8 -->
