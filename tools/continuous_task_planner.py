@@ -10752,6 +10752,7 @@ class Stage8ContinuousRunnerCheckpoint:
     reports_generated: list[str]
     commits_created: list[str]
     pushes_created: list[str]  # 始终为空
+    last_commit: str | None
     resume_allowed: bool  # 始终 False
     manual_review_required: bool
     errors: list[str]
@@ -11139,9 +11140,11 @@ def build_stage8_continuous_runner_checkpoint_content(
 
     lines += [
         f"  pushes_created: []  # always empty",
+        f"  last_commit: \"{checkpoint.last_commit or 'null'}\"",
         f"",
         f"resume:",
         f"  resume_allowed: {str(checkpoint.resume_allowed).lower()}",
+        f"  manual_review_required: {str(checkpoint.manual_review_required).lower()}",
         f"",
         f"errors:",
     ]
@@ -11504,6 +11507,7 @@ def run_stage8_continuous_runner_dry_run_planner(
         reports_generated=[],
         commits_created=[],
         pushes_created=[],
+        last_commit=gate_input.last_commit,
         resume_allowed=False,
         manual_review_required=gate_output.manual_review_required,
         errors=gate_output.failure_reasons,
@@ -11603,3 +11607,515 @@ def run_stage8_continuous_runner_dry_run_planner(
         stage9_entered=False,
         message=msg,
     )
+
+
+# ---------------------------------------------------------------------------
+# T146: Single-Step Continuous Advance Dry-Run
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Stage8SingleStepAdvanceDryRunResult:
+    """Stage 8 single-step continuous advance dry-run 结果。
+
+    模拟单步推进：current completed state -> next pending task selection -> dry-run advance plan。
+    不执行真实任务。
+    """
+
+    # 运行标识
+    run_id: str
+    task_id: str
+    dry_run: bool  # 始终 True
+    stage: str
+    mode: str  # single_step_continuous_advance_dry_run
+
+    # 计划
+    max_tasks: int
+    tasks_attempted: int
+    tasks_completed: int
+
+    # 当前/下一任务
+    current_task: str | None
+    next_pending_task: str | None
+    selected_next_task: str | None
+
+    # 工作区
+    workspace_status_before: str
+    workspace_status_after: str
+    staged_files: list[str]
+    current_branch: str | None
+    last_commit: str | None
+
+    # 安全标志
+    push_allowed: bool  # 始终 False
+    real_execution_allowed: bool  # 始终 False
+    resume_allowed: bool  # 始终 False
+    stage_boundary_check: str
+    rework_required: bool
+    rate_limit_status: str
+    manual_stop_requested: bool
+    manual_review_required: bool
+
+    # Gate 结果
+    advance_allowed: bool
+    advance_decision: str  # advance / stop / blocked
+    stop_reason: str | None
+    safety_gate_result: dict | None
+    failure_reasons: list[str]
+    required_actions: list[str]
+
+    # Gate check 详情
+    gate_checks_passed: int
+    gate_checks_failed: int
+    failed_checks: list[str]
+
+    # 报告路径
+    checkpoint_path: str | None
+    advance_report_path: str | None
+
+    # 安全追踪
+    stage8_execution_started: bool  # 始终 False
+    continuous_auto_advance_used: bool  # 始终 False
+    real_git_add_used: bool  # 始终 False
+    real_git_commit_used: bool  # 始终 False
+    real_git_push_used: bool  # 始终 False
+    stage9_entered: bool  # 始终 False
+
+    notes: str
+    message: str
+
+
+# T146 single-step advance sample 默认值
+_STAGE8_SINGLE_STEP_SAMPLE_DEFAULTS = {
+    "stage": STAGE8_NAME,
+    "tasks_attempted": 0,
+    "tasks_completed": 0,
+    "current_task_id": None,
+    "current_task_status": "done",
+    "validation_status": "pass",
+    "approval_record_status": "exists",
+    "report_status": "exists",
+    "rework_required": False,
+    "next_pending_task_id": "T146",
+    "next_pending_task_stage": STAGE8_NAME,
+    "workspace_status": "clean",
+    "staged_files": [],
+    "current_branch": "main",
+    "last_commit": "abc1234 docs: sample commit",
+    "push_allowed": False,
+    "real_execution_allowed": False,
+    "rate_limit_status": "clear",
+    "manual_stop_requested": False,
+    "checkpoint_exists": True,
+    "checkpoint_consistent": True,
+}
+
+
+def _build_single_step_sample_gate_input(sample: str) -> Stage8SafetyGateInput:
+    """根据 sample 名称构建 single-step advance gate input。"""
+    d = dict(_STAGE8_SINGLE_STEP_SAMPLE_DEFAULTS)
+
+    if sample == "pass_select_next_task":
+        d["max_tasks"] = 1
+        d["current_task_id"] = "T145"
+        d["next_pending_task_id"] = "T146"
+    elif sample == "pass_no_execution":
+        d["max_tasks"] = 2
+        d["tasks_attempted"] = 0
+        d["tasks_completed"] = 0
+        d["current_task_id"] = "T145"
+        d["next_pending_task_id"] = "T146"
+    elif sample == "no_pending_tasks":
+        d["max_tasks"] = 1
+        d["next_pending_task_id"] = None
+        d["next_pending_task_stage"] = None
+    elif sample == "max_tasks_reached":
+        d["max_tasks"] = 1
+        d["tasks_attempted"] = 1
+        d["tasks_completed"] = 1
+        d["current_task_id"] = "T145"
+    elif sample == "dirty_workspace":
+        d["max_tasks"] = 1
+        d["workspace_status"] = "dirty"
+    elif sample == "staged_changes":
+        d["max_tasks"] = 1
+        d["staged_files"] = ["docs/extra.md"]
+    elif sample == "missing_approval_record":
+        d["max_tasks"] = 1
+        d["approval_record_status"] = "missing"
+    elif sample == "missing_report":
+        d["max_tasks"] = 1
+        d["report_status"] = "missing"
+    elif sample == "stage_boundary_to_stage9":
+        d["max_tasks"] = 1
+        d["next_pending_task_id"] = "T149"
+        d["next_pending_task_stage"] = "Stage 9"
+    elif sample == "push_allowed_true":
+        d["max_tasks"] = 1
+        d["push_allowed"] = True
+    elif sample == "real_execution_allowed_true":
+        d["max_tasks"] = 1
+        d["real_execution_allowed"] = True
+    elif sample == "manual_stop_requested":
+        d["max_tasks"] = 1
+        d["manual_stop_requested"] = True
+    elif sample == "rate_limit_blocked":
+        d["max_tasks"] = 1
+        d["rate_limit_status"] = "triggered"
+    elif sample == "unknown_error":
+        d["max_tasks"] = 1
+        d["checkpoint_exists"] = False
+        d["checkpoint_consistent"] = False
+    else:
+        # 默认 pass 场景
+        d["max_tasks"] = 1
+        d["current_task_id"] = "T145"
+        d["next_pending_task_id"] = "T146"
+
+    return Stage8SafetyGateInput(
+        stage=d["stage"],
+        run_id=_generate_stage8_run_id(),
+        max_tasks=d["max_tasks"],
+        tasks_attempted=d["tasks_attempted"],
+        tasks_completed=d["tasks_completed"],
+        current_task_id=d["current_task_id"],
+        current_task_status=d["current_task_status"],
+        validation_status=d["validation_status"],
+        approval_record_status=d["approval_record_status"],
+        report_status=d["report_status"],
+        rework_required=d["rework_required"],
+        next_pending_task_id=d["next_pending_task_id"],
+        next_pending_task_stage=d["next_pending_task_stage"],
+        workspace_status=d["workspace_status"],
+        staged_files=d["staged_files"],
+        current_branch=d["current_branch"],
+        last_commit=d["last_commit"],
+        push_allowed=d["push_allowed"],
+        real_execution_allowed=d["real_execution_allowed"],
+        rate_limit_status=d["rate_limit_status"],
+        manual_stop_requested=d["manual_stop_requested"],
+        checkpoint_exists=d["checkpoint_exists"],
+        checkpoint_consistent=d["checkpoint_consistent"],
+    )
+
+
+def build_stage8_single_step_advance_report_content(
+    result: Stage8SingleStepAdvanceDryRunResult,
+) -> str:
+    """生成 Stage 8 single-step advance dry-run report Markdown 内容。"""
+    lines = [
+        f"# Stage 8 Single-Step Continuous Advance Dry-Run Report",
+        f"",
+        f"```yaml",
+        f"run_id: \"{result.run_id}\"",
+        f"task_id: \"{result.task_id}\"",
+        f"stage: \"{result.stage}\"",
+        f"mode: \"{result.mode}\"",
+        f"dry_run: {result.dry_run}",
+        f"",
+        f"advance_plan:",
+        f"  current_task: \"{result.current_task or 'null'}\"",
+        f"  next_pending_task: \"{result.next_pending_task or 'null'}\"",
+        f"  selected_next_task: \"{result.selected_next_task or 'null'}\"",
+        f"  advance_allowed: {result.advance_allowed}",
+        f"  advance_decision: \"{result.advance_decision}\"",
+        f"  stop_reason: \"{result.stop_reason or 'null'}\"",
+        f"",
+        f"limits:",
+        f"  max_tasks: {result.max_tasks}",
+        f"  tasks_attempted: {result.tasks_attempted}",
+        f"  tasks_completed: {result.tasks_completed}",
+        f"",
+        f"workspace:",
+        f"  status_before: \"{result.workspace_status_before}\"",
+        f"  status_after: \"{result.workspace_status_after}\"",
+        f"  staged_files: {result.staged_files}",
+        f"  current_branch: \"{result.current_branch or 'null'}\"",
+        f"  last_commit: \"{result.last_commit or 'null'}\"",
+        f"",
+        f"safety:",
+        f"  push_allowed: {result.push_allowed}",
+        f"  real_execution_allowed: {result.real_execution_allowed}",
+        f"  resume_allowed: {result.resume_allowed}",
+        f"  stage_boundary_check: \"{result.stage_boundary_check}\"",
+        f"  rework_required: {result.rework_required}",
+        f"  rate_limit_status: \"{result.rate_limit_status}\"",
+        f"  manual_stop_requested: {result.manual_stop_requested}",
+        f"  manual_review_required: {result.manual_review_required}",
+        f"",
+        f"gate:",
+        f"  checks_passed: {result.gate_checks_passed}",
+        f"  checks_failed: {result.gate_checks_failed}",
+        f"  failed_checks: {result.failed_checks}",
+        f"  failure_reasons: {result.failure_reasons}",
+        f"  required_actions: {result.required_actions}",
+        f"",
+        f"output:",
+        f"  checkpoint_path: \"{result.checkpoint_path or 'null'}\"",
+        f"  advance_report_path: \"{result.advance_report_path or 'null'}\"",
+        f"",
+        f"execution_tracking:",
+        f"  stage8_execution_started: {result.stage8_execution_started}",
+        f"  continuous_auto_advance_used: {result.continuous_auto_advance_used}",
+        f"  real_git_add_used: {result.real_git_add_used}",
+        f"  real_git_commit_used: {result.real_git_commit_used}",
+        f"  real_git_push_used: {result.real_git_push_used}",
+        f"  stage9_entered: {result.stage9_entered}",
+        f"",
+        f"notes: |",
+        f"  {result.notes}",
+        f"```",
+        f"",
+        f"---",
+        f"",
+        f"## 安全保证",
+        f"",
+        f"- dry_run: True",
+        f"- stage8_execution_started: False",
+        f"- continuous_auto_advance_used: False",
+        f"- real_git_add_used: False",
+        f"- real_git_commit_used: False",
+        f"- real_git_push_used: False",
+        f"- push_allowed: False",
+        f"- real_execution_allowed: False",
+        f"- resume_allowed: False",
+        f"- stage9_entered: False",
+    ]
+
+    return "\n".join(lines)
+
+
+def run_stage8_single_step_continuous_advance_dry_run(
+    project_root: str | Path = ".",
+    max_tasks: int = STAGE8_MAX_TASKS_DEFAULT,
+    sample: str | None = None,
+) -> Stage8SingleStepAdvanceDryRunResult:
+    """Stage 8 single-step continuous advance dry-run。
+
+    模拟从 current completed state 到 next pending task selection 的单步推进 dry-run。
+    复用 T144 safety gate 评估逻辑。
+
+    不执行任何真实任务，不修改业务代码，不执行 git 操作。
+
+    Args:
+        project_root: 项目根目录
+        max_tasks: 最大任务数（仅在非 sample 模式下使用）
+        sample: sample 场景名称
+
+    Returns:
+        Stage8SingleStepAdvanceDryRunResult
+    """
+    import os
+
+    project_root = Path(project_root).resolve()
+    run_id = _generate_stage8_run_id()
+
+    # 构建 gate input
+    if sample:
+        gate_input = _build_single_step_sample_gate_input(sample)
+        actual_max_tasks = gate_input.max_tasks or 0
+        workspace_before = gate_input.workspace_status
+        staged = gate_input.staged_files
+        branch = gate_input.current_branch
+        last_commit_val = gate_input.last_commit
+        task_id = f"T146-sample-{sample}"
+    else:
+        actual_max_tasks = max_tasks
+        workspace_before, _ = _get_workspace_status_detailed(project_root)
+        staged = _get_staged_files_list(project_root)
+        branch = _get_branch(project_root)
+        last_commit_val = _get_last_commit(project_root)
+        task_id = "T146"
+
+        # 读取 tasks.md 获取当前任务状态
+        tasks_file = project_root / "docs" / "tasks.md"
+        next_pending_id = None
+        next_pending_stage = None
+        current_task_id = None
+        tasks_attempted = 0
+
+        if tasks_file.exists():
+            content = load_tasks_file(tasks_file)
+            tasks = parse_tasks(content)
+            pending = [t for t in tasks if t["status"] == "pending"]
+            done_tasks = [t for t in tasks if t["status"] == "done"]
+
+            if pending:
+                next_pending_id = pending[0]["id"]
+                next_pending_stage = _infer_task_stage(next_pending_id, content)
+
+            stage8_done = [
+                t for t in done_tasks
+                if t["id"].startswith("T14") or t["id"].startswith("T13")
+            ]
+            if stage8_done:
+                current_task_id = stage8_done[-1]["id"]
+
+        gate_input = Stage8SafetyGateInput(
+            stage=STAGE8_NAME,
+            run_id=run_id,
+            max_tasks=actual_max_tasks,
+            tasks_attempted=tasks_attempted,
+            tasks_completed=tasks_attempted,
+            current_task_id=current_task_id,
+            current_task_status="done" if current_task_id else None,
+            validation_status="pass",
+            approval_record_status="exists" if current_task_id else "unknown",
+            report_status="exists" if current_task_id else "unknown",
+            rework_required=False,
+            next_pending_task_id=next_pending_id,
+            next_pending_task_stage=next_pending_stage or STAGE8_NAME,
+            workspace_status=workspace_before,
+            staged_files=staged,
+            current_branch=branch,
+            last_commit=last_commit_val,
+            push_allowed=False,
+            real_execution_allowed=False,
+            rate_limit_status="clear",
+            manual_stop_requested=False,
+            checkpoint_exists=True,
+            checkpoint_consistent=True,
+        )
+
+    # 评估 gate（复用 T144 safety gate）
+    gate_output = evaluate_stage8_continuous_runner_safety_gate(gate_input)
+
+    # 确定 selected_next_task
+    selected_next_task = None
+    if gate_output.allowed and gate_input.next_pending_task_id:
+        selected_next_task = gate_input.next_pending_task_id
+
+    # stage_boundary_check
+    if gate_input.next_pending_task_stage == STAGE8_NAME:
+        stage_boundary_check = "within"
+    elif gate_input.next_pending_task_stage is None:
+        stage_boundary_check = "unknown"
+    else:
+        stage_num = _extract_stage_number(gate_input.next_pending_task_stage)
+        if stage_num is not None and stage_num > 8:
+            stage_boundary_check = "exceeded"
+        else:
+            stage_boundary_check = "within"
+
+    # 写入 checkpoint
+    now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    checkpoint = Stage8ContinuousRunnerCheckpoint(
+        checkpoint_version="1.0",
+        run_id=run_id,
+        stage=STAGE8_NAME,
+        mode="single_step_continuous_advance_dry_run",
+        started_at=now,
+        ended_at=now,
+        max_tasks=actual_max_tasks,
+        tasks_attempted=gate_input.tasks_attempted,
+        tasks_completed=gate_input.tasks_completed,
+        current_task=gate_input.current_task_id,
+        last_completed_task=gate_input.current_task_id,
+        next_pending_task=selected_next_task,
+        stop_reason=gate_output.stop_reason,
+        workspace_status_before=gate_input.workspace_status,
+        workspace_status_after=gate_input.workspace_status,
+        approval_records=[],
+        reports_generated=[],
+        commits_created=[],
+        pushes_created=[],
+        last_commit=gate_input.last_commit,
+        resume_allowed=False,
+        manual_review_required=gate_output.manual_review_required,
+        errors=gate_output.failure_reasons,
+        notes=f"Single-step advance dry-run for sample={sample or 'live'}. "
+              f"Gate checks: {gate_output.gate_checks_passed}/{STAGE8_GATE_CHECK_COUNT} passed.",
+    )
+
+    ckpt_dir = project_root / "reports" / "stage8"
+    os.makedirs(ckpt_dir, exist_ok=True)
+    checkpoint_path = str(ckpt_dir / "stage8-single-step-advance-dry-run-checkpoint.md")
+    checkpoint_content = build_stage8_continuous_runner_checkpoint_content(checkpoint)
+    with open(checkpoint_path, "w", encoding="utf-8") as f:
+        f.write(checkpoint_content)
+
+    # 生成 advance report
+    safety_gate_dict = {
+        "allowed": gate_output.allowed,
+        "decision": gate_output.decision,
+        "stop_reason": gate_output.stop_reason,
+        "gate_checks_passed": gate_output.gate_checks_passed,
+        "gate_checks_failed": gate_output.gate_checks_failed,
+        "failed_checks": gate_output.failed_checks,
+    }
+
+    # 先构建临时 result 用于生成 report
+    temp_result = Stage8SingleStepAdvanceDryRunResult(
+        run_id=run_id,
+        task_id=task_id,
+        dry_run=True,
+        stage=STAGE8_NAME,
+        mode="single_step_continuous_advance_dry_run",
+        max_tasks=actual_max_tasks,
+        tasks_attempted=gate_input.tasks_attempted,
+        tasks_completed=gate_input.tasks_completed,
+        current_task=gate_input.current_task_id,
+        next_pending_task=gate_input.next_pending_task_id,
+        selected_next_task=selected_next_task,
+        workspace_status_before=gate_input.workspace_status,
+        workspace_status_after=gate_input.workspace_status,
+        staged_files=gate_input.staged_files,
+        current_branch=gate_input.current_branch,
+        last_commit=gate_input.last_commit,
+        push_allowed=False,
+        real_execution_allowed=False,
+        resume_allowed=False,
+        stage_boundary_check=stage_boundary_check,
+        rework_required=gate_input.rework_required,
+        rate_limit_status=gate_input.rate_limit_status,
+        manual_stop_requested=gate_input.manual_stop_requested,
+        manual_review_required=gate_output.manual_review_required,
+        advance_allowed=gate_output.allowed,
+        advance_decision=gate_output.decision,
+        stop_reason=gate_output.stop_reason,
+        safety_gate_result=safety_gate_dict,
+        failure_reasons=gate_output.failure_reasons,
+        required_actions=gate_output.required_actions,
+        gate_checks_passed=gate_output.gate_checks_passed,
+        gate_checks_failed=gate_output.gate_checks_failed,
+        failed_checks=gate_output.failed_checks,
+        checkpoint_path=checkpoint_path,
+        advance_report_path=None,
+        stage8_execution_started=False,
+        continuous_auto_advance_used=False,
+        real_git_add_used=False,
+        real_git_commit_used=False,
+        real_git_push_used=False,
+        stage9_entered=False,
+        notes=gate_output.notes,
+        message="",
+    )
+
+    advance_report_path = str(
+        ckpt_dir / "stage8-single-step-continuous-advance-dry-run-report.md"
+    )
+    report_content = build_stage8_single_step_advance_report_content(temp_result)
+    with open(advance_report_path, "w", encoding="utf-8") as f:
+        f.write(report_content)
+
+    # 更新 advance_report_path
+    temp_result.advance_report_path = advance_report_path
+
+    # 构建 message
+    if gate_output.allowed:
+        msg = (
+            f"Stage 8 single-step advance dry-run: ADVANCE. "
+            f"Selected next task: {selected_next_task}. "
+            f"Gate checks: {gate_output.gate_checks_passed}/{STAGE8_GATE_CHECK_COUNT} passed. "
+            f"STAGE8_EXECUTION_STARTED=false. No real execution."
+        )
+    else:
+        msg = (
+            f"Stage 8 single-step advance dry-run: {gate_output.decision.upper()}. "
+            f"Gate checks: {gate_output.gate_checks_passed}/{STAGE8_GATE_CHECK_COUNT} passed, "
+            f"{gate_output.gate_checks_failed} failed. "
+            f"stop_reason: {gate_output.stop_reason}. "
+            f"STAGE8_EXECUTION_STARTED=false. No real execution."
+        )
+
+    temp_result.message = msg
+    return temp_result
