@@ -3738,9 +3738,10 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T149 设计 Stage 8 real controlled continuous execution gate
 
-状态：pending
+状态：done
 角色：Designer
 目标：设计 Stage 8 真实受控连续推进 execution gate。
+完成说明：Designed Stage 8 real controlled continuous execution gate. Defined gate inputs (37 fields in 7 groups), gate outputs (16 fields), 18 execution gate checks (E1-E18) layered on G1-G21, 20 stop reasons with categories, approval record schema v2.0, checkpoint schema v2.0, Git strategy for real controlled execution, 18 pass/fail scenarios (3 pass + 15 fail), and T150 dry-run implementation direction. No Stage 8 real continuous execution, implementation, real git add, commit, push, Stage 9 continuation, or business code modification occurred.
 
 ## T150 实现 Stage 8 real controlled continuous execution dry-run
 
@@ -3772,5 +3773,5 @@ No real patch applied, no command executed, no Claude Code called.
 角色：Archiver
 目标：归档 Stage 8 真实受控连续推进成果。
 
-<!-- NEXT_PENDING=T149 -->
+<!-- NEXT_PENDING=T150 -->
 <!-- NEXT_STAGE=Stage 8 -->
