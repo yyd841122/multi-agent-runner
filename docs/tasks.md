@@ -3857,7 +3857,7 @@ No real patch applied, no command executed, no Claude Code called.
 目标：在 clean workspace 下运行 stage8-monitor-verify-report pipeline，确认修复 marker bug 后 Monitor/Trial/Verifier/Report 全链路稳定。
 完成说明：验证 task_monitor 自检 NEXT_PENDING=T163, NEXT_STAGE=Stage 8, WORKTREE_STATUS=clean。stage8-monitor-verify-report --max-tasks 2 fail closed（FAIL_REASON=max_tasks_must_be_1）。stage8-monitor-verify-report --max-tasks 1 Monitor pass, Trial pass（39 gate checks passed）。生成 reports/continuous-runs/T163-run-report.md。Verifier fail 为预期行为（T163 尚未完成）。未修改 runner.py/tools/业务代码。
 
-<!-- NEXT_PENDING=T167 -->
+<!-- NEXT_PENDING=T168 -->
 <!-- NEXT_STAGE=Stage 9 -->
 
 ---
@@ -3891,9 +3891,10 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T167 设计 GitBackupGate 数据结构与规则
 
-状态：pending
+状态：done
 角色：Architect
 目标：设计 GitBackupGate 的详细数据结构、文件分类规则、commit message 生成规则。
+完成说明：设计 GitBackupGate 数据结构与规则。生成 docs/stage9-git-backup-gate-design.md，包含 13 个章节（Background、Design Goal、Non-goals、GitBackupGate Input、GitBackupGateResult Data Structure、File Classification Rules、Decision Rules、Git Add Command Policy、Commit Message Policy、Backup Record Design、Fail Closed Scenarios、Suggested T168 Implementation Scope、Acceptance Criteria）。设计了 14 字段数据结构、3 类文件分类规则、12 种 fail closed 场景。未实现 Python 代码，未修改 runner.py/tools/。
 
 ---
 
