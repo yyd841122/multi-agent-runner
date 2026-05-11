@@ -1,11 +1,11 @@
 # Stage 8 Real Controlled Single-Step Trial Report
 
 ```yaml
-run_id: "stage8-run-20260511-080820-cc8f35"
-task_id: "T152-sample-no_pending_tasks"
+run_id: "stage8-run-20260511-091357-0d507c"
+task_id: "T152"
 stage: "Stage 8"
 mode: "real_controlled_single_step_execution_trial"
-trial_mode: "trial_blocked"
+trial_mode: "trial_proceed"
 dry_run: True
 
 trial_objective: |
@@ -19,35 +19,35 @@ max_tasks_policy:
   max_tasks_policy: "enforced_max_tasks_1"
   policy_enforced: True
 
-selected_next_task: "null"
+selected_next_task: "T159"
 next_task_executed: False
 business_code_modified: False
 
 gate_decision:
-  allowed: False
-  decision: "stop"
-  trial_decision: "trial_blocked"
-  trial_allowed: False
-  execution_mode: "null"
-  stop_reason: "completed_max_tasks"
+  allowed: True
+  decision: "allowed_for_trial"
+  trial_decision: "trial_proceed"
+  trial_allowed: True
+  execution_mode: "real_controlled_single_step_trial"
+  stop_reason: "null"
 
 gate_checks:
-  safety_gate_passed: 19
-  safety_gate_failed: 2
-  safety_failed_checks: ['G6: tasks_attempted >= max_tasks', 'G7: no pending task']
-  execution_gate_passed: 0
+  safety_gate_passed: 21
+  safety_gate_failed: 0
+  safety_failed_checks: []
+  execution_gate_passed: 18
   execution_gate_failed: 0
   execution_failed_checks: []
-  total_passed: 19
-  total_failed: 2
-  all_failed_checks: ['G6: tasks_attempted >= max_tasks', 'G7: no pending task']
-  failure_reasons: ['tasks_attempted (1) >= max_tasks (1)', 'No pending tasks available']
-  required_actions: ['Review run summary', 'If more tasks needed, start a new run']
+  total_passed: 39
+  total_failed: 0
+  all_failed_checks: []
+  failure_reasons: []
+  required_actions: []
 
 limits:
   max_tasks: 1
-  tasks_attempted: 1
-  tasks_completed: 1
+  tasks_attempted: 0
+  tasks_completed: 0
 
 workspace:
   status_before: "clean"
@@ -55,8 +55,8 @@ workspace:
   staged_files_before: []
   staged_files_after: []
   current_branch: "main"
-  last_commit_before: "b4b2428 test: validate T151 stage 8 real controlled execution dry-run"
-  last_commit_after: "b4b2428 test: validate T151 stage 8 real controlled execution dry-run"
+  last_commit_before: "e08a157 feat: integrate stage 8 monitor verify report loop"
+  last_commit_after: "e08a157 feat: integrate stage 8 monitor verify report loop"
 
 execution_scope:
   allowed_scope: ['tools/', 'runner.py', 'docs/', 'reports/']
@@ -65,13 +65,13 @@ execution_scope:
 
 safety:
   push_allowed: False
-  real_execution_allowed: False
+  real_execution_allowed: True
   resume_allowed: False
-  stage_boundary_check: "unknown"
+  stage_boundary_check: "within"
   rework_required: False
   rate_limit_status: "clear"
   manual_stop_requested: False
-  manual_review_required: True
+  manual_review_required: False
   validation_status: "pass"
 
 records:
@@ -95,11 +95,11 @@ no_real_execution_proof:
   real_git_commit_used: False
   real_git_push_used: False
   stage9_entered: False
-  tasks_attempted: 1
-  tasks_completed: 1
+  tasks_attempted: 0
+  tasks_completed: 0
 
 notes: |
-  Single-step trial BLOCKED. max_tasks=1 enforced. Gate blocked: safety_passed=False, execution_passed=False. stop_reason=completed_max_tasks. next_task_executed=False. business_code_modified=False. No real execution occurred.
+  Single-step trial ALLOWED. max_tasks=1 enforced. Selected next task: T159. G1-G21 (21) + E1-E18 (18) gate checks passed. next_task_executed=False. business_code_modified=False. No real execution occurred.
 ```
 
 ---

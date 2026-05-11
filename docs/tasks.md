@@ -3808,9 +3808,16 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T159 验证 monitor → verify → report 闭环
 
-状态：pending
+状态：done
 角色：Validator
 目标：验证 T155-T158 实现的 monitor → verify → report 完整闭环。
+完成说明：Validated Stage 8 monitor → verify → report loop. MONITOR_CHECK=partial_pass (parse_next_pending/parse_next_stage uses re.search() instead of re.findall(), returns T075 instead of T159). MAX_TASKS_GT_1_FAIL_CLOSED=pass. MAX_TASKS_1_CONTROLLED_PATH=pass. Pipeline structure correct: Monitor → Trial (39 gates passed) → Verifier → Report Writer. Continuous run report generated at reports/continuous-runs/T159-run-report.md with all 8 sections. No real execution, no auto commit/push, no unlimited continuation, no Stage 9. Known bug: task_monitor.py parse functions return first match instead of last match (continuous_verifier.py was already fixed). No runner.py/tools/business code modified.
 
-<!-- NEXT_PENDING=T159 -->
+## T160 复盘 Stage 8 monitor → verify → report 闭环并规划下一步
+
+状态：pending
+角色：Developer
+目标：修复 task_monitor.py 的 parse_next_pending/parse_next_stage bug（改为 re.findall() 取最后一个匹配），并规划 Stage 8 下一步工作。
+
+<!-- NEXT_PENDING=T160 -->
 <!-- NEXT_STAGE=Stage 8 -->
