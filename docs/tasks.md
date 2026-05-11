@@ -3780,9 +3780,10 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T155 实现 task_monitor.py
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现执行前状态采集模块 task_monitor.py。
+完成说明：Implemented tools/task_monitor.py with TaskMonitorResult dataclass, read_text_file, parse_next_pending, parse_next_stage, get_git_worktree_status, check_state_files, monitor_project functions. Monitor reads docs/tasks.md, identifies NEXT_PENDING/NEXT_STAGE, checks git worktree status, checks run-state.json/checkpoint.json existence. Fail-closed on dirty workspace, missing tasks.md, missing NEXT_PENDING, missing NEXT_STAGE. CLI entry point outputs structured status lines. No runner.py modification, no real execution, no third-party dependency.
 
 ## T156 实现 continuous_verifier.py
 
@@ -3808,5 +3809,5 @@ No real patch applied, no command executed, no Claude Code called.
 角色：Validator
 目标：验证 T155-T158 实现的 monitor → verify → report 完整闭环。
 
-<!-- NEXT_PENDING=T155 -->
+<!-- NEXT_PENDING=T156 -->
 <!-- NEXT_STAGE=Stage 8 -->
