@@ -3771,11 +3771,42 @@ No real patch applied, no command executed, no Claude Code called.
 目标：验证 max_tasks=1 真实受控单步推进试运行。
 完成说明：15 个场景全部验证通过（1 default pass + 2 sample pass + 1 safe stop + 10 fail-closed + 1 known gap）。所有安全字段始终 False。CHECK_RESULT=pass。
 
-## T154 归档 Stage 8 real controlled continuous execution 成果
+## T154 设计 Stage 8 monitor → verify → report 架构
+
+状态：done
+角色：Architect Agent + Stage 8 Safety Workflow Architect
+目标：设计 Stage 8 monitor → verify → report 架构，吸收外部自动维护流水线思想但不直接接入 Claude Agent SDK。
+完成说明：Designed Stage 8 monitor → verify → report architecture. Defined TaskMonitor (task_monitor.py), ContinuousVerifier (continuous_verifier.py), ExecutionReportWriter (execution_report_writer.py) modules with inputs, outputs, failure strategies. Mapped external monitor/verify/mending/report pattern to project modules. Documented safety rules (12 rules), report format template, and next task chain (T155-T159). No implementation, no runner.py modification, no tools/ modification, no Claude Agent SDK integration, no business code change.
+
+## T155 实现 task_monitor.py
 
 状态：pending
-角色：Archiver
-目标：归档 Stage 8 真实受控连续推进成果。
+角色：Developer
+目标：实现执行前状态采集模块 task_monitor.py。
 
-<!-- NEXT_PENDING=T154 -->
+## T156 实现 continuous_verifier.py
+
+状态：pending
+角色：Developer
+目标：实现执行后结果验证模块 continuous_verifier.py。
+
+## T157 实现 execution_report_writer.py
+
+状态：pending
+角色：Developer
+目标：实现执行报告统一生成模块 execution_report_writer.py。
+
+## T158 接入 run-project-loop --real-execution --max-tasks 1
+
+状态：pending
+角色：Developer
+目标：将 Monitor → Gate → Runner → Verifier → Report 串联接入 runner.py CLI。
+
+## T159 验证 monitor → verify → report 闭环
+
+状态：pending
+角色：Validator
+目标：验证 T155-T158 实现的 monitor → verify → report 完整闭环。
+
+<!-- NEXT_PENDING=T155 -->
 <!-- NEXT_STAGE=Stage 8 -->
