@@ -3857,8 +3857,8 @@ No real patch applied, no command executed, no Claude Code called.
 目标：在 clean workspace 下运行 stage8-monitor-verify-report pipeline，确认修复 marker bug 后 Monitor/Trial/Verifier/Report 全链路稳定。
 完成说明：验证 task_monitor 自检 NEXT_PENDING=T163, NEXT_STAGE=Stage 8, WORKTREE_STATUS=clean。stage8-monitor-verify-report --max-tasks 2 fail closed（FAIL_REASON=max_tasks_must_be_1）。stage8-monitor-verify-report --max-tasks 1 Monitor pass, Trial pass（39 gate checks passed）。生成 reports/continuous-runs/T163-run-report.md。Verifier fail 为预期行为（T163 尚未完成）。未修改 runner.py/tools/业务代码。
 
-<!-- NEXT_PENDING=T166 -->
-<!-- NEXT_STAGE=Stage 8 -->
+<!-- NEXT_PENDING=T167 -->
+<!-- NEXT_STAGE=Stage 9 -->
 
 ---
 
@@ -3882,6 +3882,63 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T166 规划 Stage 9 自动 Git 备份与执行记录入口
 
-状态：pending
+状态：done
 角色：Planner
 目标：规划 Stage 9 的任务，不真正进入 Stage 9。Stage 9 的核心目标是自动 Git 备份与执行记录入口。
+完成说明：规划 Stage 9 自动 Git 备份与执行记录入口。生成 docs/stage9-git-backup-and-execution-record-plan.md，包含 10 个章节。规划了 GitBackupGate 职责、文件分类规则、commit/push approval flow、14 条安全规则、T167-T173 任务拆解。未修改 runner.py/tools/业务代码，未实现 git_backup_gate.py，未执行真实 Git backup。
+
+---
+
+## T167 设计 GitBackupGate 数据结构与规则
+
+状态：pending
+角色：Architect
+目标：设计 GitBackupGate 的详细数据结构、文件分类规则、commit message 生成规则。
+
+---
+
+## T168 实现 git_backup_gate.py dry-run
+
+状态：pending
+角色：Developer
+目标：实现 tools/git_backup_gate.py dry-run，包含文件分类、commit message 生成、GitBackupGateResult 输出。
+
+---
+
+## T169 验证 GitBackupGate 文件分类与 fail closed
+
+状态：pending
+角色：Validator
+目标：验证 git_backup_gate.py 的文件分类逻辑和 fail-closed 行为。
+
+---
+
+## T170 生成 Git backup approval record
+
+状态：pending
+角色：Developer
+目标：实现 Git backup approval record 生成逻辑，生成 reports/git/Txxx-git-backup-record.md。
+
+---
+
+## T171 接入 guarded git backup dry-run 到 run-project-loop
+
+状态：pending
+角色：Developer
+目标：将 GitBackupGate 接入 runner.py pipeline 后端，仍然 dry-run。
+
+---
+
+## T172 验证 guarded git backup dry-run
+
+状态：pending
+角色：Validator
+目标：验证完整的 monitor → verify → report → git backup gate pipeline dry-run。
+
+---
+
+## T173 Stage 9 最终规划审查
+
+状态：pending
+角色：Reviewer
+目标：审查 Stage 9 的设计、实现和验证结果。
