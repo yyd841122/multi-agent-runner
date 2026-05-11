@@ -3857,7 +3857,7 @@ No real patch applied, no command executed, no Claude Code called.
 目标：在 clean workspace 下运行 stage8-monitor-verify-report pipeline，确认修复 marker bug 后 Monitor/Trial/Verifier/Report 全链路稳定。
 完成说明：验证 task_monitor 自检 NEXT_PENDING=T163, NEXT_STAGE=Stage 8, WORKTREE_STATUS=clean。stage8-monitor-verify-report --max-tasks 2 fail closed（FAIL_REASON=max_tasks_must_be_1）。stage8-monitor-verify-report --max-tasks 1 Monitor pass, Trial pass（39 gate checks passed）。生成 reports/continuous-runs/T163-run-report.md。Verifier fail 为预期行为（T163 尚未完成）。未修改 runner.py/tools/业务代码。
 
-<!-- NEXT_PENDING=T169 -->
+<!-- NEXT_PENDING=T170 -->
 <!-- NEXT_STAGE=Stage 9 -->
 
 ---
@@ -3909,9 +3909,10 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T169 验证 GitBackupGate 文件分类与 fail closed
 
-状态：pending
+状态：done
 角色：Validator
 目标：验证 git_backup_gate.py 的文件分类逻辑和 fail-closed 行为。
+完成说明：验证 5 个场景全部通过——allowed files pass、CHECK_RESULT fail closed、missing report fail closed、forbidden files fail closed、unclassified files fail closed。发现 1 个非阻塞 finding：explicitly_allowed vs explicitly_forbidden 优先级与设计文档不一致（代码中 allowed 优先于 forbidden）。未修改 tools/git_backup_gate.py、runner.py、其他 tools 文件和业务代码。
 
 ---
 
