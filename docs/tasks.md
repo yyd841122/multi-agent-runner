@@ -3840,6 +3840,42 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T162 复盘 Stage 8 monitor → verify → report 接入结果并规划后续 Stage 8 收尾
 
-状态：pending
+状态：done
 角色：Planner
 目标：复盘 Stage 8 monitor → verify → report 全部接入结果，总结已完成和待完成事项，规划后续 Stage 8 收尾任务。
+完成说明：复盘 T153-T161 已完成内容，确认 monitor → verify → report 最小闭环成立。生成 docs/stage8-monitor-verify-report-integration-review.md 复盘文档，包含 7 个章节（Review Scope、Completed Work Summary、Current Capabilities、Known Limitations、Safety Conclusions、Suggested Remaining Tasks、Recommended Next Step）。规划 T163-T166 收尾任务。未修改 runner.py/tools/业务代码，未执行真实 run-project-loop。
+
+<!-- NEXT_PENDING=T163 -->
+<!-- NEXT_STAGE=Stage 8 -->
+
+---
+
+## T163 验证 run-project-loop max_tasks=1 在修复 marker bug 后的稳定性
+
+状态：pending
+角色：Validator
+目标：在 clean workspace 下运行 stage8-monitor-verify-report pipeline，确认修复 marker bug 后 Monitor/Trial/Verifier/Report 全链路稳定。
+
+---
+
+## T164 归档 Stage 8 monitor → verify → report 最小闭环成果
+
+状态：pending
+角色：Archivist
+目标：归档 Stage 8 的设计文档、实现代码、验证报告、已知限制，生成 Stage 8 成果摘要文档。
+
+---
+
+## T165 Stage 8 最终状态审查
+
+状态：pending
+角色：Reviewer
+目标：审查 Stage 8 所有任务的最终状态，确认无遗漏项，确认安全边界完整，确认可以进入 Stage 9 规划。
+
+---
+
+## T166 规划 Stage 9 自动 Git 备份与执行记录入口
+
+状态：pending
+角色：Planner
+目标：规划 Stage 9 的任务，不真正进入 Stage 9。Stage 9 的核心目标是自动 Git 备份与执行记录入口。
