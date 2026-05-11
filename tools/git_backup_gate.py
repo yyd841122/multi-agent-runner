@@ -558,6 +558,168 @@ def run_git_backup_gate_dry_run(
 
 
 # ---------------------------------------------------------------------------
+# Approval Record 生成
+# ---------------------------------------------------------------------------
+
+def ensure_directory(path: Path) -> None:
+    """确保目录存在，不存在则创建。"""
+    path.mkdir(parents=True, exist_ok=True)
+
+
+def render_git_backup_approval_record(result: GitBackupGateResult) -> str:
+    """渲染 Git backup approval record Markdown 内容。
+
+    只生成记录，不执行任何真实 Git 操作。
+    """
+    gate_result_str = "pass" if result.ok else "fail"
+    timestamp = result.gate_timestamp
+
+    lines: list[str] = []
+    lines.append(f"# {result.task_id} Git Backup Approval Record")
+    lines.append("")
+    lines.append(f"生成时间：{timestamp}")
+    lines.append(f"阶段：Stage 9 — Git Backup Gate Approval Record")
+    lines.append("")
+
+    # Section 1: Gate Result
+    lines.append("## 1. Gate Result")
+    lines.append("")
+    lines.append(f"| Field | Value |")
+    lines.append(f"|-------|-------|")
+    lines.append(f"| TASK | {result.task_id} |")
+    lines.append(f"| GIT_BACKUP_GATE_RESULT | {gate_result_str} |")
+    lines.append(f"| GATE_TIMESTAMP | {result.gate_timestamp} |")
+    lines.append(f"| CHECK_RESULT_PASS | {'yes' if result.check_result_pass else 'no'} |")
+    lines.append(f"| CONTINUOUS_REPORT_EXISTS | {'yes' if result.continuous_report_exists else 'no'} |")
+    lines.append(f"| WORKTREE_STATUS | {result.worktree_status} |")
+    if result.fail_reason:
+        lines.append(f"| FAIL_REASON | {result.fail_reason} |")
+    lines.append(f"| NEXT_ACTION | {result.next_action} |")
+    lines.append("")
+
+    # Section 2: Changed Files
+    lines.append("## 2. Changed Files")
+    lines.append("")
+    for f in result.changed_files:
+        lines.append(f"- `{f}`")
+    if not result.changed_files:
+        lines.append("(none)")
+    lines.append("")
+
+    # Section 3: Allowed Files
+    lines.append("## 3. Allowed Files")
+    lines.append("")
+    for f in result.allowed_files:
+        lines.append(f"- `{f}`")
+    if not result.allowed_files:
+        lines.append("(none)")
+    lines.append("")
+
+    # Section 4: Forbidden Files
+    lines.append("## 4. Forbidden Files")
+    lines.append("")
+    for f in result.forbidden_files:
+        lines.append(f"- `{f}`")
+    if not result.forbidden_files:
+        lines.append("(none)")
+    lines.append("")
+
+    # Section 5: Unclassified Files
+    lines.append("## 5. Unclassified Files")
+    lines.append("")
+    for f in result.unclassified_files:
+        lines.append(f"- `{f}`")
+    if not result.unclassified_files:
+        lines.append("(none)")
+    lines.append("")
+
+    # Section 6: Proposed Git Add Commands
+    lines.append("## 6. Proposed Git Add Commands")
+    lines.append("")
+    lines.append("```")
+    for cmd in result.git_add_commands:
+        lines.append(cmd)
+    if not result.git_add_commands:
+        lines.append("(no commands)")
+    lines.append("```")
+    lines.append("")
+
+    # Section 7: Proposed Commit Message
+    lines.append("## 7. Proposed Commit Message")
+    lines.append("")
+    lines.append("```")
+    lines.append(result.commit_message)
+    lines.append("```")
+    lines.append("")
+
+    # Section 8: Approval Requirement
+    lines.append("## 8. Approval Requirement")
+    lines.append("")
+    lines.append(f"| Field | Value |")
+    lines.append(f"|-------|-------|")
+    lines.append(f"| APPROVAL_REQUIRED | {'yes' if result.approval_required else 'no'} |")
+    lines.append(f"| APPROVAL_STATUS | pending |")
+    lines.append("")
+
+    # Section 9: Commit and Push Decision
+    lines.append("## 9. Commit and Push Decision")
+    lines.append("")
+    lines.append(f"| Field | Value |")
+    lines.append(f"|-------|-------|")
+    lines.append(f"| COMMIT_ALLOWED | {'yes' if result.commit_allowed else 'no'} |")
+    lines.append(f"| PUSH_ALLOWED | {'yes' if result.push_allowed else 'no'} |")
+    lines.append(f"| COMMIT_STATUS | pending |")
+    lines.append(f"| PUSH_STATUS | pending |")
+    lines.append("")
+
+    # Section 10: Safety Notes
+    lines.append("## 10. Safety Notes")
+    lines.append("")
+    lines.append(f"- REAL_GIT_ADD_EXECUTED=no")
+    lines.append(f"- REAL_GIT_COMMIT_EXECUTED=no")
+    lines.append(f"- REAL_GIT_PUSH_EXECUTED=no")
+    lines.append(f"- GATE_MODIFIED_FILES={'yes' if result.gate_modified_files else 'no'}")
+    lines.append(f"- RECORD_GENERATED_BY=git_backup_gate_dry_run")
+    lines.append("")
+
+    # Final Status
+    lines.append("---")
+    lines.append("")
+    lines.append("```")
+    lines.append(f"TASK={result.task_id}")
+    lines.append(f"GIT_BACKUP_GATE_RESULT={gate_result_str}")
+    lines.append(f"COMMIT_ALLOWED={'yes' if result.commit_allowed else 'no'}")
+    lines.append(f"PUSH_ALLOWED={'yes' if result.push_allowed else 'no'}")
+    lines.append(f"APPROVAL_REQUIRED={'yes' if result.approval_required else 'no'}")
+    lines.append(f"REAL_GIT_ADD_EXECUTED=no")
+    lines.append(f"REAL_GIT_COMMIT_EXECUTED=no")
+    lines.append(f"REAL_GIT_PUSH_EXECUTED=no")
+    lines.append("```")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+def write_git_backup_approval_record(
+    repo_root: Path, result: GitBackupGateResult
+) -> Path:
+    """将 Git backup approval record 写入文件。
+
+    路径：reports/git/{task_id}-git-backup-approval-record.md
+
+    只写入记录，不执行任何真实 Git 操作。
+    """
+    record_dir = repo_root / "reports" / "git"
+    ensure_directory(record_dir)
+
+    record_path = record_dir / f"{result.task_id}-git-backup-approval-record.md"
+    content = render_git_backup_approval_record(result)
+    record_path.write_text(content, encoding="utf-8")
+
+    return record_path
+
+
+# ---------------------------------------------------------------------------
 # 输出格式化
 # ---------------------------------------------------------------------------
 
@@ -623,6 +785,9 @@ def _parse_cli_args(args: list[str]) -> dict:
         elif args[i] == "--approval-mode" and i + 1 < len(args):
             parsed["approval_mode"] = args[i + 1]
             i += 2
+        elif args[i] == "--write-approval-record":
+            parsed["write_approval_record"] = True
+            i += 1
         else:
             i += 1
     return parsed
@@ -638,11 +803,12 @@ if __name__ == "__main__":
     allowed = parsed.get("allowed", [])
     forbidden = parsed.get("forbidden", [])
     approval_mode = parsed.get("approval_mode", "require_user_approval")
+    write_approval_record = parsed.get("write_approval_record", False)
 
     if not task_id or not check_result or not report or not commit_message:
         print("GIT_BACKUP_GATE_RESULT=error")
         print("FAIL_REASON=missing_required_args")
-        print('Usage: python tools/git_backup_gate.py --task Txxx --check-result pass --report path/to/report.md --commit-message "type: description" --allowed path1 --allowed path2 --forbidden path3 --approval-mode require_user_approval')
+        print('Usage: python tools/git_backup_gate.py --task Txxx --check-result pass --report path/to/report.md --commit-message "type: description" --allowed path1 --allowed path2 --forbidden path3 --approval-mode require_user_approval --write-approval-record')
         sys.exit(1)
 
     script_path = Path(__file__).resolve()
@@ -660,6 +826,10 @@ if __name__ == "__main__":
     )
 
     print_result(result)
+
+    if write_approval_record:
+        record_path = write_git_backup_approval_record(root, result)
+        print(f"APPROVAL_RECORD_PATH={record_path}")
 
     if not result.ok:
         sys.exit(1)
