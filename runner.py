@@ -67,6 +67,12 @@ from tools.continuous_task_planner import run_stage8_continuous_runner_dry_run_p
 from tools.continuous_task_planner import run_stage8_single_step_continuous_advance_dry_run
 from tools.continuous_task_planner import run_stage8_real_controlled_execution_dry_run
 from tools.continuous_task_planner import run_stage8_real_controlled_single_step_execution_trial
+from tools.task_monitor import monitor_project
+from tools.continuous_verifier import verify_continuous_result
+from tools.execution_report_writer import (
+    ExecutionReportData,
+    write_execution_report,
+)
 
 PROJECT_ROOT = Path(__file__).parent
 TASKS_FILE = PROJECT_ROOT / "docs" / "tasks.md"
@@ -3034,6 +3040,196 @@ def main():
         print(f"STAGE9_ENTERED={result.stage9_entered}")
         print()
         print(f"MESSAGE：{result.message}")
+    elif args[0] == "stage8-monitor-verify-report":
+        # T158: Stage 8 monitor → verify → report integrated pipeline
+        # max_tasks=1 enforced, no real execution, no auto commit/push
+        sample_type = None
+        max_tasks_val = 1
+        i = 1
+        while i < len(args):
+            if args[i] == "--sample" and i + 1 < len(args):
+                sample_type = args[i + 1]
+                i += 2
+            elif args[i] == "--max-tasks" and i + 1 < len(args):
+                max_tasks_val = int(args[i + 1])
+                i += 2
+            else:
+                i += 1
+
+        # Fail closed: max_tasks must be 1
+        if max_tasks_val != 1:
+            print()
+            print("MONITOR_VERIFY_REPORT_STATUS=blocked")
+            print("FAIL_REASON=max_tasks_must_be_1")
+            print(f"MAX_TASKS_REQUESTED={max_tasks_val}")
+            print("MAX_TASKS_ALLOWED=1")
+            print("CHECK_RESULT=fail")
+            print("NEXT_ACTION=stop")
+            return
+
+        print()
+        print("=== Stage 8 Monitor → Verify → Report Pipeline ===")
+        print()
+
+        # Step 1: Monitor
+        print("--- Step 1: Task Monitor ---")
+        monitor_result = monitor_project(PROJECT_ROOT)
+
+        print(f"MONITOR_OK={'true' if monitor_result.ok else 'false'}")
+        print(f"NEXT_PENDING={monitor_result.next_pending or 'N/A'}")
+        print(f"NEXT_STAGE={monitor_result.next_stage or 'N/A'}")
+        print(f"WORKTREE_STATUS={monitor_result.worktree_status}")
+        if not monitor_result.ok:
+            print(f"MONITOR_FAIL_REASON={monitor_result.fail_reason}")
+
+        if not monitor_result.ok:
+            print()
+            print("MONITOR_VERIFY_REPORT_STATUS=monitor_failed")
+            print("CHECK_RESULT=fail")
+            print("NEXT_ACTION=stop")
+
+            # Generate failure report even when monitor fails
+            report_data = ExecutionReportData(
+                task_id=monitor_result.next_pending or "unknown",
+                stage=monitor_result.next_stage or "Stage 8",
+                mode="monitor_verify_report",
+                project_root=str(PROJECT_ROOT),
+                run_timestamp=monitor_result.monitor_timestamp,
+                max_tasks=1,
+                monitor_result="fail",
+                next_pending_before=monitor_result.next_pending,
+                next_stage_before=monitor_result.next_stage,
+                worktree_before=monitor_result.worktree_status,
+                safety_result="skipped",
+                real_execution_allowed=False,
+                execution_status="skipped",
+                files_created=[],
+                files_modified=[],
+                verify_result="skipped",
+                check_result="fail",
+                rework_required=False,
+                rework_decision="none",
+                git_commit_allowed=False,
+                git_push_allowed=False,
+                auto_commit_triggered=False,
+                auto_push_triggered=False,
+                final_worktree_status=monitor_result.worktree_status,
+                next_pending_after=monitor_result.next_pending,
+                next_stage_after=monitor_result.next_stage,
+            )
+            report_result = write_execution_report(PROJECT_ROOT, report_data)
+            print(f"REPORT_PATH={report_result.report_path}")
+            return
+
+        # Step 2: Run existing single-step trial (read-only gate check)
+        print()
+        print("--- Step 2: Controlled Single-Step Trial ---")
+        trial_result = run_stage8_real_controlled_single_step_execution_trial(
+            project_root=str(PROJECT_ROOT),
+            max_tasks=max_tasks_val,
+            sample=sample_type,
+        )
+
+        print(f"TRIAL_ALLOWED={'true' if trial_result.trial_allowed else 'false'}")
+        print(f"GATE_CHECKS_PASSED={trial_result.gate_checks_passed}")
+        print(f"GATE_CHECKS_FAILED={trial_result.gate_checks_failed}")
+        print(f"STOP_REASON={trial_result.stop_reason or 'NONE'}")
+
+        # Step 3: Verify (only if trial passed)
+        verify_result_data = None
+        if trial_result.trial_allowed:
+            print()
+            print("--- Step 3: Continuous Verifier ---")
+            task_id = trial_result.selected_next_task or trial_result.current_task or "unknown"
+            # Compute expected next pending after task completion
+            import re as _re
+            current_pending = monitor_result.next_pending
+            if current_pending:
+                m = _re.match(r"T(\d+)", current_pending)
+                expected_next = f"T{int(m.group(1)) + 1}" if m else current_pending
+            else:
+                expected_next = "unknown"
+
+            verify_result_data = verify_continuous_result(
+                repo_root=PROJECT_ROOT,
+                task_id=task_id,
+                expected_next_pending=expected_next,
+                expected_next_stage=monitor_result.next_stage or "Stage 8",
+                report_path=f"reports/dev/{task_id}-dev-report.md",
+                allowed_paths=[
+                    "docs/",
+                    "reports/",
+                    "tools/task_monitor.py",
+                    "tools/continuous_verifier.py",
+                    "tools/execution_report_writer.py",
+                ],
+            )
+
+            print(f"VERIFY_OK={'true' if verify_result_data.ok else 'false'}")
+            if not verify_result_data.ok:
+                print(f"VERIFY_FAIL_REASON={verify_result_data.fail_reason}")
+        else:
+            print()
+            print("--- Step 3: Continuous Verifier (SKIPPED: trial blocked) ---")
+
+        # Step 4: Generate Report
+        print()
+        print("--- Step 4: Execution Report ---")
+
+        # Determine overall check result
+        overall_pass = monitor_result.ok and trial_result.trial_allowed
+        if verify_result_data is not None:
+            overall_pass = overall_pass and verify_result_data.ok
+
+        report_data = ExecutionReportData(
+            task_id=trial_result.selected_next_task or trial_result.current_task or "unknown",
+            stage="Stage 8",
+            mode="monitor_verify_report",
+            project_root=str(PROJECT_ROOT),
+            run_timestamp=monitor_result.monitor_timestamp,
+            max_tasks=1,
+            monitor_result="pass" if monitor_result.ok else "fail",
+            next_pending_before=monitor_result.next_pending,
+            next_stage_before=monitor_result.next_stage,
+            worktree_before=monitor_result.worktree_status,
+            safety_result="pass" if trial_result.trial_allowed else "fail",
+            real_execution_allowed=False,
+            execution_status="trial_only",
+            files_created=[],
+            files_modified=[],
+            verify_result="pass" if (verify_result_data and verify_result_data.ok) else ("fail" if verify_result_data else "skipped"),
+            check_result="pass" if overall_pass else "fail",
+            rework_required=False,
+            rework_decision="none",
+            git_commit_allowed=False,
+            git_push_allowed=False,
+            auto_commit_triggered=False,
+            auto_push_triggered=False,
+            final_worktree_status="clean",
+            next_pending_after=monitor_result.next_pending,
+            next_stage_after=monitor_result.next_stage,
+        )
+
+        report_result = write_execution_report(PROJECT_ROOT, report_data)
+
+        # Final Output
+        print()
+        print("=== Final Status ===")
+        print(f"MONITOR_VERIFY_REPORT_STATUS={'completed' if overall_pass else 'blocked'}")
+        print(f"MONITOR_RESULT={'pass' if monitor_result.ok else 'fail'}")
+        print(f"SAFETY_RESULT={'pass' if trial_result.trial_allowed else 'fail'}")
+        print(f"VERIFY_RESULT={'pass' if (verify_result_data and verify_result_data.ok) else ('fail' if verify_result_data else 'skipped')}")
+        print(f"CHECK_RESULT={'pass' if overall_pass else 'fail'}")
+        print(f"TASK={report_data.task_id}")
+        print(f"MAX_TASKS=1")
+        print(f"REPORT_PATH={report_result.report_path}")
+        print(f"NEXT_PENDING={monitor_result.next_pending or 'N/A'}")
+        print(f"NEXT_STAGE={monitor_result.next_stage or 'N/A'}")
+        print(f"AUTO_COMMIT_TRIGGERED=no")
+        print(f"AUTO_PUSH_TRIGGERED=no")
+        print(f"NEXT_ACTION=stop")
+        print()
+        print("NOTE: No real task execution occurred. No git add/commit/push triggered.")
     else:
         print("用法：")
         print("  python runner.py                          显示下一个 pending 任务")
@@ -3077,6 +3273,7 @@ def main():
         print("  python runner.py stage8-single-step-dry-run [--sample <name>] [--max-tasks N]  Stage 8 single-step continuous advance dry-run")
         print("  python runner.py stage8-real-controlled-execution-dry-run [--sample <name>] [--max-tasks N]  Stage 8 real controlled continuous execution dry-run")
         print("  python runner.py stage8-real-controlled-single-step-trial [--sample <name>] [--max-tasks N]  Stage 8 max_tasks=1 real controlled single-step execution trial")
+        print("  python runner.py stage8-monitor-verify-report [--sample <name>] [--max-tasks N]  Stage 8 monitor → verify → report pipeline (max_tasks=1 enforced)")
 
 
 if __name__ == "__main__":

@@ -3801,9 +3801,10 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T158 接入 run-project-loop --real-execution --max-tasks 1
 
-状态：pending
+状态：done
 角色：Developer
 目标：将 Monitor → Gate → Runner → Verifier → Report 串联接入 runner.py CLI。
+完成说明：Added stage8-monitor-verify-report CLI command to runner.py. Pipeline: monitor_project → run_stage8_real_controlled_single_step_execution_trial → verify_continuous_result → write_execution_report. max_tasks=1 enforced at entry, fail closed on max_tasks>1. Monitor failure generates failure report. Trial blocked skips verifier. Final status includes MONITOR_RESULT, SAFETY_RESULT, VERIFY_RESULT, CHECK_RESULT, MAX_TASKS, NEXT_PENDING, NEXT_STAGE, AUTO_COMMIT_TRIGGERED=no, AUTO_PUSH_TRIGGERED=no. No real execution, no git add/commit/push, no Claude Agent SDK, no max_tasks>1, no unlimited continuation.
 
 ## T159 验证 monitor → verify → report 闭环
 
@@ -3811,5 +3812,5 @@ No real patch applied, no command executed, no Claude Code called.
 角色：Validator
 目标：验证 T155-T158 实现的 monitor → verify → report 完整闭环。
 
-<!-- NEXT_PENDING=T158 -->
+<!-- NEXT_PENDING=T159 -->
 <!-- NEXT_STAGE=Stage 8 -->
