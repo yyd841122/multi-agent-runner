@@ -3857,7 +3857,7 @@ No real patch applied, no command executed, no Claude Code called.
 目标：在 clean workspace 下运行 stage8-monitor-verify-report pipeline，确认修复 marker bug 后 Monitor/Trial/Verifier/Report 全链路稳定。
 完成说明：验证 task_monitor 自检 NEXT_PENDING=T163, NEXT_STAGE=Stage 8, WORKTREE_STATUS=clean。stage8-monitor-verify-report --max-tasks 2 fail closed（FAIL_REASON=max_tasks_must_be_1）。stage8-monitor-verify-report --max-tasks 1 Monitor pass, Trial pass（39 gate checks passed）。生成 reports/continuous-runs/T163-run-report.md。Verifier fail 为预期行为（T163 尚未完成）。未修改 runner.py/tools/业务代码。
 
-<!-- NEXT_PENDING=T168 -->
+<!-- NEXT_PENDING=T169 -->
 <!-- NEXT_STAGE=Stage 9 -->
 
 ---
@@ -3900,9 +3900,10 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T168 实现 git_backup_gate.py dry-run
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 tools/git_backup_gate.py dry-run，包含文件分类、commit message 生成、GitBackupGateResult 输出。
+完成说明：实现 tools/git_backup_gate.py dry-run。包含 GitBackupGateResult 数据结构（14 字段）、classify_changed_files 文件分类、validate_commit_message 校验、build_git_add_commands 命令生成、run_git_backup_gate_dry_run 核心函数。py_compile 通过。基础 dry-run 自检 pass。未修改 runner.py，未接入 run-project-loop，未执行 git add/commit/push。
 
 ---
 
