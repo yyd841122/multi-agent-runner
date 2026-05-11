@@ -3857,16 +3857,17 @@ No real patch applied, no command executed, no Claude Code called.
 目标：在 clean workspace 下运行 stage8-monitor-verify-report pipeline，确认修复 marker bug 后 Monitor/Trial/Verifier/Report 全链路稳定。
 完成说明：验证 task_monitor 自检 NEXT_PENDING=T163, NEXT_STAGE=Stage 8, WORKTREE_STATUS=clean。stage8-monitor-verify-report --max-tasks 2 fail closed（FAIL_REASON=max_tasks_must_be_1）。stage8-monitor-verify-report --max-tasks 1 Monitor pass, Trial pass（39 gate checks passed）。生成 reports/continuous-runs/T163-run-report.md。Verifier fail 为预期行为（T163 尚未完成）。未修改 runner.py/tools/业务代码。
 
-<!-- NEXT_PENDING=T164 -->
+<!-- NEXT_PENDING=T165 -->
 <!-- NEXT_STAGE=Stage 8 -->
 
 ---
 
 ## T164 归档 Stage 8 monitor → verify → report 最小闭环成果
 
-状态：pending
+状态：done
 角色：Archivist
 目标：归档 Stage 8 的设计文档、实现代码、验证报告、已知限制，生成 Stage 8 成果摘要文档。
+完成说明：归档 T153-T163 共 11 个任务的 Stage 8 monitor → verify → report 最小闭环成果。生成 docs/archive/stage8-monitor-verify-report-minimal-loop-archive.md，包含 8 个章节（Archive Scope、Completed Task Summary、Established Capabilities、Safety Boundary、Important Bugfix、Evidence Reports、Remaining Stage 8 Work、Archive Conclusion）。确认 minimal loop established、max_tasks=1 稳定、marker bug 已修复并复验、安全边界全部有效。未修改 runner.py/tools/业务代码，未执行真实 run-project-loop。
 
 ---
 
