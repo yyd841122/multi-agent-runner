@@ -3813,11 +3813,21 @@ No real patch applied, no command executed, no Claude Code called.
 目标：验证 T155-T158 实现的 monitor → verify → report 完整闭环。
 完成说明：Validated Stage 8 monitor → verify → report loop. MONITOR_CHECK=partial_pass (parse_next_pending/parse_next_stage uses re.search() instead of re.findall(), returns T075 instead of T159). MAX_TASKS_GT_1_FAIL_CLOSED=pass. MAX_TASKS_1_CONTROLLED_PATH=pass. Pipeline structure correct: Monitor → Trial (39 gates passed) → Verifier → Report Writer. Continuous run report generated at reports/continuous-runs/T159-run-report.md with all 8 sections. No real execution, no auto commit/push, no unlimited continuation, no Stage 9. Known bug: task_monitor.py parse functions return first match instead of last match (continuous_verifier.py was already fixed). No runner.py/tools/business code modified.
 
-## T160 复盘 Stage 8 monitor → verify → report 闭环并规划下一步
+## T160 修复 task_monitor.py 解析历史 NEXT_PENDING / NEXT_STAGE 的 bug
+
+状态：done
+角色：Bugfix Agent
+目标：修复 task_monitor.py 的 parse_next_pending/parse_next_stage 使用 re.search() 取第一个匹配的 bug，改为 re.findall() 取最后一个匹配，与 continuous_verifier.py 保持一致。
+
+完成说明：已将 parse_next_pending 和 parse_next_stage 从 re.search()（取第一个匹配）改为 re.findall() + matches[-1]（取最后一个匹配）。修复后自检确认 NEXT_PENDING=T160, NEXT_STAGE=Stage 8（修复前错误解析为 T075, Stage 6）。
+
+<!-- NEXT_PENDING=T161 -->
+<!-- NEXT_STAGE=Stage 8 -->
+
+---
+
+## T161 复验 task_monitor.py 最新 NEXT_PENDING / NEXT_STAGE 解析
 
 状态：pending
-角色：Developer
-目标：修复 task_monitor.py 的 parse_next_pending/parse_next_stage bug（改为 re.findall() 取最后一个匹配），并规划 Stage 8 下一步工作。
-
-<!-- NEXT_PENDING=T160 -->
-<!-- NEXT_STAGE=Stage 8 -->
+角色：Validator
+目标：在 clean workspace 下复验 task_monitor.py 的 NEXT_PENDING / NEXT_STAGE 解析是否正确，并验证 stage8-monitor-verify-report 完整 pipeline。

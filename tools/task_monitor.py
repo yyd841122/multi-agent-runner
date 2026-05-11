@@ -62,41 +62,47 @@ def read_text_file(path: Path) -> str:
 
 
 def parse_next_pending(tasks_text: str) -> str | None:
-    """从 tasks.md 文本中识别 NEXT_PENDING。
+    """从 tasks.md 文本中识别最后一个 NEXT_PENDING。
+
+    文件中可能存在多个 NEXT_PENDING（每个任务完成时记录），
+    取最后一个作为当前实际值。
 
     支持格式：
       <!-- NEXT_PENDING=Txxx -->
       NEXT_PENDING=Txxx
     """
     # 优先匹配 HTML 注释格式
-    m = re.search(r"<!--\s*NEXT_PENDING\s*=\s*(T\d+)\s*-->", tasks_text)
-    if m:
-        return m.group(1)
+    matches = re.findall(r"<!--\s*NEXT_PENDING\s*=\s*(T\d+)\s*-->", tasks_text)
+    if matches:
+        return matches[-1]
 
     # 回退匹配纯文本格式
-    m = re.search(r"^NEXT_PENDING\s*=\s*(T\d+)\s*$", tasks_text, re.MULTILINE)
-    if m:
-        return m.group(1)
+    matches = re.findall(r"^NEXT_PENDING\s*=\s*(T\d+)\s*$", tasks_text, re.MULTILINE)
+    if matches:
+        return matches[-1]
 
     return None
 
 
 def parse_next_stage(tasks_text: str) -> str | None:
-    """从 tasks.md 文本中识别 NEXT_STAGE。
+    """从 tasks.md 文本中识别最后一个 NEXT_STAGE。
+
+    文件中可能存在多个 NEXT_STAGE（每个任务完成时记录），
+    取最后一个作为当前实际值。
 
     支持格式：
       <!-- NEXT_STAGE=Stage N -->
       NEXT_STAGE=Stage N
     """
     # 优先匹配 HTML 注释格式
-    m = re.search(r"<!--\s*NEXT_STAGE\s*=\s*(Stage\s+\d+)\s*-->", tasks_text)
-    if m:
-        return m.group(1)
+    matches = re.findall(r"<!--\s*NEXT_STAGE\s*=\s*(Stage\s+\d+)\s*-->", tasks_text)
+    if matches:
+        return matches[-1]
 
     # 回退匹配纯文本格式
-    m = re.search(r"^NEXT_STAGE\s*=\s*(Stage\s+\d+)\s*$", tasks_text, re.MULTILINE)
-    if m:
-        return m.group(1)
+    matches = re.findall(r"^NEXT_STAGE\s*=\s*(Stage\s+\d+)\s*$", tasks_text, re.MULTILINE)
+    if matches:
+        return matches[-1]
 
     return None
 
