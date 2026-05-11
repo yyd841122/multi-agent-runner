@@ -3766,9 +3766,10 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T153 验证 max_tasks=1 real controlled single-step execution trial
 
-状态：pending
+状态：done
 角色：Validator
 目标：验证 max_tasks=1 真实受控单步推进试运行。
+完成说明：15 个场景全部验证通过（1 default pass + 2 sample pass + 1 safe stop + 10 fail-closed + 1 known gap）。所有安全字段始终 False。CHECK_RESULT=pass。
 
 ## T154 归档 Stage 8 real controlled continuous execution 成果
 
@@ -3776,5 +3777,5 @@ No real patch applied, no command executed, no Claude Code called.
 角色：Archiver
 目标：归档 Stage 8 真实受控连续推进成果。
 
-<!-- NEXT_PENDING=T153 -->
+<!-- NEXT_PENDING=T154 -->
 <!-- NEXT_STAGE=Stage 8 -->
