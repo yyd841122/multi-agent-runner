@@ -2,16 +2,16 @@
 
 ```yaml
 checkpoint_version: "2.1"
-run_id: "stage8-run-20260511-091357-0d507c"
+run_id: "stage8-run-20260511-095824-ef3de0"
 stage: "Stage 8"
 mode: "real_controlled_single_step_execution_trial"
 trial_mode: "max_tasks_1"
 real_controlled_execution: false  # trial framework, no real execution
 
 timing:
-  started_at: "2026-05-11T09:13:58"
-  ended_at: "2026-05-11T09:13:58"
-  last_checkpoint_at: "2026-05-11T09:13:58"
+  started_at: "2026-05-11T09:58:25"
+  ended_at: "2026-05-11T09:58:25"
+  last_checkpoint_at: "2026-05-11T09:58:25"
 
 limits:
   max_tasks: 1
@@ -22,8 +22,8 @@ limits:
 current_state:
   current_task: "T149"
   last_completed_task: "T149"
-  next_pending_task: "T159"
-  selected_next_task: "T159"
+  next_pending_task: "T163"
+  selected_next_task: "T163"
   stop_reason: "null"
 
 workspace:
@@ -32,8 +32,8 @@ workspace:
   staged_files_before: []
   staged_files_after: []
   current_branch: "main"
-  last_commit_before: "e08a157 feat: integrate stage 8 monitor verify report loop"
-  last_commit_after: "e08a157 feat: integrate stage 8 monitor verify report loop"
+  last_commit_before: "27b3d1e docs: review stage 8 monitor verify report integration"
+  last_commit_after: "27b3d1e docs: review stage 8 monitor verify report integration"
 
 records:
   approval_record_path: "reports/stage8/stage8-real-controlled-single-step-trial-approval-record.md"

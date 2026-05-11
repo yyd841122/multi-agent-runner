@@ -1,7 +1,7 @@
 # Stage 8 Real Controlled Single-Step Trial Report
 
 ```yaml
-run_id: "stage8-run-20260511-091357-0d507c"
+run_id: "stage8-run-20260511-095824-ef3de0"
 task_id: "T152"
 stage: "Stage 8"
 mode: "real_controlled_single_step_execution_trial"
@@ -19,7 +19,7 @@ max_tasks_policy:
   max_tasks_policy: "enforced_max_tasks_1"
   policy_enforced: True
 
-selected_next_task: "T159"
+selected_next_task: "T163"
 next_task_executed: False
 business_code_modified: False
 
@@ -55,8 +55,8 @@ workspace:
   staged_files_before: []
   staged_files_after: []
   current_branch: "main"
-  last_commit_before: "e08a157 feat: integrate stage 8 monitor verify report loop"
-  last_commit_after: "e08a157 feat: integrate stage 8 monitor verify report loop"
+  last_commit_before: "27b3d1e docs: review stage 8 monitor verify report integration"
+  last_commit_after: "27b3d1e docs: review stage 8 monitor verify report integration"
 
 execution_scope:
   allowed_scope: ['tools/', 'runner.py', 'docs/', 'reports/']
@@ -99,7 +99,7 @@ no_real_execution_proof:
   tasks_completed: 0
 
 notes: |
-  Single-step trial ALLOWED. max_tasks=1 enforced. Selected next task: T159. G1-G21 (21) + E1-E18 (18) gate checks passed. next_task_executed=False. business_code_modified=False. No real execution occurred.
+  Single-step trial ALLOWED. max_tasks=1 enforced. Selected next task: T163. G1-G21 (21) + E1-E18 (18) gate checks passed. next_task_executed=False. business_code_modified=False. No real execution occurred.
 ```
 
 ---
