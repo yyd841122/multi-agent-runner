@@ -3828,6 +3828,18 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T161 复验 task_monitor.py 最新 NEXT_PENDING / NEXT_STAGE 解析
 
-状态：pending
+状态：done
 角色：Validator
 目标：在 clean workspace 下复验 task_monitor.py 的 NEXT_PENDING / NEXT_STAGE 解析是否正确，并验证 stage8-monitor-verify-report 完整 pipeline。
+完成说明：复验确认 task_monitor.py parse_next_pending/parse_next_stage 已正确使用 re.findall() + matches[-1]。自检结果：MONITOR_RESULT=pass, NEXT_PENDING=T161, NEXT_STAGE=Stage 8, WORKTREE_STATUS=clean。不再解析到历史 T075 / Stage 6。continuous_verifier 对比：partial_pass（fail 原因是 report 格式不符，非解析错误）。py_compile 通过。未修改 runner.py/tools/业务代码，未执行真实 run-project-loop。
+
+<!-- NEXT_PENDING=T162 -->
+<!-- NEXT_STAGE=Stage 8 -->
+
+---
+
+## T162 复盘 Stage 8 monitor → verify → report 接入结果并规划后续 Stage 8 收尾
+
+状态：pending
+角色：Planner
+目标：复盘 Stage 8 monitor → verify → report 全部接入结果，总结已完成和待完成事项，规划后续 Stage 8 收尾任务。
