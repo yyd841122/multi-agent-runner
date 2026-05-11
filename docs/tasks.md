@@ -3794,9 +3794,10 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T157 实现 execution_report_writer.py
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现执行报告统一生成模块 execution_report_writer.py。
+完成说明：Implemented tools/execution_report_writer.py with ExecutionReportData and ExecutionReportWriteResult dataclasses, ensure_directory, normalize_list, render_execution_report, write_execution_report, build_sample_report_data functions. Generates reports/continuous-runs/Txxx-run-report.md with 8 sections (Task Info, Monitor Result, Safety Gate Result, Execution Result, Verify Result, Rework Decision, Git Decision, Final Status). Report contains structured status lines with CHECK_RESULT, AUTO_COMMIT_TRIGGERED, AUTO_PUSH_TRIGGERED, NEXT_PENDING, NEXT_STAGE. Fail-closed on write failure with minimal report fallback. CLI entry point supports --task and --stage args. No runner.py modification, no real execution, no third-party dependency.
 
 ## T158 接入 run-project-loop --real-execution --max-tasks 1
 
@@ -3810,5 +3811,5 @@ No real patch applied, no command executed, no Claude Code called.
 角色：Validator
 目标：验证 T155-T158 实现的 monitor → verify → report 完整闭环。
 
-<!-- NEXT_PENDING=T157 -->
+<!-- NEXT_PENDING=T158 -->
 <!-- NEXT_STAGE=Stage 8 -->
