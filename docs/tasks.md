@@ -3857,8 +3857,8 @@ No real patch applied, no command executed, no Claude Code called.
 目标：在 clean workspace 下运行 stage8-monitor-verify-report pipeline，确认修复 marker bug 后 Monitor/Trial/Verifier/Report 全链路稳定。
 完成说明：验证 task_monitor 自检 NEXT_PENDING=T163, NEXT_STAGE=Stage 8, WORKTREE_STATUS=clean。stage8-monitor-verify-report --max-tasks 2 fail closed（FAIL_REASON=max_tasks_must_be_1）。stage8-monitor-verify-report --max-tasks 1 Monitor pass, Trial pass（39 gate checks passed）。生成 reports/continuous-runs/T163-run-report.md。Verifier fail 为预期行为（T163 尚未完成）。未修改 runner.py/tools/业务代码。
 
-<!-- NEXT_PENDING=T173 -->
-<!-- NEXT_STAGE=Stage 9 -->
+<!-- NEXT_PENDING=T174 -->
+<!-- NEXT_STAGE=Stage 10 -->
 
 ---
 
@@ -3945,6 +3945,15 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T173 Stage 9 最终规划审查
 
-状态：pending
+状态：done
 角色：Reviewer
 目标：审查 Stage 9 的设计、实现和验证结果。
+完成说明：审查 T166-T172 全部 Stage 9 任务。确认 GitBackupGate dry-run 安全链成立（7 个任务全部完成）。确认文件分类与 fail closed 验证通过。确认 approval record 生成能力成立。确认 guarded git backup dry-run 已接入 run-project-loop 并验证通过。确认当前仍未实现真实自动 git add / commit / push。py_compile 通过。生成 docs/archive/stage9-final-planning-review.md。未修改 runner.py/tools/业务代码，未执行真实 Git backup。建议下一步进入 Stage 10 真实返工闭环接入。
+
+---
+
+## T174 规划 Stage 10 真实返工闭环接入入口
+
+状态：pending
+角色：Architect
+目标：规划 Stage 10 真实返工闭环接入的目标、范围和任务拆解。只做规划，不立即实现。
