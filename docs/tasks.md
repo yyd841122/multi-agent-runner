@@ -3990,9 +3990,13 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T177 设计 auto_mending_planner.py dry-run 数据结构
 
-状态：pending
+状态：done
 角色：Architect
 目标：设计 auto_mending_planner.py 的 ReworkDecision dataclass 最终版、failure classification rules 最终版、rework safety gate rules 最终版。只做设计，不创建 Python 文件。
+完成说明：设计 auto_mending_planner.py dry-run 数据结构。创建 docs/stage10-auto-mending-planner-design.md，包含 13 个章节：Background、Design Goal、Non-goals、Input Model（MendingPlannerInput 15 字段）、FailureClassification（6 字段，11 种类型）、ReworkDecision（17 字段）、ReworkPlan（12 字段）、Failure Type Rules（11 种类型详细规则）、Decision Rules（15 条规则）、Rework Safety Gate（10 条安全门）、Integration with Existing Modules（6 个模块交接）、T178 Implementation Scope、Acceptance Criteria（14 项）。设计了 4 个 dataclass、11 种 failure_type 分类规则、10 条安全门规则、15 条决策规则。未创建 tools/auto_mending_planner.py，未修改 runner.py / tools / agents / 业务代码，未执行 git add/commit/push。
+
+<!-- NEXT_PENDING=T178 -->
+<!-- NEXT_STAGE=Stage 10 -->
 
 ---
 
