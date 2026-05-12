@@ -4038,9 +4038,13 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T181 验证 verifier fail 后生成 rework decision
 
-状态：pending
+状态：done
 角色：Validator
 目标：端到端验证 verifier fail → rework decision 生成链路。
+完成说明：验证 verifier fail → rework decision dry-run 全链路。auto_mending_planner 直接 dry-run（syntax_failed）：AUTO_MENDING_PLANNER_RESULT=pass, REWORK_ALLOWED=yes, REWORK_PLAN_CREATED=yes。fail closed 场景（forbidden_file）：AUTO_MENDING_PLANNER_RESULT=fail, REWORK_ALLOWED=no, NEXT_ACTION=stop, FAIL_REASON=forbidden_files_present。max_tasks>1：DRY_RUN=True, TASK_EXECUTION_PERFORMED=false。max_tasks=1：DRY_RUN=True, TASK_EXECUTION_PERFORMED=false。runner.py Step 3.1 rework decision dry-run 代码确认正确（第 3175-3268 行）。stage8-monitor-verify-report 因 dirty workspace 在 Step 1 停止，未触发 Step 3.1，属预期安全行为。未修改 runner.py / tools / agents / 业务代码。REAL_REWORK_EXECUTED=no, REWORK_MANAGER_CALLED=no, GIT 未执行。
+
+<!-- NEXT_PENDING=T182 -->
+<!-- NEXT_STAGE=Stage 10 -->
 
 ---
 
