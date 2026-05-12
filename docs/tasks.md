@@ -4014,9 +4014,13 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T179 验证 auto_mending_planner fail closed
 
-状态：pending
+状态：done
 角色：Validator
 目标：验证 auto_mending_planner.py 的 fail-closed 行为，确认所有安全门规则生效。
+完成说明：验证 auto_mending_planner.py 的 12 个 fail-closed 场景，全部通过。pass 无需返工（ok=True, REWORK_ALLOWED=no）、empty failure_type fail closed、forbidden_files fail closed、unclassified_files fail closed、max_rework_rounds 超限 fail closed、rate_limit_or_api_429 wait action、unknown_failure fail closed、max_tasks_violation fail closed、dirty_workspace fail closed、syntax_failed 可生成 dry-run plan、tests_failed 可生成 dry-run plan、tools target requires approval（risk_level=critical, auto_rework_allowed=False, user_approval_required=True）。全部场景 REAL_REWORK_EXECUTED=no, GIT_ADD/COMMIT/PUSH_EXECUTED=no。py_compile 通过。未修改 tools/auto_mending_planner.py / runner.py / rework_manager.py / continuous_verifier.py / execution_report_writer.py / git_backup_gate.py / agents / 业务代码。
+
+<!-- NEXT_PENDING=T180 -->
+<!-- NEXT_STAGE=Stage 10 -->
 
 ---
 
