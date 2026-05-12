@@ -3227,6 +3227,60 @@ def main():
         print(f"NEXT_STAGE={monitor_result.next_stage or 'N/A'}")
         print(f"AUTO_COMMIT_TRIGGERED=no")
         print(f"AUTO_PUSH_TRIGGERED=no")
+
+        # Step 5: GitBackupGate dry-run (Stage 9 integration)
+        # Only runs when overall_pass=True and check_result=pass
+        if overall_pass:
+            print()
+            print("--- Step 5: Git Backup Gate Dry-Run (Stage 9) ---")
+            try:
+                from tools.git_backup_gate import (
+                    run_git_backup_gate_dry_run,
+                    write_git_backup_approval_record,
+                )
+
+                task_id_for_gate = report_data.task_id
+                check_result_str = "pass" if overall_pass else "fail"
+                continuous_run_report = report_result.report_path
+
+                gate_result = run_git_backup_gate_dry_run(
+                    repo_root=PROJECT_ROOT,
+                    task_id=task_id_for_gate,
+                    check_result=check_result_str,
+                    continuous_run_report_path=continuous_run_report,
+                    explicitly_allowed_paths=[],
+                    explicitly_forbidden_paths=[],
+                    commit_message=f"auto: stage 9 git backup gate dry-run for {task_id_for_gate}",
+                    approval_mode="require_user_approval",
+                )
+
+                gate_pass = gate_result.ok
+                print(f"GIT_BACKUP_DRY_RUN={'pass' if gate_pass else 'fail'}")
+                print(f"GATE_OK={gate_result.ok}")
+                print(f"COMMIT_ALLOWED={'yes' if gate_result.commit_allowed else 'no'}")
+                print(f"PUSH_ALLOWED={'yes' if gate_result.push_allowed else 'no'}")
+                print(f"APPROVAL_REQUIRED={'yes' if gate_result.approval_required else 'no'}")
+
+                if gate_pass:
+                    record_path = write_git_backup_approval_record(PROJECT_ROOT, gate_result)
+                    print(f"GIT_BACKUP_APPROVAL_RECORD_CREATED=yes")
+                    print(f"GIT_BACKUP_APPROVAL_RECORD_PATH={record_path}")
+                else:
+                    print(f"GIT_BACKUP_APPROVAL_RECORD_CREATED=no")
+                    if gate_result.fail_reason:
+                        print(f"GATE_FAIL_REASON={gate_result.fail_reason}")
+
+                print(f"REAL_GIT_ADD_EXECUTED=no")
+                print(f"REAL_GIT_COMMIT_EXECUTED=no")
+                print(f"REAL_GIT_PUSH_EXECUTED=no")
+            except Exception as e:
+                print(f"GIT_BACKUP_DRY_RUN=error")
+                print(f"GATE_ERROR={e}")
+                print(f"GIT_BACKUP_APPROVAL_RECORD_CREATED=no")
+                print(f"REAL_GIT_ADD_EXECUTED=no")
+                print(f"REAL_GIT_COMMIT_EXECUTED=no")
+                print(f"REAL_GIT_PUSH_EXECUTED=no")
+
         print(f"NEXT_ACTION=stop")
         print()
         print("NOTE: No real task execution occurred. No git add/commit/push triggered.")
