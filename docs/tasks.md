@@ -3966,9 +3966,13 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T175 完善 agents/*.md 角色职责、边界与输出规范
 
-状态：pending
+状态：done
 角色：Architect
 目标：为每个 Agent（main/planner/developer/tester/reviewer/reporter）补充完整角色定义，包括核心职责、禁止事项、输入输出格式、文件范围、交接关系、Git 限制、失败报告规范。同时生成 docs/agent-role-protocol.md Agent 角色协议总纲。
+完成说明：完善 6 个 Agent 角色定义文件和 Agent 角色协议总纲。每个 Agent 包含角色定位、核心职责、禁止事项、输入输出格式、交接规则、安全规则、输出状态块模板。创建 docs/agent-role-protocol.md 包含 11 个章节：Purpose、Global Rules（18 条）、Agent List、Responsibility Separation、Handoff Protocol、Output Status Block Standard、File Permission Model、Git Safety Rules（10 条）、Fail Closed Rules（13 种场景）、Stage 10 Specific Rules、Maintenance Rules。未修改 runner.py/tools/业务代码，未执行 git add/commit/push。
+
+<!-- NEXT_PENDING=T176 -->
+<!-- NEXT_STAGE=Stage 10 -->
 
 ---
 
