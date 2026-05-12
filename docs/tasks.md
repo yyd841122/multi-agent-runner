@@ -4002,9 +4002,13 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T178 实现 auto_mending_planner.py dry-run
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 tools/auto_mending_planner.py dry-run，包含 classify_failure、generate_rework_decision、check_rework_safety_gate。
+完成说明：实现 tools/auto_mending_planner.py dry-run 模块。定义 3 个 dataclass（FailureClassification 6 字段、ReworkDecision 17 字段、ReworkPlan 12 字段）。实现 classify_failure（11 种 failure_type 分类）、validate_target_files、build_rework_decision（15 条决策规则、10 条安全门规则）、build_rework_plan_dry_run、print_decision、print_plan、main CLI。4 个 dry-run 自检全部通过：pass 无需返工、syntax_failed 可返工（涉及 tools/ 时 user_approval_required=yes）、forbidden file fail closed、rate_limit 等待恢复。使用 Python 标准库，不引入第三方依赖，不调用模型，不执行真实返工，不执行 Git。未修改 runner.py / rework_manager.py / continuous_verifier.py / execution_report_writer.py / git_backup_gate.py / agents / 业务代码。
+
+<!-- NEXT_PENDING=T179 -->
+<!-- NEXT_STAGE=Stage 10 -->
 
 ---
 
