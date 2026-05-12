@@ -3954,6 +3954,90 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T174 规划 Stage 10 真实返工闭环接入入口
 
-状态：pending
+状态：done
 角色：Architect
 目标：规划 Stage 10 真实返工闭环接入的目标、范围和任务拆解。只做规划，不立即实现。
+完成说明：规划 Stage 10 真实返工闭环接入。生成 docs/stage10-real-rework-loop-plan.md，包含 11 个章节（Background、Stage 10 Goal、Non-goals、Agent Role Protocol Remediation、Proposed Rework Loop、ReworkDecision Data Structure、Failure Classification Rules、Rework Safety Gate、auto_mending_planner.py Scope、Integration Points、Suggested Stage 10 Tasks、Recommended Next Step）。设计了 ReworkDecision 15 字段数据结构、11 种失败类型分类、10 条安全门规则。T174_FIX 新增 Agent Role Protocol Remediation 章节，发现 agents/*.md 角色定义缺失，调整为先补强 Agent 角色协议层（T175-T176），再继续 auto_mending_planner（T177-T184）。未修改 runner.py/tools/业务代码/agents/*.md，未实现 auto_mending_planner.py，未执行真实返工。
+
+<!-- NEXT_PENDING=T175 -->
+<!-- NEXT_STAGE=Stage 10 -->
+
+---
+
+## T175 完善 agents/*.md 角色职责、边界与输出规范
+
+状态：pending
+角色：Architect
+目标：为每个 Agent（main/planner/developer/tester/reviewer/reporter）补充完整角色定义，包括核心职责、禁止事项、输入输出格式、文件范围、交接关系、Git 限制、失败报告规范。同时生成 docs/agent-role-protocol.md Agent 角色协议总纲。
+
+---
+
+## T176 验证 Agent 角色规范覆盖主流程
+
+状态：pending
+角色：Validator
+目标：验证 agents/*.md 角色定义是否覆盖 monitor → verify → report → git backup → rework 主流程的每个节点，确认角色边界无冲突、交接格式一致。
+
+---
+
+## T177 设计 auto_mending_planner.py dry-run 数据结构
+
+状态：pending
+角色：Architect
+目标：设计 auto_mending_planner.py 的 ReworkDecision dataclass 最终版、failure classification rules 最终版、rework safety gate rules 最终版。只做设计，不创建 Python 文件。
+
+---
+
+## T178 实现 auto_mending_planner.py dry-run
+
+状态：pending
+角色：Developer
+目标：实现 tools/auto_mending_planner.py dry-run，包含 classify_failure、generate_rework_decision、check_rework_safety_gate。
+
+---
+
+## T179 验证 auto_mending_planner fail closed
+
+状态：pending
+角色：Validator
+目标：验证 auto_mending_planner.py 的 fail-closed 行为，确认所有安全门规则生效。
+
+---
+
+## T180 接入 verifier fail → rework decision dry-run
+
+状态：pending
+角色：Developer
+目标：在 runner.py 中接入 auto_mending_planner dry-run，实现 verifier fail 后生成 rework decision。
+
+---
+
+## T181 验证 verifier fail 后生成 rework decision
+
+状态：pending
+角色：Validator
+目标：端到端验证 verifier fail → rework decision 生成链路。
+
+---
+
+## T182 接入 rework_manager 受控返工 dry-run
+
+状态：pending
+角色：Developer
+目标：对接 auto_mending_planner 与 rework_manager，实现受控返工 dry-run。
+
+---
+
+## T183 验证返工后 verify → report → git backup dry-run 链路
+
+状态：pending
+角色：Validator
+目标：验证返工后完整的 verify → report → git backup dry-run 链路。
+
+---
+
+## T184 Stage 10 最终状态审查
+
+状态：pending
+角色：Reviewer
+目标：审查 T175-T183 全部 Stage 10 成果，确认 Agent 角色协议层和返工闭环 dry-run 安全链是否完成。
