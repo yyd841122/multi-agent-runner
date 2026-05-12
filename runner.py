@@ -3172,6 +3172,101 @@ def main():
             print()
             print("--- Step 3: Continuous Verifier (SKIPPED: trial blocked) ---")
 
+        # Step 3.1: Rework Decision Dry-Run (Stage 10)
+        # Only when verifier ran AND failed
+        rework_decision_data = None
+        rework_plan_data = None
+        if verify_result_data is not None and not verify_result_data.ok:
+            print()
+            print("--- Step 3.1: Rework Decision Dry-Run (Stage 10) ---")
+            try:
+                from tools.auto_mending_planner import (
+                    build_rework_decision,
+                    build_rework_plan_dry_run,
+                )
+
+                task_id_31 = trial_result.selected_next_task or trial_result.current_task or "unknown"
+                verify_status_31 = "fail"
+                check_result_31 = "fail"
+                failure_type_31 = ""
+                if verify_result_data.fail_reason:
+                    reason = verify_result_data.fail_reason.lower()
+                    if "syntax" in reason or "py_compile" in reason:
+                        failure_type_31 = "syntax_failed"
+                    elif "test" in reason:
+                        failure_type_31 = "tests_failed"
+                    elif "report" in reason and ("missing" in reason or "not_found" in reason):
+                        failure_type_31 = "report_missing"
+                    elif "check_result" in reason:
+                        failure_type_31 = "check_result_failed"
+                    elif "forbidden" in reason:
+                        failure_type_31 = "forbidden_file_changed"
+                    elif "unclassified" in reason:
+                        failure_type_31 = "unclassified_changes"
+                    elif "dirty" in reason:
+                        failure_type_31 = "dirty_workspace"
+                    elif "max_tasks" in reason:
+                        failure_type_31 = "max_tasks_violation"
+                    elif "429" in reason or "rate_limit" in reason:
+                        failure_type_31 = "rate_limit_or_api_429"
+                    else:
+                        failure_type_31 = "verifier_failed"
+
+                failure_summary_31 = verify_result_data.fail_reason or "Verifier failed"
+                source_report_31 = f"reports/dev/{task_id_31}-dev-report.md"
+
+                rework_decision_data = build_rework_decision(
+                    task_id=task_id_31,
+                    verify_status=verify_status_31,
+                    check_result=check_result_31,
+                    failure_type=failure_type_31,
+                    failure_summary=failure_summary_31,
+                    target_files=[source_report_31],
+                    forbidden_files=[],
+                    unclassified_files=[],
+                    current_rework_round=0,
+                    max_rework_rounds=3,
+                    source_report_path=source_report_31,
+                    rework_policy="auto_dry_run",
+                )
+
+                rework_decision_str = "pass" if rework_decision_data.ok else "fail"
+                rework_allowed_str = "yes" if rework_decision_data.rework_allowed else "no"
+                auto_rework_str = "yes" if rework_decision_data.auto_rework_allowed else "no"
+                approval_str = "yes" if rework_decision_data.user_approval_required else "no"
+
+                print(f"REWORK_DECISION_DRY_RUN={rework_decision_str}")
+                print(f"REWORK_ALLOWED={rework_allowed_str}")
+                print(f"AUTO_REWORK_ALLOWED={auto_rework_str}")
+                print(f"USER_APPROVAL_REQUIRED={approval_str}")
+                print(f"REWORK_NEXT_ACTION={rework_decision_data.next_action}")
+                print(f"REWORK_FAIL_REASON={rework_decision_data.fail_reason}")
+                print(f"FAILURE_TYPE={rework_decision_data.failure_type}")
+                print(f"RISK_LEVEL={rework_decision_data.risk_level}")
+                print("REAL_REWORK_EXECUTED=no")
+
+                # Try to generate rework plan
+                if rework_decision_data.rework_allowed:
+                    rework_plan_data = build_rework_plan_dry_run(rework_decision_data)
+                    if rework_plan_data:
+                        print(f"REWORK_PLAN_CREATED=yes")
+                        print(f"REWORK_PLAN_ID={rework_plan_data.plan_id}")
+                        print(f"REWORK_PLAN_NEXT_ACTION={rework_plan_data.next_action}")
+                    else:
+                        print("REWORK_PLAN_CREATED=no")
+                else:
+                    print("REWORK_PLAN_CREATED=no")
+            except Exception as e:
+                print(f"REWORK_DECISION_DRY_RUN=error")
+                print(f"REWORK_ERROR={e}")
+                print("REAL_REWORK_EXECUTED=no")
+        elif verify_result_data is not None and verify_result_data.ok:
+            # Verifier passed, no rework needed
+            pass
+        else:
+            # Verifier was skipped (trial blocked)
+            pass
+
         # Step 4: Generate Report
         print()
         print("--- Step 4: Execution Report ---")
@@ -3180,6 +3275,18 @@ def main():
         overall_pass = monitor_result.ok and trial_result.trial_allowed
         if verify_result_data is not None:
             overall_pass = overall_pass and verify_result_data.ok
+
+        # Determine rework_decision string for report
+        rework_decision_str_report = "none"
+        rework_required_flag = False
+        if rework_decision_data is not None:
+            if rework_decision_data.ok and rework_decision_data.rework_allowed:
+                rework_decision_str_report = "rework_allowed_dry_run"
+                rework_required_flag = True
+            elif rework_decision_data.ok and not rework_decision_data.rework_allowed:
+                rework_decision_str_report = "no_rework_needed"
+            else:
+                rework_decision_str_report = "fail_closed"
 
         report_data = ExecutionReportData(
             task_id=trial_result.selected_next_task or trial_result.current_task or "unknown",
@@ -3199,8 +3306,8 @@ def main():
             files_modified=[],
             verify_result="pass" if (verify_result_data and verify_result_data.ok) else ("fail" if verify_result_data else "skipped"),
             check_result="pass" if overall_pass else "fail",
-            rework_required=False,
-            rework_decision="none",
+            rework_required=rework_required_flag,
+            rework_decision=rework_decision_str_report,
             git_commit_allowed=False,
             git_push_allowed=False,
             auto_commit_triggered=False,

@@ -4026,9 +4026,13 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T180 接入 verifier fail → rework decision dry-run
 
-状态：pending
+状态：done
 角色：Developer
 目标：在 runner.py 中接入 auto_mending_planner dry-run，实现 verifier fail 后生成 rework decision。
+完成说明：在 runner.py stage8-monitor-verify-report 子命令中，Step 3 verifier 失败后新增 Step 3.1 Rework Decision Dry-Run。延迟导入 tools.auto_mending_planner 的 build_rework_decision 和 build_rework_plan_dry_run。从 verify_result_data.fail_reason 推断 failure_type（12 种模式匹配）。输出结构化字段：REWORK_DECISION_DRY_RUN、REWORK_ALLOWED、AUTO_REWORK_ALLOWED、USER_APPROVAL_REQUIRED、REWORK_NEXT_ACTION、REWORK_FAIL_REASON、FAILURE_TYPE、RISK_LEVEL、REWORK_PLAN_CREATED。report_data 新增 rework_required 和 rework_decision 字段。不执行真实返工，不调用 rework_manager，不执行 Git，不修改 tools/auto_mending_planner.py，不修改业务代码。py_compile 通过。
+
+<!-- NEXT_PENDING=T181 -->
+<!-- NEXT_STAGE=Stage 10 -->
 
 ---
 
