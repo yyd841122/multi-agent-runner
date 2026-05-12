@@ -3978,9 +3978,13 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T176 验证 Agent 角色规范覆盖主流程
 
-状态：pending
+状态：done
 角色：Validator
 目标：验证 agents/*.md 角色定义是否覆盖 monitor → verify → report → git backup → rework 主流程的每个节点，确认角色边界无冲突、交接格式一致。
+完成说明：验证 6 个 Agent 角色定义和 Agent 角色协议总纲覆盖主流程。docs/agent-role-protocol.md 11 个章节全部完整。6 个 Agent 各含角色定位、核心职责、禁止事项、输入输出、交接规则、安全规则、输出状态块（16 字段）。职责分离无重叠、无越权。主流程交接链完整（User → Main → Planner → Developer → Tester → Reviewer → Reporter → Main → User）。Git 安全 10 条覆盖、命令安全 8 条覆盖、文件权限三级模型覆盖、Stage 10 规则 10 条覆盖。无阻塞级缺口。3 个 minor risk 不阻塞。未修改 agents/*.md / runner.py / tools / 业务代码，未执行 git add/commit/push。
+
+<!-- NEXT_PENDING=T177 -->
+<!-- NEXT_STAGE=Stage 10 -->
 
 ---
 
