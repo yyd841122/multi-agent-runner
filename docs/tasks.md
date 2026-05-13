@@ -4086,6 +4086,82 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T185 规划 Stage 11 外部入口自动化入口
 
-状态：pending
+状态：done
 角色：Architect
 目标：规划 Stage 11 外部入口自动化入口，基于 Stage 8-10 安全基础设计外部接入方案。
+完成说明：Stage 11 外部入口自动化规划完成。规划了 5 种外部入口候选（local request inbox、GitHub Issue、Web UI、API、n8n），建议第一个入口为 local request inbox dry-run。设计了 ExternalRequest 18 字段数据结构、ExternalRequestSafetyGate 13 条安全门规则、Request to Task Proposal 完整流程、Prompt injection 防护 10 条规则。规划后续任务 T186-T194。生成 docs/stage11-external-entry-automation-plan.md 规划文档。未修改 runner.py、tools/、agents/、业务代码。
+
+<!-- NEXT_PENDING=T186 -->
+<!-- NEXT_STAGE=Stage 11 -->
+
+---
+
+## T186 设计 local request inbox dry-run 数据结构
+
+状态：pending
+角色：Architect
+目标：设计 ExternalRequest、ExternalRequestSafetyGateResult、RequestProposal 数据结构。
+
+---
+
+## T187 实现 external_request_inbox.py dry-run
+
+状态：pending
+角色：Developer
+目标：实现本地 request inbox 读取、解析、生成 ExternalRequest。
+
+---
+
+## T188 验证 external request safety gate fail closed
+
+状态：pending
+角色：Validator
+目标：验证 13 条安全门规则的 fail-closed 行为。
+
+---
+
+## T189 设计 GitHub Issue 外部入口 dry-run
+
+状态：pending
+角色：Architect
+目标：设计 GitHub Issue → ExternalRequest 的转换流程。
+
+---
+
+## T190 实现 GitHub Issue 读取与 proposal dry-run
+
+状态：pending
+角色：Developer
+目标：实现 issue 读取、内容解析、proposal 生成。
+
+---
+
+## T191 验证 GitHub Issue prompt injection 防护
+
+状态：pending
+角色：Validator
+目标：验证恶意 issue 内容不触发执行。
+
+---
+
+## T192 接入 external request → task proposal dry-run
+
+状态：pending
+角色：Developer
+目标：将外部请求 proposal 接入 docs/tasks.md 更新流程。
+
+---
+
+## T193 验证外部请求生成任务草案但不执行
+
+状态：pending
+角色：Validator
+目标：验证完整链路：请求 → safety gate → proposal → 任务草案 → 不执行。
+
+---
+
+## T194 Stage 11 最终状态审查
+
+状态：pending
+角色：Reviewer
+目标：审查 T186-T193 全部成果，确认安全链。
