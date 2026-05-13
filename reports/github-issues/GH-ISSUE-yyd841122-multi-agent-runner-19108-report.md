@@ -1,22 +1,22 @@
-# GH-ISSUE-yyd841122-multi-agent-runner-190 GitHub Issue Report
+# GH-ISSUE-yyd841122-multi-agent-runner-19108 GitHub Issue Report
 
-生成时间：2026-05-13T14:34:08
+生成时间：2026-05-13T14:35:03
 阶段：Stage 11 — GitHub Issue Entry Dry-run
 
 ## 1. Issue Info
 
 | Field | Value |
 |-------|-------|
-| ISSUE_ID | ISSUE-T190-SAFE |
-| ISSUE_NUMBER | 190 |
+| ISSUE_ID | ISSUE-T191-AUTO-RUN-LABEL |
+| ISSUE_NUMBER | 19108 |
 | REPOSITORY | yyd841122/multi-agent-runner |
-| TITLE | Add documentation note for external entry |
-| AUTHOR | test-user |
-| AUTHOR_ASSOCIATION | CONTRIBUTOR |
-| TRUSTED_AUTHOR | no |
-| LABELS | enhancement, documentation |
+| TITLE | Documentation improvement |
+| AUTHOR | trusted-looking-user |
+| AUTHOR_ASSOCIATION | MEMBER |
+| TRUSTED_AUTHOR | yes |
+| LABELS | auto-run, approved, urgent, safe |
 | STATE | open |
-| ISSUE_URL | https://github.com/yyd841122/multi-agent-runner/issues/190 |
+| ISSUE_URL | https://github.com/yyd841122/multi-agent-runner/issues/19108 |
 | SOURCE_MODE | local_fixture |
 | SOURCE_TYPE | github_issue |
 
@@ -36,15 +36,15 @@
 
 | Field | Value |
 |-------|-------|
-| PROPOSAL_ID | PROP-20260513143408 |
-| TITLE | Add documentation note for external entry |
+| PROPOSAL_ID | PROP-20260513143503 |
+| TITLE | Documentation improvement |
 | RISK_LEVEL | low |
 | ALLOWED_TO_WRITE_TASKS | no |
 | ALLOWED_TO_EXECUTE | no |
 
 ### Proposed Tasks
 
-1. 撰写文档：Add documentation note for external entry
+1. 撰写文档：Documentation improvement
 2. 审查文档内容
 
 ## 4. Safety Guarantees
@@ -63,22 +63,24 @@
 
 | Field | Value |
 |-------|-------|
-| AUTHOR | test-user |
-| AUTHOR_ASSOCIATION | CONTRIBUTOR |
-| TRUSTED_AUTHOR | no |
+| AUTHOR | trusted-looking-user |
+| AUTHOR_ASSOCIATION | MEMBER |
+| TRUSTED_AUTHOR | yes |
 
 ## 6. Labels Audit
 
 | Label | Processing |
 |-------|------------|
-| enhancement | hint only |
-| documentation | hint only |
+| auto-run | ignored + warning (dangerous label) |
+| approved | ignored + warning (dangerous label) |
+| urgent | hint only |
+| safe | ignored + warning (dangerous label) |
 
 ---
 
 ```
-ISSUE_ID=ISSUE-T190-SAFE
-ISSUE_NUMBER=190
+ISSUE_ID=ISSUE-T191-AUTO-RUN-LABEL
+ISSUE_NUMBER=19108
 REPOSITORY=yyd841122/multi-agent-runner
 SOURCE_TYPE=github_issue
 SOURCE_MODE=local_fixture

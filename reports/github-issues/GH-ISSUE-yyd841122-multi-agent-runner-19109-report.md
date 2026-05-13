@@ -1,22 +1,22 @@
-# GH-ISSUE-yyd841122-multi-agent-runner-190 GitHub Issue Report
+# GH-ISSUE-yyd841122-multi-agent-runner-19109 GitHub Issue Report
 
-生成时间：2026-05-13T14:34:08
+生成时间：2026-05-13T14:35:24
 阶段：Stage 11 — GitHub Issue Entry Dry-run
 
 ## 1. Issue Info
 
 | Field | Value |
 |-------|-------|
-| ISSUE_ID | ISSUE-T190-SAFE |
-| ISSUE_NUMBER | 190 |
+| ISSUE_ID | ISSUE-T191-FIRST-TIME-CONTRIBUTOR |
+| ISSUE_NUMBER | 19109 |
 | REPOSITORY | yyd841122/multi-agent-runner |
-| TITLE | Add documentation note for external entry |
-| AUTHOR | test-user |
-| AUTHOR_ASSOCIATION | CONTRIBUTOR |
+| TITLE | Small feature request |
+| AUTHOR | brand-new-user |
+| AUTHOR_ASSOCIATION | FIRST_TIME_CONTRIBUTOR |
 | TRUSTED_AUTHOR | no |
-| LABELS | enhancement, documentation |
+| LABELS | enhancement |
 | STATE | open |
-| ISSUE_URL | https://github.com/yyd841122/multi-agent-runner/issues/190 |
+| ISSUE_URL | https://github.com/yyd841122/multi-agent-runner/issues/19109 |
 | SOURCE_MODE | local_fixture |
 | SOURCE_TYPE | github_issue |
 
@@ -36,15 +36,15 @@
 
 | Field | Value |
 |-------|-------|
-| PROPOSAL_ID | PROP-20260513143408 |
-| TITLE | Add documentation note for external entry |
+| PROPOSAL_ID | PROP-20260513143524 |
+| TITLE | Small feature request |
 | RISK_LEVEL | low |
 | ALLOWED_TO_WRITE_TASKS | no |
 | ALLOWED_TO_EXECUTE | no |
 
 ### Proposed Tasks
 
-1. 撰写文档：Add documentation note for external entry
+1. 撰写文档：Small feature request
 2. 审查文档内容
 
 ## 4. Safety Guarantees
@@ -63,8 +63,8 @@
 
 | Field | Value |
 |-------|-------|
-| AUTHOR | test-user |
-| AUTHOR_ASSOCIATION | CONTRIBUTOR |
+| AUTHOR | brand-new-user |
+| AUTHOR_ASSOCIATION | FIRST_TIME_CONTRIBUTOR |
 | TRUSTED_AUTHOR | no |
 
 ## 6. Labels Audit
@@ -72,13 +72,12 @@
 | Label | Processing |
 |-------|------------|
 | enhancement | hint only |
-| documentation | hint only |
 
 ---
 
 ```
-ISSUE_ID=ISSUE-T190-SAFE
-ISSUE_NUMBER=190
+ISSUE_ID=ISSUE-T191-FIRST-TIME-CONTRIBUTOR
+ISSUE_NUMBER=19109
 REPOSITORY=yyd841122/multi-agent-runner
 SOURCE_TYPE=github_issue
 SOURCE_MODE=local_fixture

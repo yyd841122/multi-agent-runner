@@ -4163,9 +4163,14 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T191 验证 GitHub Issue prompt injection 防护
 
-状态：pending
+状态：done
 角色：Validator
 目标：验证恶意 issue 内容不触发执行。
+完成时间：2026-05-13
+完成说明：创建 10 个专用 fixture，验证 11 个 prompt injection / unsafe 场景。Title injection (critical)、body injection (critical)、reveal system prompt (critical)、secret/env (high)、direct git (high)、real run-project-loop (high)、real rework (critical) 均被 blocked。Auto-run label 不触发真实执行。FIRST_TIME_CONTRIBUTOR TRUSTED=no、REQUIRES_USER_APPROVAL=yes。Dangerous comment 部分通过（EXECUTE=no，但 comments 内容不参与 safety gate，T190 已知 gap）。所有场景 ALLOWED_TO_EXECUTE=no。未修改 github_issue_entry.py / runner.py / tools / agents / 业务代码。未访问 GitHub API，未调用 gh CLI，未创建 workflow。
+
+<!-- NEXT_PENDING=T192 -->
+<!-- NEXT_STAGE=Stage 11 -->
 
 ---
 
