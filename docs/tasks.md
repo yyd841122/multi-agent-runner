@@ -4137,9 +4137,14 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T189 设计 GitHub Issue 外部入口 dry-run
 
-状态：pending
+状态：done
 角色：Architect
 目标：设计 GitHub Issue → ExternalRequest 的转换流程。
+完成时间：2026-05-13
+完成说明：设计 GitHubIssueRequest 20 字段、IssueToExternalRequest 18 字段映射、20 条 GitHub Issue safety rules、11 条 prompt injection 防护原则、10 条 labels 处理规则、6 条 comments 处理规则。设计 Issue → ExternalRequest → safety gate → TaskProposal dry-run 完整流程。明确 T190 实现范围（17 项实现、13 项不实现）。未创建 tools/github_issue_entry.py，未创建 .github/workflows，未访问 GitHub API，未修改 runner.py/tools/agents/业务代码。
+
+<!-- NEXT_PENDING=T190 -->
+<!-- NEXT_STAGE=Stage 11 -->
 
 ---
 
