@@ -4182,16 +4182,17 @@ No real patch applied, no command executed, no Claude Code called.
 完成时间：2026-05-13
 完成说明：创建 tools/external_request_task_proposal.py 作为统一 proposal bridge，支持 local_inbox 和 github_issue 两类输入。Local inbox safe request pass（PLAN=yes, EXECUTE=no, PROPOSAL=yes）。Local inbox blocked fail closed（RISK=critical, EXECUTE=no）。GitHub Issue safe fixture pass（PLAN=yes, EXECUTE=no, PROPOSAL=yes）。GitHub Issue blocked fail closed（RISK=critical, EXECUTE=no）。复用 external_request_inbox.py 和 github_issue_entry.py 的解析、safety gate、proposal 生成。未修改 runner.py / external_request_inbox.py / github_issue_entry.py / agents / 业务代码。未访问 GitHub API，未调用 gh CLI，未创建 workflow，未执行 Git。
 
-<!-- NEXT_PENDING=T193 -->
+<!-- NEXT_PENDING=T194 -->
 <!-- NEXT_STAGE=Stage 11 -->
 
 ---
 
 ## T193 验证外部请求生成任务草案但不执行
 
-状态：pending
+状态：done
 角色：Validator
 目标：验证完整链路：请求 → safety gate → proposal → 任务草案 → 不执行。
+完成说明：验证 4 个场景（local inbox safe/blocked、GitHub issue safe/blocked），全部 pass。外部请求可以生成 TaskProposal dry-run，但绝不执行真实操作。allowed_to_execute 始终为 no，docs/tasks.md 未被外部请求内容污染。
 
 ---
 
