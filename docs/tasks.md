@@ -4150,9 +4150,14 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T190 实现 GitHub Issue 读取与 proposal dry-run
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 issue 读取、内容解析、proposal 生成。
+完成时间：2026-05-13
+完成说明：创建 tools/github_issue_entry.py，实现 GitHubIssueRequest 20 字段 dataclass、IssueToExternalRequest 映射、GitHub Issue 专用预检查、prompt injection 检测（对齐 external_request_inbox.py）、safety gate 17 条规则、TaskProposal dry-run、reports/github-issues/ 报告生成。Safe fixture dry-run pass，blocked fixture dry-run fail（critical prompt injection, secrets, git operations, real execution）。未访问 GitHub API，未调用 gh CLI，未创建 workflow，未修改 runner.py/external_request_inbox.py/agents/业务代码。
+
+<!-- NEXT_PENDING=T191 -->
+<!-- NEXT_STAGE=Stage 11 -->
 
 ---
 
