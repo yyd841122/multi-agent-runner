@@ -4074,6 +4074,18 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T184 Stage 10 最终状态审查
 
-状态：pending
+状态：done
 角色：Reviewer
 目标：审查 T175-T183 全部 Stage 10 成果，确认 Agent 角色协议层和返工闭环 dry-run 安全链是否完成。
+完成说明：Stage 10 最终状态审查完成。T174-T183 全部 done。Agent 角色协议层已补强（6 个 Agent 文件 + agent-role-protocol.md 总纲）。auto_mending_planner.py dry-run 已实现且 fail closed 验证通过。verifier fail → rework decision dry-run → controlled rework dry-run → verify → report → GitBackupGate dry-run 完整链路已验证。所有安全限制仍然有效（无真实返工、无真实 Git、max_tasks>1 fail closed）。生成 docs/archive/stage10-final-status-review.md 审查文档。未修改 runner.py、tools/、agents/、业务代码。
+
+<!-- NEXT_PENDING=T185 -->
+<!-- NEXT_STAGE=Stage 11 -->
+
+---
+
+## T185 规划 Stage 11 外部入口自动化入口
+
+状态：pending
+角色：Architect
+目标：规划 Stage 11 外部入口自动化入口，基于 Stage 8-10 安全基础设计外部接入方案。
