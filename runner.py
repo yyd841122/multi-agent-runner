@@ -3256,6 +3256,81 @@ def main():
                         print("REWORK_PLAN_CREATED=no")
                 else:
                     print("REWORK_PLAN_CREATED=no")
+
+                # Step 3.2: Controlled Rework Dry-Run (Stage 10)
+                # Only when rework decision allows dry-run rework
+                if rework_decision_data is not None and rework_decision_data.ok and rework_decision_data.rework_allowed:
+                    print()
+                    print("--- Step 3.2: Controlled Rework Dry-Run (Stage 10) ---")
+
+                    # Conservative bridge helper: simulate rework_manager dry-run checks
+                    # without calling rework_manager directly (it targets sub-projects)
+                    _rework_round = rework_decision_data.current_rework_round + 1
+                    _max_rounds = rework_decision_data.max_rework_rounds
+                    _round_valid = 1 <= _rework_round <= _max_rounds
+                    _target_files = rework_decision_data.target_files
+                    _auto_allowed = rework_decision_data.auto_rework_allowed
+                    _user_approval = rework_decision_data.user_approval_required
+                    _risk_level = rework_decision_data.risk_level
+
+                    # Safety gate checks (mirrors rework_manager concept)
+                    _rework_safety_pass = True
+                    _rework_safety_reason = ""
+
+                    if not _round_valid:
+                        _rework_safety_pass = False
+                        _rework_safety_reason = f"rework round {_rework_round} exceeds max {_max_rounds}"
+                    elif not _target_files:
+                        _rework_safety_pass = False
+                        _rework_safety_reason = "target_files empty, cannot determine rework scope"
+                    elif rework_decision_data.failure_type in (
+                        "forbidden_file_changed", "unclassified_changes",
+                        "dirty_workspace", "max_tasks_violation", "unknown_failure",
+                    ):
+                        _rework_safety_pass = False
+                        _rework_safety_reason = f"failure_type={rework_decision_data.failure_type} requires manual intervention"
+                    elif _risk_level == "critical" and not _user_approval:
+                        _rework_safety_pass = False
+                        _rework_safety_reason = "risk_level=critical requires user approval"
+
+                    if _rework_safety_pass:
+                        _rework_next_action = "execute_dry_run" if _auto_allowed else "wait_for_approval"
+                        if _rework_plan_data is not None:
+                            _rework_next_action = _rework_plan_data.next_action
+                        print(f"CONTROLLED_REWORK_DRY_RUN=pass")
+                        print(f"REWORK_MANAGER_DRY_RUN_CALLED=no")
+                        print(f"REWORK_MANAGER_REAL_EXECUTION_CALLED=no")
+                        print(f"REWORK_ROUND={_rework_round}")
+                        print(f"REWORK_MAX_ROUNDS={_max_rounds}")
+                        print(f"REWORK_TARGET_FILES={_target_files}")
+                        print(f"REWORK_AUTO_ALLOWED={'yes' if _auto_allowed else 'no'}")
+                        print(f"REWORK_USER_APPROVAL_REQUIRED={'yes' if _user_approval else 'no'}")
+                        print(f"REWORK_RISK_LEVEL={_risk_level}")
+                        print(f"REWORK_NEXT_ACTION={_rework_next_action}")
+                        print(f"REWORK_PLAN_ID={_rework_plan_data.plan_id if _rework_plan_data else 'N/A'}")
+                        print("REAL_REWORK_EXECUTED=no")
+                        print("TARGET_FILES_MODIFIED=no")
+                    else:
+                        print(f"CONTROLLED_REWORK_DRY_RUN=fail")
+                        print(f"REWORK_MANAGER_DRY_RUN_CALLED=no")
+                        print(f"REWORK_MANAGER_REAL_EXECUTION_CALLED=no")
+                        print(f"REWORK_FAIL_REASON={_rework_safety_reason}")
+                        print("REAL_REWORK_EXECUTED=no")
+                        print("TARGET_FILES_MODIFIED=no")
+                else:
+                    # No rework allowed or decision not available
+                    if rework_decision_data is not None:
+                        print()
+                        print("--- Step 3.2: Controlled Rework Dry-Run (Stage 10) ---")
+                        if not rework_decision_data.ok:
+                            print(f"CONTROLLED_REWORK_DRY_RUN=skipped")
+                            print(f"REWORK_SKIP_REASON=rework_decision_failed: {rework_decision_data.fail_reason}")
+                        elif not rework_decision_data.rework_allowed:
+                            print(f"CONTROLLED_REWORK_DRY_RUN=skipped")
+                            print(f"REWORK_SKIP_REASON=rework_not_allowed: {rework_decision_data.next_action}")
+                        print(f"REWORK_MANAGER_DRY_RUN_CALLED=no")
+                        print(f"REWORK_MANAGER_REAL_EXECUTION_CALLED=no")
+                        print("REAL_REWORK_EXECUTED=no")
             except Exception as e:
                 print(f"REWORK_DECISION_DRY_RUN=error")
                 print(f"REWORK_ERROR={e}")

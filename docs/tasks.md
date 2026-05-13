@@ -4050,9 +4050,13 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T182 接入 rework_manager 受控返工 dry-run
 
-状态：pending
+状态：done
 角色：Developer
 目标：对接 auto_mending_planner 与 rework_manager，实现受控返工 dry-run。
+完成说明：在 runner.py stage8-monitor-verify-report 子命令中，Step 3.1 rework decision dry-run 之后新增 Step 3.2 Controlled Rework Dry-Run。当 rework_decision 允许返工时，执行保守桥接安全检查（轮次验证、target_files 检查、failure_type 检查、risk_level 检查），输出结构化字段：CONTROLLED_REWORK_DRY_RUN、REWORK_MANAGER_DRY_RUN_CALLED、REWORK_MANAGER_REAL_EXECUTION_CALLED、REWORK_TARGET_FILES、REWORK_NEXT_ACTION 等。不直接调用 rework_manager.py（面向子项目 game），在 runner.py 内部实现保守桥接 helper。不修改 tools/rework_manager.py / tools/auto_mending_planner.py / tools/continuous_verifier.py / tools/execution_report_writer.py / tools/git_backup_gate.py / agents / 业务代码。不执行真实返工，不修改目标文件，不执行 Git。py_compile 通过。
+
+<!-- NEXT_PENDING=T183 -->
+<!-- NEXT_STAGE=Stage 10 -->
 
 ---
 
