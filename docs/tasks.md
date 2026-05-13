@@ -4111,9 +4111,14 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T187 实现 external_request_inbox.py dry-run
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现本地 request inbox 读取、解析、生成 ExternalRequest。
+完成时间：2026-05-13
+完成说明：创建 tools/external_request_inbox.py，实现 ExternalRequest（18 字段）、ExternalRequestSafetyResult（10 字段）、TaskProposal（13 字段）、RequestInboxRecord（11 字段）、15 条 safety gate 规则、prompt injection 检测、CLI dry-run。safe sample 通过，blocked sample fail closed。创建 requests/inbox/ 样例文件。
+
+<!-- NEXT_PENDING=T188 -->
+<!-- NEXT_STAGE=Stage 11 -->
 
 ---
 
