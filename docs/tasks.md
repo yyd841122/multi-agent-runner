@@ -4062,9 +4062,13 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T183 验证返工后 verify → report → git backup dry-run 链路
 
-状态：pending
+状态：done
 角色：Validator
 目标：验证返工后完整的 verify → report → git backup dry-run 链路。
+完成说明：验证 Stage 10 完整链路。rework decision dry-run（syntax_failed）：AUTO_MENDING_PLANNER_RESULT=pass, REWORK_ALLOWED=yes, REWORK_PLAN_CREATED=yes。fail closed 场景（forbidden_file）：AUTO_MENDING_PLANNER_RESULT=fail, REWORK_ALLOWED=no, NEXT_ACTION=stop, FAIL_REASON=forbidden_files_present。GitBackupGate dry-run：GIT_BACKUP_GATE_RESULT=pass, COMMIT_ALLOWED=yes, PUSH_ALLOWED=no, APPROVAL_REQUIRED=yes。max_tasks>1：DRY_RUN=True, TASK_EXECUTION_PERFORMED=false。max_tasks=1：DRY_RUN=True, TASK_EXECUTION_PERFORMED=false。runner.py 代码确认 Step 3.1→3.2→4→5 链路完整。未修改 runner.py / tools / agents / 业务代码。REAL_REWORK_EXECUTED=no, REWORK_MANAGER_CALLED=no, GIT 未执行。CONTINUOUS_RUN_REPORT 未生成（dry-run 模式预期行为）。GIT_BACKUP_APPROVAL_RECORD 已生成。
+
+<!-- NEXT_PENDING=T184 -->
+<!-- NEXT_STAGE=Stage 10 -->
 
 ---
 
