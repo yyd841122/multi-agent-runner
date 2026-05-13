@@ -4210,6 +4210,106 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T195 规划 Stage 12 产品化与稳定性入口
 
-状态：pending
+状态：done
 角色：Architect
 目标：规划 Stage 12 产品化与稳定性入口，只规划不实现。
+完成说明：已完成 Stage 12 产品化与稳定性规划。规划覆盖 9 个方向：CLI 体验稳定化、Run State Manager、Checkpoint & Resume、API 429 / 5 小时限额恢复、Dirty Workspace Protection、Proposal Approval & Apply、Report Index & Audit Trail、Error Codes & Fail Closed Standard、Future Product Interfaces。明确 Non-goals：不开放真实外部执行、不创建 Web UI / API / n8n / GitHub Actions、不绕过现有安全链。规划后续任务 T196-T207。所有新工具默认 dry-run。
+
+<!-- NEXT_PENDING=T196 -->
+<!-- NEXT_STAGE=Stage 12 -->
+
+---
+
+## T196 设计 run_state_manager.py 与 checkpoint 数据结构
+
+状态：pending
+角色：Architect
+目标：设计 RunState、Checkpoint、ResumePolicy 数据结构，只设计不实现。
+
+---
+
+## T197 实现 run_state_manager.py dry-run
+
+状态：pending
+角色：Developer
+目标：实现 run_state_manager.py，支持 dry-run 状态记录和读取。
+
+---
+
+## T198 验证 checkpoint resume fail closed
+
+状态：pending
+角色：Validator
+目标：验证 resume 在 dirty workspace、status mismatch、blocked 等场景下 fail closed。
+
+---
+
+## T199 设计 API 429 / 5 小时限额恢复机制
+
+状态：pending
+角色：Architect
+目标：设计 RateLimitRecoveryState、恢复流程、安全检查。
+
+---
+
+## T200 实现 rate-limit recovery dry-run
+
+状态：pending
+角色：Developer
+目标：实现限额检测、checkpoint 写入、恢复流程 dry-run。
+
+---
+
+## T201 验证 dirty workspace resume protection
+
+状态：pending
+角色：Validator
+目标：验证 resume 时 dirty workspace 检查、未分类文件 fail closed。
+
+---
+
+## T202 设计 external proposal approval record
+
+状态：pending
+角色：Architect
+目标：设计 ProposalApprovalRecord、审批流程、apply 安全规则。
+
+---
+
+## T203 实现 proposal approval record dry-run
+
+状态：pending
+角色：Developer
+目标：实现 approval record dry-run，apply 只写 docs/tasks.md 草案。
+
+---
+
+## T204 验证 proposal apply 不执行任务
+
+状态：pending
+角色：Validator
+目标：验证 apply 后 task 不被执行，execution 仍需走 runner 流程。
+
+---
+
+## T205 设计 reports index 与 audit trail
+
+状态：pending
+角色：Architect
+目标：设计 ReportsIndex 数据结构、过滤规则、输出格式。
+
+---
+
+## T206 实现 reports index dry-run
+
+状态：pending
+角色：Developer
+目标：实现 report_index.py dry-run，生成 reports index。
+
+---
+
+## T207 Stage 12 最终状态审查
+
+状态：pending
+角色：Reviewer
+目标：审查 T196-T206 全部成果，确认 Stage 12 安全链。
