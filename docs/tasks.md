@@ -4098,9 +4098,14 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T186 设计 local request inbox dry-run 数据结构
 
-状态：pending
+状态：done
 角色：Architect
 目标：设计 ExternalRequest、ExternalRequestSafetyGateResult、RequestProposal 数据结构。
+完成时间：2026-05-13
+完成说明：设计了 ExternalRequest（18 字段）、ExternalRequestSafetyResult（10 字段）、TaskProposal（13 字段）、RequestInboxRecord（11 字段）、request 文件格式、15 条 safety gate 规则、13 条 prompt injection 检测规则。创建 docs/stage11-local-request-inbox-design.md。
+
+<!-- NEXT_PENDING=T187 -->
+<!-- NEXT_STAGE=Stage 11 -->
 
 ---
 
