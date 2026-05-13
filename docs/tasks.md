@@ -4124,9 +4124,14 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T188 验证 external request safety gate fail closed
 
-状态：pending
+状态：done
 角色：Validator
 目标：验证 13 条安全门规则的 fail-closed 行为。
+完成时间：2026-05-13
+完成说明：验证 10 个场景的 fail closed 行为全部通过。safe request pass, empty request fail closed, missing file fail closed, prompt injection fail closed (critical), secret/.env fail closed, direct git fail closed, real run-project-loop fail closed, real rework fail closed, restricted files require approval, delete files fail closed。allowed_to_execute 始终为 no。发现 Windows 文件名兼容性问题（auto-generated request_id 含冒号），safety gate 逻辑正确。未修改 external_request_inbox.py/runner.py/tools/agents/业务代码。
+
+<!-- NEXT_PENDING=T189 -->
+<!-- NEXT_STAGE=Stage 11 -->
 
 ---
 
