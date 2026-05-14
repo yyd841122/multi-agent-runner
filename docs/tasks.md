@@ -4255,9 +4255,13 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T199 设计 API 429 / 5 小时限额恢复机制
 
-状态：pending
+状态：done
 角色：Architect
 目标：设计 RateLimitRecoveryState、恢复流程、安全检查。
+完成说明：已创建 docs/stage12-rate-limit-recovery-design.md，设计 RateLimitRecoveryState（24 字段）、RecoveryDecision（18 字段）、Error Detection Rules（10 种检测类型）、Reset Time Extraction（6 种格式 + fail closed 规则）、Recovery Flow（完整流程 + 8 条安全硬约束）、Workspace Recheck Rules（7 种判断）、NEXT_PENDING/NEXT_STAGE Recheck（4 种不一致处理）、Dangerous Resume Points（11 种中断点）。明确 T200 推荐创建独立 tools/rate_limit_recovery.py 而非扩展 run_state_manager.py。未创建 rate-limit recovery 工具，未修改 run_state_manager.py，未修改 runner.py，未创建 runtime/，未启用真实恢复。
+
+<!-- NEXT_PENDING=T200 -->
+<!-- NEXT_STAGE=Stage 12 -->
 
 ---
 
