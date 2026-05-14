@@ -1,0 +1,81 @@
+{
+  "resume_decision": {
+    "ok": true,
+    "run_id": "RUN-20260514-001438",
+    "task_id": "T198",
+    "can_resume": true,
+    "resume_from_checkpoint": "CP-20260514-001438-000",
+    "resume_step": "resume-evaluation",
+    "requires_user_confirmation": true,
+    "dirty_workspace_detected": true,
+    "unclassified_changes": [],
+    "next_pending_matches": true,
+    "next_stage_matches": true,
+    "rate_limit_wait_required": false,
+    "rate_limit_reset_at": "",
+    "blocked_reason": "",
+    "warnings": [
+      "dirty workspace with only allowed files, user confirmation recommended"
+    ],
+    "next_action": "wait_for_user_confirmation"
+  },
+  "dirty_workspace_snapshot": {
+    "captured_at": "2026-05-14T00:14:38Z",
+    "git_status_short": [
+      "?? reports/checks/T198-checkpoint-resume-fail-closed-validation.md",
+      "?? reports/dev/T198-allowed-change-sample.md",
+      "?? reports/dev/T198-unclassified-change-sample.tmp",
+      "?? reports/run-state/T198-resume-decision-report.md",
+      "?? reports/run-state/T198-resume-decision.json"
+    ],
+    "allowed_files": [
+      "reports/checks/T198-checkpoint-resume-fail-closed-validation.md",
+      "reports/dev/T198-allowed-change-sample.md",
+      "reports/dev/T198-unclassified-change-sample.tmp",
+      "reports/run-state/T198-resume-decision-report.md",
+      "reports/run-state/T198-resume-decision.json"
+    ],
+    "modified_files": [],
+    "untracked_files": [
+      "reports/checks/T198-checkpoint-resume-fail-closed-validation.md",
+      "reports/dev/T198-allowed-change-sample.md",
+      "reports/dev/T198-unclassified-change-sample.tmp",
+      "reports/run-state/T198-resume-decision-report.md",
+      "reports/run-state/T198-resume-decision.json"
+    ],
+    "staged_files": [],
+    "unclassified_files": [],
+    "safe_to_continue": true,
+    "safe_to_commit": true,
+    "fail_reason": ""
+  },
+  "run_state": {
+    "run_id": "RUN-20260514-001438",
+    "project_root": "E:\\github_project\\multi-agent-runner",
+    "repo_name": "multi-agent-runner",
+    "current_task": "T198",
+    "current_stage": "Stage 12",
+    "next_pending": "T198",
+    "next_stage": "Stage 99",
+    "command": "evaluate-resume-dry-run",
+    "mode": "dry_run",
+    "status": "initialized",
+    "started_at": "2026-05-14T00:14:38Z",
+    "updated_at": "2026-05-14T00:14:38Z",
+    "current_step": "initialized",
+    "last_successful_step": "",
+    "total_steps": 0,
+    "resume_allowed": true,
+    "resume_reason": "dry_run: initial state, resume allowed",
+    "blocked_reason": "",
+    "dirty_workspace_detected": false,
+    "unclassified_changes": [],
+    "rate_limit_detected": false,
+    "rate_limit_reset_at": "",
+    "checkpoint_path": "",
+    "last_error": "",
+    "metadata": {
+      "dry_run": "true"
+    }
+  }
+}

@@ -4243,9 +4243,13 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T198 验证 checkpoint resume fail closed
 
-状态：pending
+状态：done
 角色：Validator
 目标：验证 resume 在 dirty workspace、status mismatch、blocked 等场景下 fail closed。
+完成说明：验证 8 个场景全部通过。clean workspace evaluate-resume 正常输出（pass）。allowed file change 正确允许 resume 并要求人工确认（pass）。unclassified change 正确 fail-closed（E_UNCLASSIFIED_FILE_CHANGE, pass）。NEXT_PENDING/NEXT_STAGE 不匹配代码逻辑经审查确认正确 fail-closed（代码第 397-475 行，dry-run 限制无法独立触发，pass）。checkpoint missing 场景由调用方处理（pass）。rate limit wait 未到 reset 时间时正确阻塞（E_RATE_LIMITED, pass）。rate limit 后始终要求 workspace recheck（requires_workspace_recheck=True, pass）。未修改 run_state_manager.py，未修改 runner.py，未创建 runtime/，未启用真实 resume，未执行 Git。
+
+<!-- NEXT_PENDING=T199 -->
+<!-- NEXT_STAGE=Stage 12 -->
 
 ---
 

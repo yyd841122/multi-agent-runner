@@ -1,0 +1,16 @@
+{
+  "detected": true,
+  "provider": "zhipu",
+  "error_code": "1308",
+  "error_message": "simulated rate limit error from zhipu",
+  "request_id": "T198-rate-limit-wait",
+  "reset_at": "2099-01-01T00:00:00Z",
+  "wait_seconds": 2292191114,
+  "captured_at": "2026-05-14T00:14:45Z",
+  "affected_task": "T198",
+  "affected_step": "dry_run",
+  "checkpoint_path": "",
+  "resume_allowed_after_reset": true,
+  "requires_workspace_recheck": true,
+  "notes": "dry-run simulation, no real rate limit detected, no waiting"
+}
