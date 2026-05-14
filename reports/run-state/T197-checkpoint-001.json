@@ -1,0 +1,34 @@
+{
+  "checkpoint_id": "CP-20260514-000311-001",
+  "run_id": "RUN-20260514-000311",
+  "task_id": "T197",
+  "stage": "Stage 12",
+  "step_name": "sample checkpoint",
+  "step_index": 1,
+  "created_at": "2026-05-14T00:03:11Z",
+  "status": "success",
+  "command_planned": "dry-run checkpoint for T197",
+  "command_executed": "",
+  "output_summary": "dry-run checkpoint created for T197 step sample checkpoint",
+  "files_expected": [],
+  "files_changed": [],
+  "git_status_before": [
+    "M docs/tasks.md",
+    "?? reports/dev/T197-dev-report.md",
+    "?? reports/run-state/",
+    "?? tools/run_state_manager.py"
+  ],
+  "git_status_after": [
+    "M docs/tasks.md",
+    "?? reports/dev/T197-dev-report.md",
+    "?? reports/run-state/",
+    "?? tools/run_state_manager.py"
+  ],
+  "next_pending_before": "T197",
+  "next_pending_after": "T197",
+  "next_stage_before": "Stage 12",
+  "next_stage_after": "Stage 12",
+  "resume_allowed_after_checkpoint": true,
+  "fail_closed_reason": "",
+  "notes": "dry-run checkpoint, no real execution"
+}

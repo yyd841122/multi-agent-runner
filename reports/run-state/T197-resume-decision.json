@@ -1,0 +1,86 @@
+{
+  "resume_decision": {
+    "ok": false,
+    "run_id": "RUN-20260514-000318",
+    "task_id": "T197",
+    "can_resume": false,
+    "resume_from_checkpoint": "",
+    "resume_step": "",
+    "requires_user_confirmation": true,
+    "dirty_workspace_detected": true,
+    "unclassified_changes": [
+      "ocs/tasks.md",
+      "reports/run-state/",
+      "tools/run_state_manager.py"
+    ],
+    "next_pending_matches": false,
+    "next_stage_matches": false,
+    "rate_limit_wait_required": false,
+    "rate_limit_reset_at": "",
+    "blocked_reason": "E_UNCLASSIFIED_FILE_CHANGE: ['ocs/tasks.md', 'reports/run-state/', 'tools/run_state_manager.py']",
+    "warnings": [
+      "unclassified files detected, fail closed"
+    ],
+    "next_action": "fail_closed"
+  },
+  "dirty_workspace_snapshot": {
+    "captured_at": "2026-05-14T00:03:18Z",
+    "git_status_short": [
+      "M docs/tasks.md",
+      "?? reports/dev/T197-dev-report.md",
+      "?? reports/run-state/",
+      "?? tools/run_state_manager.py"
+    ],
+    "allowed_files": [
+      "reports/dev/T197-dev-report.md"
+    ],
+    "modified_files": [
+      "ocs/tasks.md"
+    ],
+    "untracked_files": [
+      "reports/dev/T197-dev-report.md",
+      "reports/run-state/",
+      "tools/run_state_manager.py"
+    ],
+    "staged_files": [
+      "ocs/tasks.md"
+    ],
+    "unclassified_files": [
+      "ocs/tasks.md",
+      "reports/run-state/",
+      "tools/run_state_manager.py"
+    ],
+    "safe_to_continue": false,
+    "safe_to_commit": false,
+    "fail_reason": "E_UNCLASSIFIED_FILE_CHANGE: 3 unclassified file(s) detected"
+  },
+  "run_state": {
+    "run_id": "RUN-20260514-000318",
+    "project_root": "E:\\github_project\\multi-agent-runner",
+    "repo_name": "multi-agent-runner",
+    "current_task": "T197",
+    "current_stage": "Stage 12",
+    "next_pending": "T197",
+    "next_stage": "Stage 12",
+    "command": "evaluate-resume-dry-run",
+    "mode": "dry_run",
+    "status": "initialized",
+    "started_at": "2026-05-14T00:03:18Z",
+    "updated_at": "2026-05-14T00:03:18Z",
+    "current_step": "initialized",
+    "last_successful_step": "",
+    "total_steps": 0,
+    "resume_allowed": true,
+    "resume_reason": "dry_run: initial state, resume allowed",
+    "blocked_reason": "",
+    "dirty_workspace_detected": false,
+    "unclassified_changes": [],
+    "rate_limit_detected": false,
+    "rate_limit_reset_at": "",
+    "checkpoint_path": "",
+    "last_error": "",
+    "metadata": {
+      "dry_run": "true"
+    }
+  }
+}

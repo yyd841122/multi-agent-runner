@@ -4227,16 +4227,17 @@ No real patch applied, no command executed, no Claude Code called.
 目标：设计 RunState、Checkpoint、ResumePolicy 数据结构，只设计不实现。
 完成说明：已完成 run_state_manager.py 与 checkpoint 数据结构设计。设计 5 个核心数据结构：RunState（25 字段）、Checkpoint（22 字段）、ResumeDecision（16 字段）、DirtyWorkspaceSnapshot（10 字段）、RateLimitState（14 字段）。设计 9 个运行状态枚举值、10 条 resume allowed 规则、10 条 fail closed 规则。设计 rate limit recovery flow 和 dirty workspace resume flow。规划 T197 dry-run 实现范围（16 条）。未创建 tools/run_state_manager.py，未修改 runner.py/tools/agents/。
 
-<!-- NEXT_PENDING=T197 -->
+<!-- NEXT_PENDING=T198 -->
 <!-- NEXT_STAGE=Stage 12 -->
 
 ---
 
 ## T197 实现 run_state_manager.py dry-run
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现 run_state_manager.py，支持 dry-run 状态记录和读取。
+完成说明：已创建 tools/run_state_manager.py，实现 5 个 dataclass（RunState 25 字段、Checkpoint 22 字段、ResumeDecision 16 字段、DirtyWorkspaceSnapshot 10 字段、RateLimitState 14 字段）。支持 4 个 dry-run 子命令：create-run-state、write-checkpoint、evaluate-resume、simulate-rate-limit。所有子命令自检通过，输出结构化 KEY=value 状态行，输出到 reports/run-state/。使用 Python 标准库，无第三方依赖。所有不确定情况 fail closed。未创建 runtime/，未修改 runner.py，未修改其他 tools/agents，未启用真实 resume。
 
 ---
 

@@ -1,0 +1,29 @@
+{
+  "run_id": "RUN-20260514-000304",
+  "project_root": "E:\\github_project\\multi-agent-runner",
+  "repo_name": "multi-agent-runner",
+  "current_task": "T197",
+  "current_stage": "Stage 12",
+  "next_pending": "T197",
+  "next_stage": "Stage 12",
+  "command": "dry-run",
+  "mode": "dry_run",
+  "status": "running",
+  "started_at": "2026-05-14T00:03:04Z",
+  "updated_at": "2026-05-14T00:03:04Z",
+  "current_step": "initialized",
+  "last_successful_step": "",
+  "total_steps": 0,
+  "resume_allowed": true,
+  "resume_reason": "dry_run: initial state, resume allowed",
+  "blocked_reason": "",
+  "dirty_workspace_detected": true,
+  "unclassified_changes": [],
+  "rate_limit_detected": false,
+  "rate_limit_reset_at": "",
+  "checkpoint_path": "",
+  "last_error": "",
+  "metadata": {
+    "dry_run": "true"
+  }
+}
