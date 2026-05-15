@@ -1,0 +1,23 @@
+{
+  "ok": false,
+  "can_wait": false,
+  "can_resume": false,
+  "run_id": "RUN-20260515-033701",
+  "task_id": "T200",
+  "stage": "Stage 12",
+  "reset_at_utc": "2000-01-01T00:00:00Z",
+  "reset_passed": true,
+  "workspace_clean": false,
+  "dirty_workspace_detected": false,
+  "unclassified_changes": [],
+  "next_pending_matches": false,
+  "next_stage_matches": false,
+  "checkpoint_valid": true,
+  "user_confirmation_required": true,
+  "blocked_reason": "E_NEXT_PENDING_MISMATCH or E_STAGE_MISMATCH",
+  "warnings": [
+    "NEXT_PENDING mismatch: actual=T201, expected=T200",
+    "NEXT_STAGE mismatch: actual=Stage 12, expected=Stage 99"
+  ],
+  "next_action": "fail_closed"
+}

@@ -4267,9 +4267,13 @@ No real patch applied, no command executed, no Claude Code called.
 
 ## T200 实现 rate-limit recovery dry-run
 
-状态：pending
+状态：done
 角色：Developer
 目标：实现限额检测、checkpoint 写入、恢复流程 dry-run。
+完成说明：已创建 tools/rate_limit_recovery.py，实现 RateLimitRecoveryState（24 字段）、RecoveryDecision（18 字段）、3 个 dry-run 子命令（parse-error / plan-wait / evaluate-recovery）。支持 10 种错误检测类型（HTTP 429、provider code 1308、中文限额消息、rate limit 关键字等）和 6 种 reset time 提取格式（中文 datetime、ISO 8601 UTC/offset、Unix timestamp、Retry-After、x-ratelimit-reset）。所有 fail-closed 场景自检通过：reset_at 未到 fail closed、NEXT_PENDING mismatch fail closed、NEXT_STAGE mismatch fail closed。未修改 run_state_manager.py，未修改 runner.py，未创建 runtime/，未启用真实等待/恢复。
+
+<!-- NEXT_PENDING=T201 -->
+<!-- NEXT_STAGE=Stage 12 -->
 
 ---
 

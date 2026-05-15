@@ -1,0 +1,52 @@
+# T200 Plan Wait Dry-run Report
+
+Generated: 2026-05-15T03:35:39Z
+
+## Status
+
+```text
+RATE_LIMIT_RECOVERY_RESULT=pass
+COMMAND=plan-wait
+TASK_ID=T200
+STAGE=Stage 12
+RUN_ID=RUN-20260515-033539
+RATE_LIMIT_DETECTED=yes
+ERROR_CODE=
+REQUEST_ID=sample-request
+RESET_AT_RAW=
+RESET_AT_UTC=2099-01-01T00:00:00Z
+RETRY_AFTER_SECONDS=0
+WAIT_REQUIRED=yes
+WAIT_UNTIL=2099-01-01T00:00:00Z
+WAIT_SECONDS=2292092660
+REAL_WAIT_STARTED=no
+WORKSPACE_RECHECK_REQUIRED=yes
+WORKSPACE_RECHECK_DONE=no
+RESET_PASSED=no
+NEXT_PENDING_MATCHES=no
+NEXT_STAGE_MATCHES=no
+RECOVERY_ALLOWED=no
+USER_CONFIRMATION_REQUIRED=yes
+RUNTIME_CREATED=no
+CHECKPOINT_FILES_CREATED=no
+REAL_RESUME_ENABLED=no
+RUNNER_EXECUTED=no
+GIT_ADD_EXECUTED=no
+GIT_COMMIT_EXECUTED=no
+GIT_PUSH_EXECUTED=no
+REPORT_PATH=reports\rate-limit-recovery\T200-plan-wait-report.md
+CHECK_RESULT=pass
+```
+
+## Details
+
+- run_id: RUN-20260515-033539
+- provider: zhipu
+- reset_at_utc: 2099-01-01T00:00:00Z
+- wait_seconds: 2292092660
+- wait_required: True
+- workspace_recheck_required: True
+- real_wait_started: False
+- real_resume_enabled: False
+- JSON report written to: reports\rate-limit-recovery\T200-plan-wait.json
+

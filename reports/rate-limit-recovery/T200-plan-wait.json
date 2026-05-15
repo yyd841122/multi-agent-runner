@@ -1,0 +1,15 @@
+{
+  "command": "plan-wait",
+  "task_id": "T200",
+  "stage": "Stage 12",
+  "run_id": "RUN-20260515-033539",
+  "provider": "zhipu",
+  "request_id": "sample-request",
+  "reset_at_utc": "2099-01-01T00:00:00Z",
+  "wait_seconds": 2292092660,
+  "wait_required": true,
+  "workspace_recheck_required": true,
+  "real_wait_started": false,
+  "real_resume_enabled": false,
+  "dry_run": true
+}
